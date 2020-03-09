@@ -1,0 +1,73 @@
+{
+  "name": "muse",
+  "version": "0.1.0",
+  "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
+  "main": "dist/index.js",
+  "repository": "git@github.com:codetheweb/muse.git",
+  "author": "Max Isom <hi@maxisom.me>",
+  "license": "MIT",
+  "private": true,
+  "types": "dts/types",
+  "files": [
+    "dist",
+    "dts"
+  ],
+  "scripts": {
+    "lint": "eslint 'src/**/*.ts'",
+    "lint-fix": "eslint 'src/**/*.ts' --fix",
+    "clean": "rm -rf dist dts",
+    "test": "npm run lint",
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "prepack": "npm run clean && npm run build",
+    "start": "node dist/index.js",
+    "dev": "nodemon"
+  },
+  "devDependencies": {
+    "@types/bluebird": "^3.5.30",
+    "@types/node": "^13.9.0",
+    "@types/validator": "^12.0.1",
+    "@types/ws": "^7.2.2",
+    "@typescript-eslint/eslint-plugin": "^2.22.0",
+    "@typescript-eslint/parser": "^2.22.0",
+    "eslint": "^6.8.0",
+    "eslint-config-xo": "^0.29.1",
+    "eslint-config-xo-typescript": "^0.26.0",
+    "husky": "^4.2.3",
+    "nodemon": "^2.0.2",
+    "reflect-metadata": "^0.1.13",
+    "ts-node": "^8.6.2",
+    "typescript": "^3.8.3"
+  },
+  "eslintConfig": {
+    "extends": [
+      "xo",
+      "xo-typescript/space"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "project": "./tsconfig.json"
+    },
+    "rules": {
+      "new-cap": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars-experimental": "error",
+      "@typescript-eslint/no-inferrable-types": "off"
+    }
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm test && npm run build"
+    }
+  },
+  "dependencies": {
+    "@discordjs/opus": "^0.1.0",
+    "discord.js": "^12.0.1",
+    "dotenv": "^8.2.0",
+    "make-dir": "^3.0.2",
+    "node-emoji": "^1.10.0",
+    "sequelize": "^5.21.5",
+    "sequelize-typescript": "^1.1.0",
+    "sqlite3": "^4.1.1"
+  }
+}

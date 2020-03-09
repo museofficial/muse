@@ -1,3 +1,8 @@
+data
+.DS_Store
+dist
+dts
+
 # Logs
 logs
 *.log
