@@ -3,11 +3,10 @@ import path from 'path';
 import makeDir from 'make-dir';
 import Discord from 'discord.js';
 import {DISCORD_TOKEN, DISCORD_CLIENT_ID, DATA_DIR} from './utils/config';
+import {Settings} from './models';
 import {sequelize} from './utils/db';
 import {CommandHandler} from './interfaces';
 import handleGuildCreate from './events/guild-create';
-
-const PREFIX = '!';
 
 const client = new Discord.Client();
 const commands = new Discord.Collection();
@@ -22,12 +21,22 @@ for (const file of commandFiles) {
 }
 
 // Generic message handler
-client.on('message', (msg: Discord.Message) => {
-  if (!msg.content.startsWith(PREFIX) || msg.author.bot) {
+client.on('message', async (msg: Discord.Message) => {
+  // Get guild settings
+  const settings = await Settings.findByPk(msg.guild!.id);
+
+  if (!settings) {
+    // Got into a bad state, send owner welcome message
+    return client.emit('guildCreate', msg.guild);
+  }
+
+  const {prefix, channel} = settings;
+
+  if (!msg.content.startsWith(prefix) || msg.author.bot || msg.channel.id !== channel) {
     return;
   }
 
-  const args = msg.content.slice(PREFIX.length).split(/ +/);
+  const args = msg.content.slice(prefix.length).split(/ +/);
   const command = args.shift()!.toLowerCase();
 
   if (!commands.has(command)) {
