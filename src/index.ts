@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import makeDir from 'make-dir';
 import Discord from 'discord.js';
-import {DISCORD_TOKEN, DISCORD_CLIENT_ID, DATA_DIR} from './utils/config';
+import {DISCORD_TOKEN, DISCORD_CLIENT_ID, DATA_DIR, CACHE_DIR} from './utils/config';
 import {Settings} from './models';
 import {sequelize} from './utils/db';
 import {CommandHandler} from './interfaces';
@@ -56,6 +56,7 @@ client.on('message', async (msg: Discord.Message) => {
 client.on('ready', async () => {
   // Create directory if necessary
   await makeDir(DATA_DIR);
+  await makeDir(CACHE_DIR);
 
   await sequelize.sync({});
 
