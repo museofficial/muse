@@ -42,7 +42,13 @@ export default class implements Command {
     const addSingleSong = async (source: string): Promise<void> => {
       const videoDetails = await this.youtube.videos.get(source);
 
-      newSongs.push({title: videoDetails.snippet.title, length: toSeconds(parse(videoDetails.contentDetails.duration)), url: videoDetails.id, playlist: null});
+      newSongs.push({
+        title: videoDetails.snippet.title,
+        artist: videoDetails.snippet.channelTitle,
+        length: toSeconds(parse(videoDetails.contentDetails.duration)),
+        url: videoDetails.id,
+        playlist: null
+      });
     };
 
     // Test if it's a complete URL
@@ -70,7 +76,13 @@ export default class implements Command {
           items.forEach(video => {
             const length = toSeconds(parse(res.items.find((i: any) => i.id === video.contentDetails.videoId).contentDetails.duration));
 
-            newSongs.push({title: video.snippet.title, length, url: video.contentDetails.videoId, playlist: queuedPlaylist});
+            newSongs.push({
+              title: video.snippet.title,
+              artist: video.snippet.channelTitle,
+              length,
+              url: video.contentDetails.videoId,
+              playlist: queuedPlaylist
+            });
           });
         } else {
           // Single video
@@ -144,11 +156,17 @@ export default class implements Command {
         }
 
         // Search YouTube for each track
-        const searchForTrack = async (track: any): Promise<QueuedSong|null> => {
+        const searchForTrack = async (track: SpotifyApi.TrackObjectSimplified): Promise<QueuedSong|null> => {
           try {
-            const {items: [video]} = await ytsr(`${track.name as string} ${track.artists[0].name as string} offical`, {limit: 1});
+            const {items: [video]} = await ytsr(`${track.name} ${track.artists[0].name} offical`, {limit: 1});
 
-            return {title: video.title, length: track.duration_ms / 1000, url: video.link, playlist};
+            return {
+              title: video.title,
+              artist: track.artists[0].name,
+              length: track.duration_ms / 1000,
+              url: video.link,
+              playlist
+            };
           } catch (_) {
             // TODO: handle error
             return null;

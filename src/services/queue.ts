@@ -7,6 +7,7 @@ export interface QueuedPlaylist {
 
 export interface QueuedSong {
   title: string;
+  artist: string;
   url: string;
   length: number;
   playlist: QueuedPlaylist | null;
