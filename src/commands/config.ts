@@ -1,11 +1,14 @@
-import {TextChannel} from 'discord.js';
-import {CommandHandler} from '../interfaces';
+import {TextChannel, Message} from 'discord.js';
+import {injectable} from 'inversify';
 import {Settings} from '../models';
+import Command from '.';
 
-const config: CommandHandler = {
-  name: 'config',
-  description: 'Change various bot settings.',
-  execute: async (msg, args) => {
+@injectable()
+export default class implements Command {
+  public name = 'config';
+  public description = 'changes various bot settings';
+
+  public async execute(msg: Message, args: string []): Promise<void> {
     if (args.length === 0) {
       // Show current settings
       const settings = await Settings.findByPk(msg.guild!.id);
@@ -58,6 +61,4 @@ const config: CommandHandler = {
         await msg.channel.send('🚫 I\'ve never met this setting in my life');
     }
   }
-};
-
-export default config;
+}

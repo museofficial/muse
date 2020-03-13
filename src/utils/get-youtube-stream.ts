@@ -3,6 +3,7 @@ import {Readable, PassThrough} from 'stream';
 import path from 'path';
 import hasha from 'hasha';
 import ytdl from 'ytdl-core';
+import prism from 'prism-media';
 import {CACHE_DIR} from './config';
 
 const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat => {
@@ -24,9 +25,11 @@ export default async (url: string): Promise<Readable> => {
   const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
 
   let format = formats.find(filter);
+  let canDirectPlay = true;
 
   if (!format) {
     format = nextBestFormat(info.formats);
+    canDirectPlay = false;
   }
 
   try {
@@ -46,6 +49,30 @@ export default async (url: string): Promise<Readable> => {
       await fs.rename(cacheTempPath, cachedPath);
     });
 
-    return ytdl.downloadFromInfo(info, {format}).pipe(pass);
+    if (canDirectPlay) {
+      return ytdl.downloadFromInfo(info, {format}).pipe(pass);
+    }
+
+    const transcoder = new prism.FFmpeg({
+      args: [
+        '-reconnect',
+        '1',
+        '-reconnect_streamed',
+        '1',
+        '-reconnect_delay_max',
+        '5',
+        '-i',
+        format.url,
+        '-loglevel',
+        'verbose',
+        '-vn',
+        '-acodec',
+        'libopus',
+        '-f',
+        'webm'
+      ]
+    });
+
+    return transcoder.pipe(pass);
   }
 };

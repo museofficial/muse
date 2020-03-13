@@ -25,11 +25,12 @@
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.30",
-    "@types/node": "^13.9.0",
+    "@types/node": "^13.9.1",
+    "@types/spotify-web-api-node": "^4.0.1",
     "@types/validator": "^12.0.1",
     "@types/ws": "^7.2.2",
-    "@typescript-eslint/eslint-plugin": "^2.22.0",
-    "@typescript-eslint/parser": "^2.22.0",
+    "@typescript-eslint/eslint-plugin": "^2.23.0",
+    "@typescript-eslint/parser": "^2.23.0",
     "eslint": "^6.8.0",
     "eslint-config-xo": "^0.29.1",
     "eslint-config-xo-typescript": "^0.26.0",
@@ -62,14 +63,24 @@
   },
   "dependencies": {
     "@discordjs/opus": "^0.1.0",
-    "discord.js": "^12.0.1",
+    "delay": "^4.3.0",
+    "discord.js": "^12.0.2",
     "dotenv": "^8.2.0",
+    "got": "^10.6.0",
     "hasha": "^5.2.0",
+    "inversify": "^5.0.1",
+    "iso8601-duration": "^1.2.0",
     "make-dir": "^3.0.2",
     "node-emoji": "^1.10.0",
+    "p-limit": "^2.2.2",
+    "prism-media": "^1.2.1",
     "sequelize": "^5.21.5",
     "sequelize-typescript": "^1.1.0",
+    "spotify-uri": "^2.0.0",
+    "spotify-web-api-node": "^4.0.0",
     "sqlite3": "^4.1.1",
-    "ytdl-core": "^2.0.0"
+    "youtube.ts": "^0.1.0",
+    "ytdl-core": "^2.0.0",
+    "ytsr": "^0.1.11"
   }
 }
