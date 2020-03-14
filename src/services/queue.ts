@@ -1,4 +1,5 @@
 import {injectable} from 'inversify';
+import shuffle from 'array-shuffle';
 
 export interface QueuedPlaylist {
   title: string;
@@ -82,6 +83,16 @@ export default class {
 
       this.guildQueues.set(guildId, [...this.guildQueues.get(guildId)!.slice(0, insertAt), song, ...this.guildQueues.get(guildId)!.slice(insertAt)]);
     }
+  }
+
+  shuffle(guildId: string): void {
+    const queue = this.guildQueues.get(guildId);
+
+    if (!queue) {
+      throw new Error('Queue doesn\'t exist yet.');
+    }
+
+    this.guildQueues.set(guildId, [queue[0], ...shuffle(queue.slice(1))]);
   }
 
   size(guildId: string): number {
