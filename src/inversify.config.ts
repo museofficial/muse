@@ -24,6 +24,7 @@ import Command from './commands';
 import Config from './commands/config';
 import Play from './commands/play';
 import QueueCommad from './commands/queue';
+import Seek from './commands/seek';
 
 let container = new Container();
 
@@ -39,6 +40,7 @@ container.bind<Queue>(TYPES.Services.Queue).to(Queue).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(Config).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(Play).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(QueueCommad).inSingletonScope();
+container.bind<Command>(TYPES.Command).to(Seek).inSingletonScope();
 
 // Config values
 container.bind<string>(TYPES.Config.DISCORD_TOKEN).toConstantValue(DISCORD_TOKEN);
