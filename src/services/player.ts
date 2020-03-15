@@ -21,6 +21,9 @@ export default class {
   private voiceConnection: VoiceConnection | null = null;
   private dispatcher: StreamDispatcher | null = null;
 
+  private lastStreamTime = 0;
+  private positionInSeconds = 0;
+
   constructor(queue: Queue, cacheDir: string) {
     this.queue = queue;
     this.cacheDir = cacheDir;
@@ -52,6 +55,16 @@ export default class {
     await this.waitForCache(currentSong.url);
 
     this.attachListeners(this.voiceConnection.play(this.getCachedPath(currentSong.url), {seek: positionSeconds}));
+
+    this.positionInSeconds = positionSeconds;
+  }
+
+  async forwardSeek(positionSeconds: number): Promise<void> {
+    return this.seek(this.positionInSeconds + positionSeconds);
+  }
+
+  getPosition(): number {
+    return this.positionInSeconds;
   }
 
   async play(): Promise<void> {
@@ -224,6 +237,10 @@ export default class {
 
   private attachListeners(stream: StreamDispatcher): void {
     stream.on('speaking', async isSpeaking => {
+      // Update position
+      this.positionInSeconds += (stream.streamTime - this.lastStreamTime) / 1000;
+      this.lastStreamTime = stream.streamTime;
+
       // Automatically advance queued song at end
       if (!isSpeaking && this.status === STATUS.PLAYING) {
         if (this.queue.get().length > 0) {
