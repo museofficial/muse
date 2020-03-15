@@ -30,6 +30,11 @@ export default class implements Command {
       return;
     }
 
+    if (msg.author.id !== msg.guild!.owner!.id) {
+      await msg.channel.send('not authorized');
+      return;
+    }
+
     switch (setting) {
       case 'prefix': {
         const newPrefix = args[1];
