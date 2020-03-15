@@ -16,7 +16,15 @@ export default class implements Command {
   }
 
   public async execute(msg: Message, args: string []): Promise<void> {
-    const seekTime = parseInt(args[0], 10);
+    const time = args[0];
+
+    let seekTime = 0;
+
+    if (time.includes(':')) {
+      seekTime = (parseInt(time.split(':')[0], 10) * 60) + parseInt(time.split(':')[1], 10);
+    } else {
+      seekTime = parseInt(time, 10);
+    }
 
     const loading = new LoadingMessage(msg.channel as TextChannel, 'hold on a sec');
 
