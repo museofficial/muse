@@ -106,14 +106,11 @@ export default class {
   }
 
   private getCachedPath(url: string): string {
-    const hash = hasha(url);
-    return path.join(this.cacheDir, `${hash}.webm`);
+    return path.join(this.cacheDir, hasha(url));
   }
 
   private getCachedPathTemp(url: string): string {
-    const hash = hasha(url);
-
-    return path.join('/tmp', `${hash}.webm`);
+    return path.join('/tmp', hasha(url));
   }
 
   private async isCached(url: string): Promise<boolean> {
@@ -191,13 +188,6 @@ export default class {
       }
     }
 
-    const cacheTempPath = this.getCachedPathTemp(url);
-    const cacheStream = createWriteStream(cacheTempPath);
-
-    cacheStream.on('finish', async () => {
-      await fs.rename(cacheTempPath, cachedPath);
-    });
-
     let youtubeStream: Readable;
 
     if (canDirectPlay) {
@@ -217,7 +207,17 @@ export default class {
 
     youtubeStream.pipe(capacitor);
 
-    capacitor.createReadStream().pipe(cacheStream);
+    // Don't cache livestreams
+    if (!info.player_response.videoDetails.isLiveContent) {
+      const cacheTempPath = this.getCachedPathTemp(url);
+      const cacheStream = createWriteStream(cacheTempPath);
+
+      cacheStream.on('finish', async () => {
+        await fs.rename(cacheTempPath, cachedPath);
+      });
+
+      capacitor.createReadStream().pipe(cacheStream);
+    }
 
     return capacitor.createReadStream();
   }
