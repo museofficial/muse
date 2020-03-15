@@ -1,7 +1,7 @@
 import {Message, TextChannel} from 'discord.js';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
-import Player from '../services/player';
+import PlayerManager from '../managers/player';
 import LoadingMessage from '../utils/loading-message';
 import Command from '.';
 
@@ -9,10 +9,10 @@ import Command from '.';
 export default class implements Command {
   public name = 'seek';
   public description = 'seeks position in currently playing song';
-  private readonly player: Player;
+  private readonly playerManager: PlayerManager;
 
-  constructor(@inject(TYPES.Services.Player) player: Player) {
-    this.player = player;
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
+    this.playerManager = playerManager;
   }
 
   public async execute(msg: Message, args: string []): Promise<void> {
@@ -31,7 +31,7 @@ export default class implements Command {
     await loading.start();
 
     try {
-      await this.player.seek(msg.guild!.id, seekTime);
+      await this.playerManager.get(msg.guild!.id).seek(seekTime);
 
       await loading.stop('seeked');
     } catch (_) {

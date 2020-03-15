@@ -9,8 +9,9 @@ import got from 'got';
 import {parse, toSeconds} from 'iso8601-duration';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
-import Queue, {QueuedSong, QueuedPlaylist} from '../services/queue';
-import Player from '../services/player';
+import {QueuedSong, QueuedPlaylist} from '../services/queue';
+import QueueManager from '../managers/queue';
+import PlayerManager from '../managers/player';
 import {getMostPopularVoiceChannel} from '../utils/channels';
 import LoadingMessage from '../utils/loading-message';
 import Command from '.';
@@ -19,15 +20,15 @@ import Command from '.';
 export default class implements Command {
   public name = 'play';
   public description = 'plays a song';
-  private readonly queue: Queue;
-  private readonly player: Player;
+  private readonly queueManager: QueueManager;
+  private readonly playerManager: PlayerManager;
   private readonly youtube: YouTube;
   private readonly youtubeKey: string;
   private readonly spotify: Spotify;
 
-  constructor(@inject(TYPES.Services.Queue) queue: Queue, @inject(TYPES.Services.Player) player: Player, @inject(TYPES.Lib.YouTube) youtube: YouTube, @inject(TYPES.Config.YOUTUBE_API_KEY) youtubeKey: string, @inject(TYPES.Lib.Spotify) spotify: Spotify) {
-    this.queue = queue;
-    this.player = player;
+  constructor(@inject(TYPES.Managers.Queue) queueManager: QueueManager, @inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Lib.YouTube) youtube: YouTube, @inject(TYPES.Config.YOUTUBE_API_KEY) youtubeKey: string, @inject(TYPES.Lib.Spotify) spotify: Spotify) {
+    this.queueManager = queueManager;
+    this.playerManager = playerManager;
     this.youtube = youtube;
     this.youtubeKey = youtubeKey;
     this.spotify = spotify;
@@ -208,7 +209,7 @@ export default class implements Command {
       return;
     }
 
-    newSongs.forEach(song => this.queue.add(msg.guild!.id, song));
+    newSongs.forEach(song => this.queueManager.get(msg.guild!.id).add(song));
 
     // TODO: better response
     await res.stop('song(s) queued');
@@ -216,8 +217,8 @@ export default class implements Command {
     const channel = getMostPopularVoiceChannel(msg.guild!);
 
     // TODO: don't connect if already connected.
-    await this.player.connect(msg.guild!.id, channel);
+    await this.playerManager.get(msg.guild!.id).connect(channel);
 
-    await this.player.play(msg.guild!.id);
+    await this.playerManager.get(msg.guild!.id).play();
   }
 }

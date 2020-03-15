@@ -9,12 +9,12 @@ export const TYPES = {
     CACHE_DIR: Symbol('CACHE_DIR')
   },
   Command: Symbol('Command'),
-  Services: {
-    Player: Symbol('Player'),
-    Queue: Symbol('Queue')
-  },
   Lib: {
     YouTube: Symbol('YouTube'),
     Spotify: Symbol('Spotify')
+  },
+  Managers: {
+    Player: Symbol('PlayerManager'),
+    Queue: Symbol('QueueManager')
   }
 };

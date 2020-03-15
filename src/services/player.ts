@@ -1,5 +1,4 @@
-import {inject, injectable} from 'inversify';
-import {VoiceConnection, VoiceChannel} from 'discord.js';
+import {VoiceConnection, VoiceChannel, StreamDispatcher} from 'discord.js';
 import {promises as fs, createWriteStream} from 'fs';
 import {Readable, PassThrough} from 'stream';
 import path from 'path';
@@ -7,60 +6,44 @@ import hasha from 'hasha';
 import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
-import {TYPES} from '../types';
 import Queue, {QueuedSong} from './queue';
 
-export enum Status {
-  Playing,
-  Paused,
-  Disconnected
+export enum STATUS {
+  PLAYING,
+  PAUSED,
+  DISCONNECTED
 }
 
-export interface GuildPlayer {
-  status: Status;
-  voiceConnection: VoiceConnection | null;
-}
-
-@injectable()
 export default class {
-  private readonly guildPlayers = new Map<string, GuildPlayer>();
+  public status = STATUS.DISCONNECTED;
   private readonly queue: Queue;
   private readonly cacheDir: string;
+  private voiceConnection: VoiceConnection | null = null;
+  private dispatcher: StreamDispatcher | null = null;
 
-  constructor(@inject(TYPES.Services.Queue) queue: Queue, @inject(TYPES.Config.CACHE_DIR) cacheDir: string) {
+  constructor(queue: Queue, cacheDir: string) {
     this.queue = queue;
     this.cacheDir = cacheDir;
   }
 
-  async connect(guildId: string, channel: VoiceChannel): Promise<void> {
-    this.initGuild(guildId);
-
-    const guildPlayer = this.guildPlayers.get(guildId);
-
+  async connect(channel: VoiceChannel): Promise<void> {
     const conn = await channel.join();
 
-    guildPlayer!.voiceConnection = conn;
-
-    this.guildPlayers.set(guildId, guildPlayer!);
+    this.voiceConnection = conn;
   }
 
-  disconnect(guildId: string): void {
-    this.initGuild(guildId);
-
-    const guildPlayer = this.guildPlayers.get(guildId);
-
-    if (guildPlayer?.voiceConnection) {
-      guildPlayer.voiceConnection.disconnect();
+  disconnect(): void {
+    if (this.voiceConnection) {
+      this.voiceConnection.disconnect();
     }
   }
 
-  async seek(guildId: string, positionSeconds: number): Promise<void> {
-    const guildPlayer = this.get(guildId);
-    if (guildPlayer.voiceConnection === null) {
+  async seek(positionSeconds: number): Promise<void> {
+    if (this.voiceConnection === null) {
       throw new Error('Not connected to a voice channel.');
     }
 
-    const currentSong = this.getCurrentSong(guildId);
+    const currentSong = this.getCurrentSong();
 
     if (!currentSong) {
       throw new Error('No song currently playing');
@@ -68,58 +51,58 @@ export default class {
 
     await this.waitForCache(currentSong.url);
 
-    guildPlayer.voiceConnection.play(this.getCachedPath(currentSong.url), {seek: positionSeconds});
+    this.attachListeners(this.voiceConnection.play(this.getCachedPath(currentSong.url), {seek: positionSeconds}));
   }
 
-  async play(guildId: string): Promise<void> {
-    const guildPlayer = this.get(guildId);
-    if (guildPlayer.voiceConnection === null) {
+  async play(): Promise<void> {
+    if (this.voiceConnection === null) {
       throw new Error('Not connected to a voice channel.');
     }
 
-    if (guildPlayer.status === Status.Playing) {
-      // Already playing, return
+    // Resume from paused state
+    if (this.status === STATUS.PAUSED && this.dispatcher) {
+      this.dispatcher.resume();
+      this.status = STATUS.PLAYING;
       return;
     }
 
-    const currentSong = this.getCurrentSong(guildId);
+    const currentSong = this.getCurrentSong();
 
     if (!currentSong) {
       throw new Error('Queue empty.');
     }
 
+    let dispatcher: StreamDispatcher;
+
     if (await this.isCached(currentSong.url)) {
-      this.get(guildId).voiceConnection!.play(this.getCachedPath(currentSong.url));
+      dispatcher = this.voiceConnection.play(this.getCachedPath(currentSong.url));
     } else {
       const stream = await this.getStream(currentSong.url);
-      this.get(guildId).voiceConnection!.play(stream, {type: 'webm/opus'});
+      dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
     }
 
-    guildPlayer.status = Status.Playing;
+    this.attachListeners(dispatcher);
 
-    this.guildPlayers.set(guildId, guildPlayer);
+    this.status = STATUS.PLAYING;
+    this.dispatcher = dispatcher;
   }
 
-  get(guildId: string): GuildPlayer {
-    this.initGuild(guildId);
+  pause(): void {
+    if (!this.dispatcher || this.status !== STATUS.PLAYING) {
+      throw new Error('Not currently playing.');
+    }
 
-    return this.guildPlayers.get(guildId) as GuildPlayer;
+    this.dispatcher.pause();
   }
 
-  private getCurrentSong(guildId: string): QueuedSong|null {
-    const songs = this.queue.get(guildId);
+  private getCurrentSong(): QueuedSong|null {
+    const songs = this.queue.get();
 
     if (songs.length === 0) {
       return null;
     }
 
     return songs[0];
-  }
-
-  private initGuild(guildId: string): void {
-    if (!this.guildPlayers.get(guildId)) {
-      this.guildPlayers.set(guildId, {status: Status.Disconnected, voiceConnection: null});
-    }
   }
 
   private getCachedPath(url: string): string {
@@ -237,5 +220,24 @@ export default class {
     capacitor.createReadStream().pipe(cacheStream);
 
     return capacitor.createReadStream();
+  }
+
+  private attachListeners(stream: StreamDispatcher): void {
+    stream.on('speaking', async isSpeaking => {
+      // Automatically advance queued song at end
+      if (!isSpeaking && this.status === STATUS.PLAYING) {
+        if (this.queue.get().length > 0) {
+          this.queue.forward();
+          await this.play();
+        }
+      }
+    });
+
+    stream.on('close', () => {
+      // Remove dispatcher from guild player
+      this.dispatcher = null;
+
+      // TODO: set voiceConnection null as well?
+    });
   }
 }

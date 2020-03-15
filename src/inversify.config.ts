@@ -15,9 +15,9 @@ import {
   CACHE_DIR
 } from './utils/config';
 
-// Services
-import Queue from './services/queue';
-import Player from './services/player';
+// Managers
+import PlayerManager from './managers/player';
+import QueueManager from './managers/queue';
 
 // Comands
 import Command from './commands';
@@ -34,9 +34,9 @@ let container = new Container();
 container.bind<Bot>(TYPES.Bot).to(Bot).inSingletonScope();
 container.bind<Client>(TYPES.Client).toConstantValue(new Client());
 
-// Services
-container.bind<Player>(TYPES.Services.Player).to(Player).inSingletonScope();
-container.bind<Queue>(TYPES.Services.Queue).to(Queue).inSingletonScope();
+// Managers
+container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
+container.bind<QueueManager>(TYPES.Managers.Queue).to(QueueManager).inSingletonScope();
 
 // Commands
 container.bind<Command>(TYPES.Command).to(Clear).inSingletonScope();

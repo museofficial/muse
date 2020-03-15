@@ -1,21 +1,21 @@
 import {Message} from 'discord.js';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
-import Queue from '../services/queue';
+import QueueManager from '../managers/queue';
 import Command from '.';
 
 @injectable()
 export default class implements Command {
   public name = 'queue';
   public description = 'shows current queue';
-  private readonly queue: Queue;
+  private readonly queueManager: QueueManager;
 
-  constructor(@inject(TYPES.Services.Queue) queue: Queue) {
-    this.queue = queue;
+  constructor(@inject(TYPES.Managers.Queue) queueManager: QueueManager) {
+    this.queueManager = queueManager;
   }
 
   public async execute(msg: Message, _: string []): Promise<void> {
-    const queue = this.queue.get(msg.guild!.id);
+    const queue = this.queueManager.get(msg.guild!.id).get();
 
     await msg.channel.send('`' + JSON.stringify(queue.slice(0, 10)) + '`');
   }

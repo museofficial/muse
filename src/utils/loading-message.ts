@@ -5,7 +5,7 @@ export default class {
   private readonly channel: TextChannel;
   private readonly text: string;
   private msg!: Message;
-  private isStopped: boolean = false;
+  private isStopped = false;
 
   constructor(channel: TextChannel, text: string) {
     this.channel = channel;

@@ -1,21 +1,21 @@
 import {Message} from 'discord.js';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
-import Queue from '../services/queue';
+import QueueManager from '../managers/queue';
 import Command from '.';
 
 @injectable()
 export default class implements Command {
   public name = 'clear';
   public description = 'clears all songs in queue (except currently playing)';
-  private readonly queue: Queue;
+  private readonly queueManager: QueueManager;
 
-  constructor(@inject(TYPES.Services.Queue) queue: Queue) {
-    this.queue = queue;
+  constructor(@inject(TYPES.Managers.Queue) queueManager: QueueManager) {
+    this.queueManager = queueManager;
   }
 
   public async execute(msg: Message, _: string []): Promise<void> {
-    this.queue.clear(msg.guild!.id);
+    this.queueManager.get(msg.guild!.id).clear();
 
     await msg.channel.send('cleared');
   }
