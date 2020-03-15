@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.30",
+    "@types/fluent-ffmpeg": "^2.1.14",
     "@types/fs-capacitor": "^2.0.0",
     "@types/node": "^13.9.1",
     "@types/spotify-web-api-node": "^4.0.1",
@@ -68,6 +69,7 @@
     "delay": "^4.3.0",
     "discord.js": "^12.0.2",
     "dotenv": "^8.2.0",
+    "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^6.1.0",
     "got": "^10.6.0",
     "hasha": "^5.2.0",
@@ -76,7 +78,6 @@
     "make-dir": "^3.0.2",
     "node-emoji": "^1.10.0",
     "p-limit": "^2.2.2",
-    "prism-media": "^1.2.1",
     "sequelize": "^5.21.5",
     "sequelize-typescript": "^1.1.0",
     "spotify-uri": "^2.0.0",

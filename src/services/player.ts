@@ -1,12 +1,12 @@
 import {inject, injectable} from 'inversify';
 import {VoiceConnection, VoiceChannel} from 'discord.js';
 import {promises as fs, createWriteStream} from 'fs';
-import {Readable} from 'stream';
+import {Readable, PassThrough} from 'stream';
 import path from 'path';
 import hasha from 'hasha';
 import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
-import prism from 'prism-media';
+import ffmpeg from 'fluent-ffmpeg';
 import {TYPES} from '../types';
 import Queue, {QueuedSong} from './queue';
 
@@ -185,7 +185,13 @@ export default class {
     let format = formats.find(filter);
     let canDirectPlay = true;
 
-    const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat => {
+    const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
+      if (formats[0].live) {
+        formats = formats.sort((a, b) => (b as any).audioBitrate - (a as any).audioBitrate); // Bad typings
+
+        return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10))); // Bad typings
+      }
+
       formats = formats
         .filter(format => format.averageBitrate)
         .sort((a, b) => b.averageBitrate - a.averageBitrate);
@@ -195,6 +201,11 @@ export default class {
     if (!format) {
       format = nextBestFormat(info.formats);
       canDirectPlay = false;
+
+      if (!format) {
+        // If still no format is found, throw
+        throw new Error('Can\'t find suitable format.');
+      }
     }
 
     const cacheTempPath = this.getCachedPathTemp(url);
@@ -209,25 +220,14 @@ export default class {
     if (canDirectPlay) {
       youtubeStream = ytdl.downloadFromInfo(info, {format});
     } else {
-      youtubeStream = new prism.FFmpeg({
-        args: [
-          '-reconnect',
-          '1',
-          '-reconnect_streamed',
-          '1',
-          '-reconnect_delay_max',
-          '5',
-          '-i',
-          format.url,
-          '-loglevel',
-          'verbose',
-          '-vn',
-          '-acodec',
-          'libopus',
-          '-f',
-          'webm'
-        ]
-      });
+      youtubeStream = ffmpeg(format.url).inputOptions([
+        '-reconnect',
+        '1',
+        '-reconnect_streamed',
+        '1',
+        '-reconnect_delay_max',
+        '5'
+      ]).noVideo().audioCodec('libopus').outputFormat('webm').pipe() as PassThrough;
     }
 
     const capacitor = new WriteStream();
