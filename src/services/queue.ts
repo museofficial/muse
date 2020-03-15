@@ -56,10 +56,7 @@ export default class {
   }
 
   add(guildId: string, song: QueuedSong): void {
-    if (!this.guildQueues.get(guildId)) {
-      this.guildQueues.set(guildId, []);
-      this.queuePositions.set(guildId, 0);
-    }
+    this.initQueue(guildId);
 
     if (song.playlist) {
       // Add to end of queue
@@ -95,7 +92,27 @@ export default class {
     this.guildQueues.set(guildId, [queue[0], ...shuffle(queue.slice(1))]);
   }
 
+  clear(guildId: string): void {
+    this.initQueue(guildId);
+    const queue = this.guildQueues.get(guildId);
+
+    const newQueue = [];
+
+    if (queue!.length > 0) {
+      newQueue.push(queue![0]);
+    }
+
+    this.guildQueues.set(guildId, newQueue);
+  }
+
   size(guildId: string): number {
     return this.get(guildId).length;
+  }
+
+  private initQueue(guildId: string): void {
+    if (!this.guildQueues.get(guildId)) {
+      this.guildQueues.set(guildId, []);
+      this.queuePositions.set(guildId, 0);
+    }
   }
 }

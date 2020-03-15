@@ -21,6 +21,7 @@ import Player from './services/player';
 
 // Comands
 import Command from './commands';
+import Clear from './commands/clear';
 import Config from './commands/config';
 import Play from './commands/play';
 import QueueCommad from './commands/queue';
@@ -38,6 +39,7 @@ container.bind<Player>(TYPES.Services.Player).to(Player).inSingletonScope();
 container.bind<Queue>(TYPES.Services.Queue).to(Queue).inSingletonScope();
 
 // Commands
+container.bind<Command>(TYPES.Command).to(Clear).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(Config).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(Play).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(QueueCommad).inSingletonScope();
