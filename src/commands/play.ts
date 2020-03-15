@@ -10,6 +10,7 @@ import {parse, toSeconds} from 'iso8601-duration';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
 import {QueuedSong, QueuedPlaylist} from '../services/queue';
+import {STATUS} from '../services/player';
 import QueueManager from '../managers/queue';
 import PlayerManager from '../managers/player';
 import {getMostPopularVoiceChannel} from '../utils/channels';
@@ -214,11 +215,12 @@ export default class implements Command {
     // TODO: better response
     await res.stop('song(s) queued');
 
-    const channel = getMostPopularVoiceChannel(msg.guild!);
+    if (this.playerManager.get(msg.guild!.id).status === STATUS.DISCONNECTED) {
+      const channel = getMostPopularVoiceChannel(msg.guild!);
 
-    // TODO: don't connect if already connected.
-    await this.playerManager.get(msg.guild!.id).connect(channel);
+      await this.playerManager.get(msg.guild!.id).connect(channel);
 
-    await this.playerManager.get(msg.guild!.id).play();
+      await this.playerManager.get(msg.guild!.id).play();
+    }
   }
 }
