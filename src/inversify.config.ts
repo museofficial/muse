@@ -28,6 +28,8 @@ import Play from './commands/play';
 import QueueCommad from './commands/queue';
 import Seek from './commands/seek';
 import Shuffle from './commands/shuffle';
+import Skip from './commands/skip';
+import Unskip from './commands/unskip';
 
 let container = new Container();
 
@@ -47,6 +49,8 @@ container.bind<Command>(TYPES.Command).to(Play).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(QueueCommad).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(Seek).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(Shuffle).inSingletonScope();
+container.bind<Command>(TYPES.Command).to(Skip).inSingletonScope();
+container.bind<Command>(TYPES.Command).to(Unskip).inSingletonScope();
 
 // Config values
 container.bind<string>(TYPES.Config.DISCORD_TOKEN).toConstantValue(DISCORD_TOKEN);
