@@ -172,8 +172,13 @@ export default class implements Command {
           }
 
           case 'artist': {
-            await res.stop('ope, can\'t add a whole artist');
-            return;
+            // Await res.stop('ope, can\'t add a whole artist');
+            const uri = parsed as spotifyURI.Artist;
+
+            const {body} = await this.spotify.getArtistTopTracks(uri.id, 'US');
+
+            tracks.push(...body.tracks);
+            break;
           }
 
           default: {
@@ -185,7 +190,12 @@ export default class implements Command {
         // Search YouTube for each track
         const searchForTrack = async (track: SpotifyApi.TrackObjectSimplified): Promise<QueuedSong|null> => {
           try {
-            const {items: [video]} = await ytsr(`${track.name} ${track.artists[0].name} offical`, {limit: 1});
+            const {items} = await ytsr(`${track.name} ${track.artists[0].name} offical`, {limit: 5});
+            const video = items.find((item: { type: string }) => item.type === 'video');
+
+            if (!video) {
+              throw new Error('No video found for query.');
+            }
 
             return {
               title: video.title,
