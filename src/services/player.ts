@@ -20,8 +20,8 @@ export default class {
   private readonly cacheDir: string;
   private voiceConnection: VoiceConnection | null = null;
   private dispatcher: StreamDispatcher | null = null;
+  private playPositionInterval: NodeJS.Timeout | undefined;
 
-  private lastStreamTime = 0;
   private positionInSeconds = 0;
 
   constructor(queue: Queue, cacheDir: string) {
@@ -37,6 +37,10 @@ export default class {
 
   disconnect(): void {
     if (this.voiceConnection) {
+      if (this.status === STATUS.PLAYING) {
+        this.pause();
+      }
+
       this.voiceConnection.disconnect();
     }
   }
@@ -54,9 +58,12 @@ export default class {
 
     await this.waitForCache(currentSong.url);
 
-    this.attachListeners(this.voiceConnection.play(this.getCachedPath(currentSong.url), {seek: positionSeconds}));
+    this.dispatcher = this.voiceConnection.play(this.getCachedPath(currentSong.url), {seek: positionSeconds});
 
-    this.positionInSeconds = positionSeconds;
+    this.attachListeners();
+    this.startTrackingPosition(positionSeconds);
+
+    this.status = STATUS.PLAYING;
   }
 
   async forwardSeek(positionSeconds: number): Promise<void> {
@@ -73,9 +80,14 @@ export default class {
     }
 
     // Resume from paused state
-    if (this.status === STATUS.PAUSED && this.dispatcher) {
-      this.dispatcher.resume();
-      this.status = STATUS.PLAYING;
+    if (this.status === STATUS.PAUSED) {
+      if (this.dispatcher) {
+        this.dispatcher.resume();
+        this.status = STATUS.PLAYING;
+      } else {
+        await this.seek(this.getPosition());
+      }
+
       return;
     }
 
@@ -85,27 +97,32 @@ export default class {
       throw new Error('Queue empty.');
     }
 
-    let dispatcher: StreamDispatcher;
-
     if (await this.isCached(currentSong.url)) {
-      dispatcher = this.voiceConnection.play(this.getCachedPath(currentSong.url));
+      this.dispatcher = this.voiceConnection.play(this.getCachedPath(currentSong.url));
     } else {
       const stream = await this.getStream(currentSong.url);
-      dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
+      this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
     }
 
-    this.attachListeners(dispatcher);
+    this.attachListeners();
 
     this.status = STATUS.PLAYING;
-    this.dispatcher = dispatcher;
+
+    this.startTrackingPosition();
   }
 
   pause(): void {
-    if (!this.dispatcher || this.status !== STATUS.PLAYING) {
+    if (this.status !== STATUS.PLAYING) {
       throw new Error('Not currently playing.');
     }
 
-    this.dispatcher.pause();
+    this.status = STATUS.PAUSED;
+
+    if (this.dispatcher) {
+      this.dispatcher.pause();
+    }
+
+    this.stopTrackingPosition();
   }
 
   private getCurrentSong(): QueuedSong|null {
@@ -235,12 +252,45 @@ export default class {
     return capacitor.createReadStream();
   }
 
-  private attachListeners(stream: StreamDispatcher): void {
-    stream.on('speaking', async isSpeaking => {
-      // Update position
-      this.positionInSeconds += (stream.streamTime - this.lastStreamTime) / 1000;
-      this.lastStreamTime = stream.streamTime;
+  private startTrackingPosition(initalPosition?: number): void {
+    if (initalPosition) {
+      this.positionInSeconds = initalPosition;
+    }
 
+    if (this.playPositionInterval) {
+      clearInterval(this.playPositionInterval);
+    }
+
+    this.playPositionInterval = setInterval(() => {
+      this.positionInSeconds++;
+    }, 1000);
+  }
+
+  private stopTrackingPosition(): void {
+    if (this.playPositionInterval) {
+      clearInterval(this.playPositionInterval);
+    }
+  }
+
+  private attachListeners(): void {
+    if (!this.voiceConnection) {
+      return;
+    }
+
+    this.voiceConnection.on('disconnect', () => {
+      // Automatically pause
+      if (this.status === STATUS.PLAYING) {
+        this.pause();
+      }
+
+      this.dispatcher = null;
+    });
+
+    if (!this.dispatcher) {
+      return;
+    }
+
+    this.dispatcher.on('speaking', async isSpeaking => {
       // Automatically advance queued song at end
       if (!isSpeaking && this.status === STATUS.PLAYING) {
         if (this.queue.get().length > 0) {
@@ -248,13 +298,6 @@ export default class {
           await this.play();
         }
       }
-    });
-
-    stream.on('close', () => {
-      // Remove dispatcher from guild player
-      this.dispatcher = null;
-
-      // TODO: set voiceConnection null as well?
     });
   }
 }

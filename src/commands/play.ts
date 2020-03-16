@@ -36,6 +36,29 @@ export default class implements Command {
   }
 
   public async execute(msg: Message, args: string []): Promise<void> {
+    const queue = this.queueManager.get(msg.guild!.id);
+
+    if (args.length === 0) {
+      if (this.playerManager.get(msg.guild!.id).status === STATUS.PLAYING) {
+        await msg.channel.send('error: already playing, give me a song name');
+        return;
+      }
+
+      // Must be resuming play
+      if (queue.get().length === 0) {
+        await msg.channel.send('error: nothing to play');
+        return;
+      }
+
+      const channel = getMostPopularVoiceChannel(msg.guild!);
+
+      await this.playerManager.get(msg.guild!.id).connect(channel);
+      await this.playerManager.get(msg.guild!.id).play();
+
+      await msg.channel.send('play resuming');
+      return;
+    }
+
     const newSongs: QueuedSong[] = [];
 
     const res = new LoadingMessage(msg.channel as TextChannel, 'hold on a sec');

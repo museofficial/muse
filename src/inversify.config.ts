@@ -24,6 +24,7 @@ import Command from './commands';
 import Clear from './commands/clear';
 import Config from './commands/config';
 import ForwardSeek from './commands/fseek';
+import Pause from './commands/pause';
 import Play from './commands/play';
 import QueueCommad from './commands/queue';
 import Seek from './commands/seek';
@@ -45,6 +46,7 @@ container.bind<QueueManager>(TYPES.Managers.Queue).to(QueueManager).inSingletonS
 container.bind<Command>(TYPES.Command).to(Clear).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(Config).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(ForwardSeek).inSingletonScope();
+container.bind<Command>(TYPES.Command).to(Pause).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(Play).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(QueueCommad).inSingletonScope();
 container.bind<Command>(TYPES.Command).to(Seek).inSingletonScope();
