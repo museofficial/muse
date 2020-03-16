@@ -23,10 +23,15 @@ export default class implements Command {
     try {
       queue.forward();
 
-      await this.playerManager.get(msg.guild!.id).play();
+      if (queue.isEmpty()) {
+        this.playerManager.get(msg.guild!.id).disconnect();
+      } else {
+        await this.playerManager.get(msg.guild!.id).play();
+      }
 
       await msg.channel.send('keepin\' \'er movin\'');
     } catch (_) {
+      console.log(_);
       await msg.channel.send('no song to skip to');
     }
   }

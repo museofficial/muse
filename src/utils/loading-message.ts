@@ -17,7 +17,7 @@ export default class {
 
     const period = 500;
 
-    const icons = ['⚪', '🔵', '⚫'];
+    const icons = ['🐮', '🐴', '🐄'];
 
     const reactions = [];
 

@@ -78,4 +78,8 @@ export default class {
   size(): number {
     return this.queue.length;
   }
+
+  isEmpty(): boolean {
+    return this.get().length === 0;
+  }
 }
