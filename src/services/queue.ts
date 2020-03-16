@@ -11,6 +11,7 @@ export interface QueuedSong {
   url: string;
   length: number;
   playlist: QueuedPlaylist | null;
+  isLive: boolean;
 }
 
 export default class {

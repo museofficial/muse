@@ -72,7 +72,8 @@ export default class implements Command {
         artist: videoDetails.snippet.channelTitle,
         length: toSeconds(parse(videoDetails.contentDetails.duration)),
         url: videoDetails.id,
-        playlist: null
+        playlist: null,
+        isLive: videoDetails.snippet.liveBroadcastContent === 'live'
       });
     };
 
@@ -106,7 +107,8 @@ export default class implements Command {
               artist: video.snippet.channelTitle,
               length,
               url: video.contentDetails.videoId,
-              playlist: queuedPlaylist
+              playlist: queuedPlaylist,
+              isLive: false
             });
           });
         } else {
@@ -190,7 +192,8 @@ export default class implements Command {
               artist: track.artists[0].name,
               length: track.duration_ms / 1000,
               url: video.link,
-              playlist
+              playlist,
+              isLive: video.live
             };
           } catch (_) {
             // TODO: handle error

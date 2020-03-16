@@ -2,6 +2,7 @@ import {Message, TextChannel} from 'discord.js';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player';
+import QueueManager from '../managers/queue';
 import LoadingMessage from '../utils/loading-message';
 import Command from '.';
 
@@ -10,12 +11,26 @@ export default class implements Command {
   public name = 'seek';
   public description = 'seeks position in currently playing song';
   private readonly playerManager: PlayerManager;
+  private readonly queueManager: QueueManager;
 
-  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Managers.Queue) queueManager: QueueManager) {
     this.playerManager = playerManager;
+    this.queueManager = queueManager;
   }
 
   public async execute(msg: Message, args: string []): Promise<void> {
+    const queue = this.queueManager.get(msg.guild!.id);
+
+    if (queue.get().length === 0) {
+      await msg.channel.send('nothing is playing');
+      return;
+    }
+
+    if (queue.get()[0].isLive) {
+      await msg.channel.send('can\'t seek in a livestream');
+      return;
+    }
+
     const time = args[0];
 
     let seekTime = 0;
