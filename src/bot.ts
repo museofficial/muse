@@ -45,6 +45,13 @@ export default class {
         return this.client.emit('guildCreate', msg.guild);
       }
 
+      if (msg.content.startsWith('say') && msg.content.endsWith('muse')) {
+        const res = msg.content.slice(3, msg.content.indexOf('muse')).trim();
+
+        await msg.channel.send(res);
+        return;
+      }
+
       const {prefix, channel} = settings;
 
       if (!msg.content.startsWith(prefix) || msg.author.bot || msg.channel.id !== channel) {
