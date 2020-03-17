@@ -1,0 +1,88 @@
+import {Message} from 'discord.js';
+import {injectable} from 'inversify';
+import {Shortcut, Settings} from '../models';
+import Command from '.';
+
+@injectable()
+export default class implements Command {
+  public name = 'shortcuts';
+  public description = 'edit shortcuts';
+
+  public async execute(msg: Message, args: string []): Promise<void> {
+    if (args.length === 0) {
+      // Get shortcuts for guild
+      const shortcuts = await Shortcut.findAll({where: {guildId: msg.guild!.id}});
+
+      if (shortcuts.length === 0) {
+        await msg.channel.send('no shortcuts exist');
+        return;
+      }
+
+      // Get prefix for guild
+      const {prefix} = await Settings.findOne({where: {guildId: msg.guild!.id}}) as Settings;
+
+      const res = shortcuts.reduce((accum, shortcut) => {
+        accum += `${prefix}${shortcut.shortcut}: ${shortcut.command}\n`;
+
+        return accum;
+      }, '');
+
+      await msg.channel.send(res);
+    } else {
+      const action = args[0];
+
+      const shortcutName = args[1];
+
+      switch (action) {
+        case 'set': {
+          const shortcut = await Shortcut.findOne({where: {guildId: msg.guild!.id, shortcut: shortcutName}});
+
+          const command = args.slice(2).join(' ');
+
+          const newShortcut = {shortcut: shortcutName, command, guildId: msg.guild!.id, authorId: msg.author.id};
+
+          if (shortcut) {
+            if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.owner!.id) {
+              await msg.channel.send('error: you do not have permission to do that');
+              return;
+            }
+
+            await shortcut.update(newShortcut);
+            await msg.channel.send('shortcut updated');
+          } else {
+            await Shortcut.create(newShortcut);
+            await msg.channel.send('shortcut created');
+          }
+
+          break;
+        }
+
+        case 'delete': {
+          // Check if shortcut exists
+          const shortcut = await Shortcut.findOne({where: {guildId: msg.guild!.id, shortcut: shortcutName}});
+
+          if (!shortcut) {
+            await msg.channel.send('error: shortcut does not exist');
+            return;
+          }
+
+          // Check permissions
+          if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.owner!.id) {
+            await msg.channel.send('error: you do not have permission to do that');
+            return;
+          }
+
+          await shortcut.destroy();
+
+          await msg.channel.send('shortcut deleted');
+
+          break;
+        }
+
+        default: {
+          await msg.channel.send('error: unknown command');
+        }
+      }
+    }
+  }
+}

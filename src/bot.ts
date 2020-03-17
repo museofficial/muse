@@ -1,9 +1,7 @@
-import makeDir from 'make-dir';
 import {Client, Message, Collection} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import {TYPES} from './types';
-import {Settings} from './models';
-import {sequelize} from './utils/db';
+import {Settings, Shortcut} from './models';
 import handleGuildCreate from './events/guild-create';
 import container from './inversify.config';
 import Command from './commands';
@@ -13,16 +11,12 @@ export default class {
   private readonly client: Client;
   private readonly token: string;
   private readonly clientId: string;
-  private readonly dataDir: string;
-  private readonly cacheDir: string;
   private readonly commands!: Collection<string, Command>;
 
-  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config.DISCORD_TOKEN) token: string, @inject(TYPES.Config.DISCORD_CLIENT_ID) clientId: string, @inject(TYPES.Config.DATA_DIR) dataDir: string, @inject(TYPES.Config.CACHE_DIR) cacheDir: string) {
+  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config.DISCORD_TOKEN) token: string, @inject(TYPES.Config.DISCORD_CLIENT_ID) clientId: string) {
     this.client = client;
     this.token = token;
     this.clientId = clientId;
-    this.dataDir = dataDir;
-    this.cacheDir = cacheDir;
     this.commands = new Collection();
   }
 
@@ -58,17 +52,31 @@ export default class {
         return;
       }
 
-      const args = msg.content.slice(prefix.length).split(/ +/);
+      let args = msg.content.slice(prefix.length).split(/ +/);
       const command = args.shift()!.toLowerCase();
 
-      if (!this.commands.has(command)) {
+      // Get possible shortcut
+      const shortcut = await Shortcut.findOne({where: {guildId: msg.guild.id, shortcut: command}});
+
+      let handler: Command;
+
+      if (this.commands.has(command)) {
+        handler = this.commands.get(command) as Command;
+      } else if (shortcut) {
+        const possibleHandler = this.commands.get(shortcut.command.split(' ')[0]);
+
+        if (possibleHandler) {
+          handler = possibleHandler;
+          args = shortcut.command.split(/ +/).slice(1);
+        } else {
+          return;
+        }
+      } else {
         return;
       }
 
       try {
-        const handler = this.commands.get(command);
-
-        handler!.execute(msg, args);
+        handler.execute(msg, args);
       } catch (error) {
         console.error(error);
         msg.reply('there was an error trying to execute that command!');
@@ -76,13 +84,11 @@ export default class {
     });
 
     this.client.on('ready', async () => {
-      // Create directory if necessary
-      await makeDir(this.dataDir);
-      await makeDir(this.cacheDir);
-
-      await sequelize.sync({});
-
       console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.clientId}&scope=bot`);
+    });
+
+    this.client.on('error', error => {
+      console.error(error);
     });
 
     // Register event handlers
