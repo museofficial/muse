@@ -20,6 +20,6 @@ export default class implements Command {
   public async execute(msg: Message, _: string []): Promise<void> {
     this.queueManager.get(msg.guild!.id).clear();
 
-    await msg.channel.send('cleared');
+    await msg.channel.send('clearer than a field after a fresh harvest');
   }
 }

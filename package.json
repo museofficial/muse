@@ -21,10 +21,12 @@
     "watch": "tsc --watch",
     "prepack": "npm run clean && npm run build",
     "start": "node dist/index.js",
-    "dev": "nodemon"
+    "dev": "nodemon",
+    "docker-publish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t codetheweb/muse:latest --push ."
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.30",
+    "@types/debug": "^4.1.5",
     "@types/fluent-ffmpeg": "^2.1.14",
     "@types/fs-capacitor": "^2.0.0",
     "@types/node": "^13.9.1",
@@ -65,6 +67,7 @@
   "dependencies": {
     "@discordjs/opus": "^0.1.0",
     "array-shuffle": "^1.0.1",
+    "debug": "^4.1.1",
     "delay": "^4.3.0",
     "discord.js": "^12.0.2",
     "dotenv": "^8.2.0",

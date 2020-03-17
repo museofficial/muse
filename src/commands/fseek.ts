@@ -4,6 +4,7 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player';
 import QueueManager from '../managers/queue';
 import LoadingMessage from '../utils/loading-message';
+import errorMsg from '../utils/error-msg';
 import Command from '.';
 
 @injectable()
@@ -25,27 +26,27 @@ export default class implements Command {
     const queue = this.queueManager.get(msg.guild!.id);
 
     if (queue.get().length === 0) {
-      await msg.channel.send('nothing is playing');
+      await msg.channel.send(errorMsg('nothing is playing'));
       return;
     }
 
     if (queue.get()[0].isLive) {
-      await msg.channel.send('can\'t seek in a livestream');
+      await msg.channel.send(errorMsg('can\'t seek in a livestream'));
       return;
     }
 
     const seekTime = parseInt(args[0], 10);
 
-    const loading = new LoadingMessage(msg.channel as TextChannel, 'hold on a sec');
+    const loading = new LoadingMessage(msg.channel as TextChannel);
 
     await loading.start();
 
     try {
       await this.playerManager.get(msg.guild!.id).forwardSeek(seekTime);
 
-      await loading.stop('seeked');
-    } catch (_) {
-      await loading.stop('error somewhere');
+      await loading.stop();
+    } catch (error) {
+      await loading.stop(errorMsg(error));
     }
   }
 }

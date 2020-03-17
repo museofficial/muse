@@ -15,6 +15,7 @@ import QueueManager from '../managers/queue';
 import PlayerManager from '../managers/player';
 import {getMostPopularVoiceChannel} from '../utils/channels';
 import LoadingMessage from '../utils/loading-message';
+import errorMsg from '../utils/error-msg';
 import Command from '.';
 
 @injectable()
@@ -47,8 +48,11 @@ export default class implements Command {
   public async execute(msg: Message, args: string []): Promise<void> {
     const [targetVoiceChannel, nInChannel] = getMostPopularVoiceChannel(msg.guild!);
 
+    const res = new LoadingMessage(msg.channel as TextChannel);
+    await res.start();
+
     if (nInChannel === 0) {
-      await msg.channel.send('error: all voice channels are empty');
+      await res.stop(errorMsg('all voice channels are empty'));
       return;
     }
 
@@ -56,27 +60,24 @@ export default class implements Command {
 
     if (args.length === 0) {
       if (this.playerManager.get(msg.guild!.id).status === STATUS.PLAYING) {
-        await msg.channel.send('error: already playing, give me a song name');
+        await res.stop(errorMsg('already playing, give me a song name'));
         return;
       }
 
       // Must be resuming play
       if (queue.get().length === 0) {
-        await msg.channel.send('error: nothing to play');
+        await res.stop(errorMsg('nothing to play'));
         return;
       }
 
       await this.playerManager.get(msg.guild!.id).connect(targetVoiceChannel);
       await this.playerManager.get(msg.guild!.id).play();
 
-      await msg.channel.send('play resuming');
+      await res.stop('play resuming');
       return;
     }
 
     const newSongs: QueuedSong[] = [];
-
-    const res = new LoadingMessage(msg.channel as TextChannel, 'hold on a sec');
-    await res.start();
 
     const addSingleSong = async (source: string): Promise<void> => {
       const videoDetails = await this.youtube.videos.get(source);
@@ -265,7 +266,7 @@ export default class implements Command {
     // TODO: better response
     await res.stop('song(s) queued');
 
-    if (this.playerManager.get(msg.guild!.id).status === STATUS.DISCONNECTED) {
+    if (this.playerManager.get(msg.guild!.id).voiceConnection === null) {
       await this.playerManager.get(msg.guild!.id).connect(targetVoiceChannel);
 
       await this.playerManager.get(msg.guild!.id).play();

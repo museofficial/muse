@@ -4,6 +4,7 @@ import {TYPES} from './types';
 import {Settings, Shortcut} from './models';
 import container from './inversify.config';
 import Command from './commands';
+import debug from './utils/debug';
 import handleGuildCreate from './events/guild-create';
 import handleVoiceStateUpdate from './events/voice-state-update';
 
@@ -89,6 +90,7 @@ export default class {
     });
 
     this.client.on('error', console.error);
+    this.client.on('debug', debug);
 
     // Register event handlers
     this.client.on('guildCreate', handleGuildCreate);

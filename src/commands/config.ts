@@ -1,6 +1,7 @@
 import {TextChannel, Message} from 'discord.js';
 import {injectable} from 'inversify';
 import {Settings} from '../models';
+import errorMsg from '../utils/error-msg';
 import Command from '.';
 
 @injectable()
@@ -29,12 +30,12 @@ export default class implements Command {
     const setting = args[0];
 
     if (args.length !== 2) {
-      await msg.channel.send('🚫 incorrect number of arguments');
+      await msg.channel.send(errorMsg('incorrect number of arguments'));
       return;
     }
 
     if (msg.author.id !== msg.guild!.owner!.id) {
-      await msg.channel.send('not authorized');
+      await msg.channel.send(errorMsg('not authorized'));
       return;
     }
 
@@ -59,14 +60,14 @@ export default class implements Command {
             msg.react('👍')
           ]);
         } else {
-          await msg.channel.send('🚫 either that channel doesn\'t exist or you want me to become sentient and listen to a voice channel');
+          await msg.channel.send(errorMsg('either that channel doesn\'t exist or you want me to become sentient and listen to a voice channel'));
         }
 
         break;
       }
 
       default:
-        await msg.channel.send('🚫 I\'ve never met this setting in my life');
+        await msg.channel.send(errorMsg('I\'ve never met this setting in my life'));
     }
   }
 }

@@ -3,6 +3,7 @@ import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player';
 import QueueManager from '../managers/queue';
+import errorMsg from '../utils/error-msg';
 import Command from '.';
 
 @injectable()
@@ -30,7 +31,7 @@ export default class implements Command {
 
       await msg.channel.send('back \'er up\'');
     } catch (_) {
-      await msg.channel.send('no song to go back to');
+      await msg.channel.send(errorMsg('no song to go back to'));
     }
   }
 }

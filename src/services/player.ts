@@ -10,12 +10,11 @@ import Queue, {QueuedSong} from './queue';
 
 export enum STATUS {
   PLAYING,
-  PAUSED,
-  DISCONNECTED
+  PAUSED
 }
 
 export default class {
-  public status = STATUS.DISCONNECTED;
+  public status = STATUS.PAUSED;
   public voiceConnection: VoiceConnection | null = null;
   private readonly queue: Queue;
   private readonly cacheDir: string;
@@ -35,17 +34,24 @@ export default class {
     this.voiceConnection = conn;
   }
 
-  disconnect(): void {
+  disconnect(breakConnection = true): void {
     if (this.voiceConnection) {
       if (this.status === STATUS.PLAYING) {
         this.pause();
       }
 
-      this.voiceConnection.disconnect();
+      if (breakConnection) {
+        this.voiceConnection.disconnect();
+      }
+
+      this.voiceConnection = null;
+      this.dispatcher = null;
     }
   }
 
   async seek(positionSeconds: number): Promise<void> {
+    this.status = STATUS.PAUSED;
+
     if (this.voiceConnection === null) {
       throw new Error('Not connected to a voice channel.');
     }
@@ -79,22 +85,26 @@ export default class {
       throw new Error('Not connected to a voice channel.');
     }
 
-    // Resume from paused state
-    if (this.status === STATUS.PAUSED) {
-      if (this.dispatcher) {
-        this.dispatcher.resume();
-        this.status = STATUS.PLAYING;
-      } else {
-        await this.seek(this.getPosition());
-      }
-
-      return;
-    }
-
     const currentSong = this.getCurrentSong();
 
     if (!currentSong) {
       throw new Error('Queue empty.');
+    }
+
+    // Resume from paused state
+    if (this.status === STATUS.PAUSED && this.getPosition() !== 0) {
+      if (this.dispatcher) {
+        this.dispatcher.resume();
+        this.status = STATUS.PLAYING;
+        return;
+      }
+
+      if (!currentSong.isLive) {
+        await this.seek(this.getPosition());
+        return;
+      }
+
+      // Must be livestream, continue
     }
 
     if (await this.isCached(currentSong.url)) {
@@ -153,7 +163,7 @@ export default class {
     }
   }
 
-  private async waitForCache(url: string, maxRetries = 50, retryDelay = 500): Promise<void> {
+  private async waitForCache(url: string, maxRetries = 500, retryDelay = 200): Promise<void> {
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
       if (await this.isCached(url)) {
@@ -278,12 +288,7 @@ export default class {
     }
 
     this.voiceConnection.on('disconnect', () => {
-      // Automatically pause
-      if (this.status === STATUS.PLAYING) {
-        this.pause();
-      }
-
-      this.dispatcher = null;
+      this.disconnect(false);
     });
 
     if (!this.dispatcher) {

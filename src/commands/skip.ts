@@ -32,9 +32,8 @@ export default class implements Command {
         await this.playerManager.get(msg.guild!.id).play();
       }
 
-      await msg.channel.send('keepin\' \'er movin\'');
+      await msg.channel.send('keep \'er movin\'');
     } catch (_) {
-      console.log(_);
       await msg.channel.send('no song to skip to');
     }
   }

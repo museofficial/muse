@@ -7,7 +7,7 @@ export default class {
   private msg!: Message;
   private isStopped = false;
 
-  constructor(channel: TextChannel, text: string) {
+  constructor(channel: TextChannel, text = 'cows! count \'em') {
     this.channel = channel;
     this.text = text;
   }
@@ -53,7 +53,7 @@ export default class {
     })();
   }
 
-  async stop(str?: string): Promise<Message> {
+  async stop(str = 'u betcha'): Promise<Message> {
     this.isStopped = true;
 
     if (str) {

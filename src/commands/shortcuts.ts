@@ -1,12 +1,14 @@
 import {Message} from 'discord.js';
 import {injectable} from 'inversify';
 import {Shortcut, Settings} from '../models';
+import errorMsg from '../utils/error-msg';
 import Command from '.';
 
 @injectable()
 export default class implements Command {
   public name = 'shortcuts';
   public examples = [
+    ['shortcuts', 'show all shortcuts'],
     ['shortcuts set s skip', 'aliases `s` to `skip`'],
     ['shortcuts set party play https://www.youtube.com/watch?v=zK6oOJ1wz8k', 'aliases `party` to a specific play command'],
     ['shortcuts delete party', 'removes the `party` shortcut']
@@ -53,7 +55,7 @@ export default class implements Command {
 
           if (shortcut) {
             if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.owner!.id) {
-              await msg.channel.send('error: you do not have permission to do that');
+              await msg.channel.send(errorMsg('you do\'nt have permission to do that'));
               return;
             }
 
@@ -72,13 +74,13 @@ export default class implements Command {
           const shortcut = await Shortcut.findOne({where: {guildId: msg.guild!.id, shortcut: shortcutName}});
 
           if (!shortcut) {
-            await msg.channel.send('error: shortcut does not exist');
+            await msg.channel.send(errorMsg('shortcut doesn\'t exist'));
             return;
           }
 
           // Check permissions
           if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.owner!.id) {
-            await msg.channel.send('error: you do not have permission to do that');
+            await msg.channel.send(errorMsg('you don\'t have permission to do that'));
             return;
           }
 
@@ -90,7 +92,7 @@ export default class implements Command {
         }
 
         default: {
-          await msg.channel.send('error: unknown command');
+          await msg.channel.send(errorMsg('unknown command'));
         }
       }
     }
