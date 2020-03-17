@@ -16,9 +16,9 @@ export enum STATUS {
 
 export default class {
   public status = STATUS.DISCONNECTED;
+  public voiceConnection: VoiceConnection | null = null;
   private readonly queue: Queue;
   private readonly cacheDir: string;
-  private voiceConnection: VoiceConnection | null = null;
   private dispatcher: StreamDispatcher | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
 

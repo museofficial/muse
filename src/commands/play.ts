@@ -36,6 +36,13 @@ export default class implements Command {
   }
 
   public async execute(msg: Message, args: string []): Promise<void> {
+    const [targetVoiceChannel, nInChannel] = getMostPopularVoiceChannel(msg.guild!);
+
+    if (nInChannel === 0) {
+      await msg.channel.send('error: all voice channels are empty');
+      return;
+    }
+
     const queue = this.queueManager.get(msg.guild!.id);
 
     if (args.length === 0) {
@@ -50,9 +57,7 @@ export default class implements Command {
         return;
       }
 
-      const channel = getMostPopularVoiceChannel(msg.guild!);
-
-      await this.playerManager.get(msg.guild!.id).connect(channel);
+      await this.playerManager.get(msg.guild!.id).connect(targetVoiceChannel);
       await this.playerManager.get(msg.guild!.id).play();
 
       await msg.channel.send('play resuming');
@@ -252,9 +257,7 @@ export default class implements Command {
     await res.stop('song(s) queued');
 
     if (this.playerManager.get(msg.guild!.id).status === STATUS.DISCONNECTED) {
-      const channel = getMostPopularVoiceChannel(msg.guild!);
-
-      await this.playerManager.get(msg.guild!.id).connect(channel);
+      await this.playerManager.get(msg.guild!.id).connect(targetVoiceChannel);
 
       await this.playerManager.get(msg.guild!.id).play();
     }

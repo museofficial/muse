@@ -2,9 +2,10 @@ import {Client, Message, Collection} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import {TYPES} from './types';
 import {Settings, Shortcut} from './models';
-import handleGuildCreate from './events/guild-create';
 import container from './inversify.config';
 import Command from './commands';
+import handleGuildCreate from './events/guild-create';
+import handleVoiceStateUpdate from './events/voice-state-update';
 
 @injectable()
 export default class {
@@ -87,12 +88,11 @@ export default class {
       console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.clientId}&scope=bot`);
     });
 
-    this.client.on('error', error => {
-      console.error(error);
-    });
+    this.client.on('error', console.error);
 
     // Register event handlers
     this.client.on('guildCreate', handleGuildCreate);
+    this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
 
     return this.client.login(this.token);
   }
