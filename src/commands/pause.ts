@@ -8,7 +8,10 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'pause';
-  public description = 'pause currently playing song';
+  public examples = [
+    ['pause', 'pauses currently playing song']
+  ];
+
   private readonly playerManager: PlayerManager;
 
   constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {

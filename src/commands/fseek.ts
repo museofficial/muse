@@ -9,7 +9,10 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'fseek';
-  public description = 'forward seek position in currently playing song';
+  public examples = [
+    ['fseek 10', 'skips forward in current song by 10 seconds']
+  ];
+
   private readonly playerManager: PlayerManager;
   private readonly queueManager: QueueManager;
 

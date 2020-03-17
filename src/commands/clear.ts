@@ -7,7 +7,10 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'clear';
-  public description = 'clears all songs in queue (except currently playing)';
+  public examples = [
+    ['clear', 'clears all songs in queue except currently playing']
+  ];
+
   private readonly queueManager: QueueManager;
 
   constructor(@inject(TYPES.Managers.Queue) queueManager: QueueManager) {

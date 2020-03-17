@@ -6,7 +6,11 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'shortcuts';
-  public description = 'edit shortcuts';
+  public examples = [
+    ['shortcuts set s skip', 'aliases `s` to `skip`'],
+    ['shortcuts set party play https://www.youtube.com/watch?v=zK6oOJ1wz8k', 'aliases `party` to a specific play command'],
+    ['shortcuts delete party', 'removes the `party` shortcut']
+  ];
 
   public async execute(msg: Message, args: string []): Promise<void> {
     if (args.length === 0) {
@@ -19,7 +23,13 @@ export default class implements Command {
       }
 
       // Get prefix for guild
-      const {prefix} = await Settings.findOne({where: {guildId: msg.guild!.id}}) as Settings;
+      const settings = await Settings.findOne({where: {guildId: msg.guild!.id}});
+
+      if (!settings) {
+        return;
+      }
+
+      const {prefix} = settings;
 
       const res = shortcuts.reduce((accum, shortcut) => {
         accum += `${prefix}${shortcut.shortcut}: ${shortcut.command}\n`;

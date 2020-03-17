@@ -20,7 +20,16 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'play';
-  public description = 'plays a song';
+  public examples = [
+    ['play', 'resume paused playback'],
+    ['play https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'plays a YouTube video'],
+    ['play cool music', 'plays the first search result for "cool music" from YouTube'],
+    ['play https://www.youtube.com/watch?list=PLi9drqWffJ9FWBo7ZVOiaVy0UQQEm4IbP', 'adds the playlist to the queue'],
+    ['play https://open.spotify.com/track/3ebXMykcMXOcLeJ9xZ17XH?si=tioqSuyMRBWxhThhAW51Ig', 'plays a song from Spotify'],
+    ['play https://open.spotify.com/album/5dv1oLETxdsYOkS2Sic00z?si=bDa7PaloRx6bMIfKdnvYQw', 'adds all songs from album to the queue'],
+    ['play https://open.spotify.com/playlist/37i9dQZF1DX94qaYRnkufr?si=r2fOVL_QQjGxFM5MWb84Xw', 'adds all songs from playlist to the queue']
+  ];
+
   private readonly queueManager: QueueManager;
   private readonly playerManager: PlayerManager;
   private readonly youtube: YouTube;

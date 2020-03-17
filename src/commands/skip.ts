@@ -8,7 +8,10 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'skip';
-  public description = 'skips current song';
+  public examples = [
+    ['skip', 'skips the current song']
+  ];
+
   private readonly queueManager: QueueManager;
   private readonly playerManager: PlayerManager;
 

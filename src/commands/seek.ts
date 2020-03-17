@@ -9,7 +9,11 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'seek';
-  public description = 'seeks position in currently playing song';
+  public examples = [
+    ['seek 10', 'seeks to 10 seconds from begining of song'],
+    ['seek 1:30', 'seeks to 1 minute and 30 seconds from begining of song']
+  ];
+
   private readonly playerManager: PlayerManager;
   private readonly queueManager: QueueManager;
 

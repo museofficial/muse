@@ -6,7 +6,10 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'config';
-  public description = 'changes various bot settings';
+  public examples = [
+    ['config prefix !', 'set the prefix to !'],
+    ['config channel music-commands', 'bind the bot to the music-commands channel']
+  ];
 
   public async execute(msg: Message, args: string []): Promise<void> {
     if (args.length === 0) {

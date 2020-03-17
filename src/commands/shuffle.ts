@@ -7,7 +7,10 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'shuffle';
-  public description = 'shuffle current queue';
+  public examples = [
+    ['shuffle', 'shuffles the current queue']
+  ];
+
   private readonly queueManager: QueueManager;
 
   constructor(@inject(TYPES.Managers.Queue) queueManager: QueueManager) {
