@@ -140,7 +140,7 @@ export default class {
   }
 
   private getCachedPathTemp(url: string): string {
-    return path.join('/tmp', hasha(url));
+    return path.join(this.cacheDir, 'tmp', hasha(url));
   }
 
   private async isCached(url: string): Promise<boolean> {

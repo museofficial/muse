@@ -1,0 +1,6 @@
+node_modules
+data
+dist
+dts
+yarn-error.log
+.env

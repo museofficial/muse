@@ -1,5 +1,6 @@
 import Spotify from 'spotify-web-api-node';
 import makeDir from 'make-dir';
+import path from 'path';
 import container from './inversify.config';
 import {TYPES} from './types';
 import Bot from './bot';
@@ -16,6 +17,7 @@ const spotify = container.get<Spotify>(TYPES.Lib.Spotify);
   // Create data directories if necessary
   await makeDir(container.get(TYPES.Config.DATA_DIR));
   await makeDir(container.get(TYPES.Config.CACHE_DIR));
+  await makeDir(path.join(container.get(TYPES.Config.CACHE_DIR), 'tmp'));
 
   await sequelize.sync({});
 
