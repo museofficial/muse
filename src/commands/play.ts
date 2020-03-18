@@ -65,7 +65,7 @@ export default class implements Command {
       await this.playerManager.get(msg.guild!.id).connect(targetVoiceChannel);
       await this.playerManager.get(msg.guild!.id).play();
 
-      await res.stop('play resuming');
+      await res.stop('the stop-and-go light is now green');
       return;
     }
 

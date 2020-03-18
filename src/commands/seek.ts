@@ -11,8 +11,9 @@ import Command from '.';
 export default class implements Command {
   public name = 'seek';
   public examples = [
-    ['seek 10', 'seeks to 10 seconds from begining of song'],
-    ['seek 1:30', 'seeks to 1 minute and 30 seconds from begining of song']
+    ['seek 10', 'seeks to 10 seconds from beginning of song'],
+    ['seek 1:30', 'seeks to 1 minute and 30 seconds from beginning of song'],
+    ['seek 1:00:00', 'seeks to 1 hour from beginning of song']
   ];
 
   private readonly playerManager: PlayerManager;
@@ -43,7 +44,14 @@ export default class implements Command {
     let seekTime = 0;
 
     if (time.includes(':')) {
-      seekTime = (parseInt(time.split(':')[0], 10) * 60) + parseInt(time.split(':')[1], 10);
+      const timeGroups = time.split(':').map(t => parseInt(t, 10));
+      let currentTimePeriod = 1;
+
+      for (let i = timeGroups.length - 1; i >= 0; i--) {
+        seekTime += currentTimePeriod * timeGroups[i];
+
+        currentTimePeriod *= 60;
+      }
     } else {
       seekTime = parseInt(time, 10);
     }
