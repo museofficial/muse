@@ -8,6 +8,7 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'shuffle';
+  public aliases = [];
   public examples = [
     ['shuffle', 'shuffles the current queue']
   ];

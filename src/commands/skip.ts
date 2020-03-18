@@ -8,6 +8,7 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'skip';
+  public aliases = ['s'];
   public examples = [
     ['skip', 'skips the current song']
   ];

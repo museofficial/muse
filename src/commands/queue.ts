@@ -7,6 +7,7 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'queue';
+  public aliases = ['q'];
   public examples = [
     ['queue', 'shows current queue']
   ];

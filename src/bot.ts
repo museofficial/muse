@@ -28,7 +28,9 @@ export default class {
   public async listen(): Promise<string> {
     // Load in commands
     container.getAll<Command>(TYPES.Command).forEach(command => {
-      this.commands.set(command.name, command);
+      const commandNames = [command.name, ...command.aliases];
+
+      commandNames.forEach(commandName => this.commands.set(commandName, command));
     });
 
     this.client.on('message', async (msg: Message) => {

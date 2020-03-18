@@ -7,6 +7,7 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'shortcuts';
+  public aliases = [];
   public examples = [
     ['shortcuts', 'show all shortcuts'],
     ['shortcuts set s skip', 'aliases `s` to `skip`'],

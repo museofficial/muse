@@ -10,6 +10,7 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'seek';
+  public aliases = [];
   public examples = [
     ['seek 10', 'seeks to 10 seconds from beginning of song'],
     ['seek 1:30', 'seeks to 1 minute and 30 seconds from beginning of song'],

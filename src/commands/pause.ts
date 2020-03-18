@@ -9,6 +9,7 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'pause';
+  public aliases = [];
   public examples = [
     ['pause', 'pauses currently playing song']
   ];

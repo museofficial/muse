@@ -15,6 +15,7 @@ import GetSongs from '../services/get-songs';
 @injectable()
 export default class implements Command {
   public name = 'play';
+  public aliases = ['p'];
   public examples = [
     ['play', 'resume paused playback'],
     ['play https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'plays a YouTube video'],

@@ -10,6 +10,7 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'fseek';
+  public aliases = [];
   public examples = [
     ['fseek 10', 'skips forward in current song by 10 seconds']
   ];

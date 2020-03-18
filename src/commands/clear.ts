@@ -7,6 +7,7 @@ import Command from '.';
 @injectable()
 export default class implements Command {
   public name = 'clear';
+  public aliases = ['c'];
   public examples = [
     ['clear', 'clears all songs in queue except currently playing']
   ];
