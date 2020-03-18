@@ -5,18 +5,21 @@ import {Settings, Shortcut} from './models';
 import container from './inversify.config';
 import Command from './commands';
 import debug from './utils/debug';
+import NaturalLanguage from './services/natural-language-commands';
 import handleGuildCreate from './events/guild-create';
 import handleVoiceStateUpdate from './events/voice-state-update';
 
 @injectable()
 export default class {
   private readonly client: Client;
+  private readonly naturalLanguage: NaturalLanguage;
   private readonly token: string;
   private readonly clientId: string;
   private readonly commands!: Collection<string, Command>;
 
-  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config.DISCORD_TOKEN) token: string, @inject(TYPES.Config.DISCORD_CLIENT_ID) clientId: string) {
+  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Services.NaturalLanguage) naturalLanguage: NaturalLanguage, @inject(TYPES.Config.DISCORD_TOKEN) token: string, @inject(TYPES.Config.DISCORD_CLIENT_ID) clientId: string) {
     this.client = client;
+    this.naturalLanguage = naturalLanguage;
     this.token = token;
     this.clientId = clientId;
     this.commands = new Collection();
@@ -41,10 +44,8 @@ export default class {
         return this.client.emit('guildCreate', msg.guild);
       }
 
-      if (msg.content.startsWith('say') && msg.content.endsWith('muse')) {
-        const res = msg.content.slice(3, msg.content.indexOf('muse')).trim();
-
-        await msg.channel.send(res);
+      if (await this.naturalLanguage.execute(msg)) {
+        // Natural language command handled message
         return;
       }
 

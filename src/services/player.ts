@@ -68,12 +68,8 @@ export default class {
       throw new Error('Seek position is outside the range of the song.');
     }
 
-    if (await this.isCached(currentSong.url)) {
-      this.dispatcher = this.voiceConnection.play(this.getCachedPath(currentSong.url), {seek: positionSeconds});
-    } else {
-      const stream = await this.getStream(currentSong.url, {seek: positionSeconds});
-      this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
-    }
+    const stream = await this.getStream(currentSong.url, {seek: positionSeconds});
+    this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
 
     this.attachListeners();
     this.startTrackingPosition(positionSeconds);
@@ -107,12 +103,8 @@ export default class {
       return;
     }
 
-    if (await this.isCached(currentSong.url)) {
-      this.dispatcher = this.voiceConnection.play(this.getCachedPath(currentSong.url));
-    } else {
-      const stream = await this.getStream(currentSong.url);
-      this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
-    }
+    const stream = await this.getStream(currentSong.url);
+    this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
 
     this.attachListeners();
 
@@ -154,67 +146,77 @@ export default class {
     }
   }
 
-  private async getStream(url: string, options: {seek?: number} = {}): Promise<Readable|string> {
+  private async getStream(url: string, options: {seek?: number} = {}): Promise<Readable> {
     const cachedPath = this.getCachedPath(url);
 
+    let ffmpegInput = '';
+    const ffmpegInputOptions = [];
+    let shouldCacheVideo = false;
+
     if (await this.isCached(url)) {
-      return cachedPath;
-    }
+      ffmpegInput = cachedPath;
+    } else {
+      // Not yet cached, must download
+      const info = await ytdl.getInfo(url);
 
-    // Not yet cached, must download
-    const info = await ytdl.getInfo(url);
+      const {formats} = info;
 
-    const {formats} = info;
+      const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
 
-    const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
+      let format = formats.find(filter);
 
-    let format = formats.find(filter);
+      const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
+        if (formats[0].live) {
+          formats = formats.sort((a, b) => (b as any).audioBitrate - (a as any).audioBitrate); // Bad typings
 
-    const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
-      if (formats[0].live) {
-        formats = formats.sort((a, b) => (b as any).audioBitrate - (a as any).audioBitrate); // Bad typings
+          return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10))); // Bad typings
+        }
 
-        return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10))); // Bad typings
-      }
-
-      formats = formats
-        .filter(format => format.averageBitrate)
-        .sort((a, b) => b.averageBitrate - a.averageBitrate);
-      return formats.find(format => !format.bitrate) ?? formats[0];
-    };
-
-    if (!format) {
-      format = nextBestFormat(info.formats);
+        formats = formats
+          .filter(format => format.averageBitrate)
+          .sort((a, b) => b.averageBitrate - a.averageBitrate);
+        return formats.find(format => !format.bitrate) ?? formats[0];
+      };
 
       if (!format) {
-        // If still no format is found, throw
-        throw new Error('Can\'t find suitable format.');
+        format = nextBestFormat(info.formats);
+
+        if (!format) {
+          // If still no format is found, throw
+          throw new Error('Can\'t find suitable format.');
+        }
       }
+
+      ffmpegInput = format.url;
+
+      // Don't cache livestreams or long videos
+      const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
+      shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.length_seconds, 10) < MAX_CACHE_LENGTH_SECONDS;
+
+      ffmpegInputOptions.push(...[
+        '-reconnect',
+        '1',
+        '-reconnect_streamed',
+        '1',
+        '-reconnect_delay_max',
+        '5'
+      ]);
     }
 
-    const inputOptions = [
-      '-reconnect',
-      '1',
-      '-reconnect_streamed',
-      '1',
-      '-reconnect_delay_max',
-      '5'
-    ];
-
+    // Add seek parameter if necessary
     if (options.seek) {
-      inputOptions.push('-ss', options.seek.toString());
+      ffmpegInputOptions.push('-ss', options.seek.toString());
     }
 
-    const youtubeStream = ffmpeg(format.url).inputOptions(inputOptions).noVideo().audioCodec('libopus').outputFormat('webm').pipe() as PassThrough;
+    // Create stream and pipe to capacitor
+    const youtubeStream = ffmpeg(ffmpegInput).inputOptions(ffmpegInputOptions).noVideo().audioCodec('libopus').outputFormat('webm').pipe() as PassThrough;
 
     const capacitor = new WriteStream();
 
     youtubeStream.pipe(capacitor);
 
-    // Don't cache livestreams or long videos
-    const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-
-    if (!info.player_response.videoDetails.isLiveContent && parseInt(info.length_seconds, 10) < MAX_CACHE_LENGTH_SECONDS) {
+    // Cache video if necessary
+    if (shouldCacheVideo) {
       const cacheTempPath = this.getCachedPathTemp(url);
       const cacheStream = createWriteStream(cacheTempPath);
 

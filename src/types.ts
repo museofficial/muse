@@ -18,6 +18,7 @@ export const TYPES = {
     Queue: Symbol('QueueManager')
   },
   Services: {
-    GetSongs: Symbol('GetSongs')
+    GetSongs: Symbol('GetSongs'),
+    NaturalLanguage: Symbol('NaturalLanguage')
   }
 };

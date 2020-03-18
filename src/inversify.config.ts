@@ -21,6 +21,7 @@ import QueueManager from './managers/queue';
 
 // Helpers
 import GetSongs from './services/get-songs';
+import NaturalLanguage from './services/natural-language-commands';
 
 // Comands
 import Command from './commands';
@@ -49,6 +50,7 @@ container.bind<QueueManager>(TYPES.Managers.Queue).to(QueueManager).inSingletonS
 
 // Helpers
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();
+container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLanguage).inSingletonScope();
 
 // Commands
 container.bind<Command>(TYPES.Command).to(Clear).inSingletonScope();
