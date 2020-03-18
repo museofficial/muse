@@ -64,9 +64,12 @@ export default class {
       throw new Error('No song currently playing');
     }
 
-    await this.waitForCache(currentSong.url);
-
-    this.dispatcher = this.voiceConnection.play(this.getCachedPath(currentSong.url), {seek: positionSeconds});
+    if (await this.isCached(currentSong.url)) {
+      this.dispatcher = this.voiceConnection.play(this.getCachedPath(currentSong.url), {seek: positionSeconds});
+    } else {
+      const stream = await this.getStream(currentSong.url, {seek: positionSeconds});
+      this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
+    }
 
     this.attachListeners();
     this.startTrackingPosition(positionSeconds);
@@ -147,32 +150,7 @@ export default class {
     }
   }
 
-  private async waitForCache(url: string, maxRetries = 500, retryDelay = 200): Promise<void> {
-    // eslint-disable-next-line no-async-promise-executor
-    return new Promise(async (resolve, reject) => {
-      if (await this.isCached(url)) {
-        resolve();
-      } else {
-        let nOfChecks = 0;
-
-        const cachedCheck = setInterval(async () => {
-          if (await this.isCached(url)) {
-            clearInterval(cachedCheck);
-            resolve();
-          } else {
-            nOfChecks++;
-
-            if (nOfChecks > maxRetries) {
-              clearInterval(cachedCheck);
-              reject(new Error('Timed out waiting for file to become cached.'));
-            }
-          }
-        }, retryDelay);
-      }
-    });
-  }
-
-  private async getStream(url: string): Promise<Readable|string> {
+  private async getStream(url: string, options: {seek?: number} = {}): Promise<Readable|string> {
     const cachedPath = this.getCachedPath(url);
 
     if (await this.isCached(url)) {
@@ -187,7 +165,6 @@ export default class {
     const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
 
     let format = formats.find(filter);
-    let canDirectPlay = true;
 
     const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
       if (formats[0].live) {
@@ -204,7 +181,6 @@ export default class {
 
     if (!format) {
       format = nextBestFormat(info.formats);
-      canDirectPlay = false;
 
       if (!format) {
         // If still no format is found, throw
@@ -212,20 +188,20 @@ export default class {
       }
     }
 
-    let youtubeStream: Readable;
+    const inputOptions = [
+      '-reconnect',
+      '1',
+      '-reconnect_streamed',
+      '1',
+      '-reconnect_delay_max',
+      '5'
+    ];
 
-    if (canDirectPlay) {
-      youtubeStream = ytdl.downloadFromInfo(info, {format});
-    } else {
-      youtubeStream = ffmpeg(format.url).inputOptions([
-        '-reconnect',
-        '1',
-        '-reconnect_streamed',
-        '1',
-        '-reconnect_delay_max',
-        '5'
-      ]).noVideo().audioCodec('libopus').outputFormat('webm').pipe() as PassThrough;
+    if (options.seek) {
+      inputOptions.push('-ss', options.seek.toString());
     }
+
+    const youtubeStream = ffmpeg(format.url).inputOptions(inputOptions).noVideo().audioCodec('libopus').outputFormat('webm').pipe() as PassThrough;
 
     const capacitor = new WriteStream();
 

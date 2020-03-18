@@ -34,6 +34,7 @@ export default class implements Command {
 
       await msg.channel.send('keep \'er movin\'');
     } catch (_) {
+      console.log(_);
       await msg.channel.send('no song to skip to');
     }
   }

@@ -19,6 +19,9 @@ import {
 import PlayerManager from './managers/player';
 import QueueManager from './managers/queue';
 
+// Helpers
+import GetSongs from './services/get-songs';
+
 // Comands
 import Command from './commands';
 import Clear from './commands/clear';
@@ -43,6 +46,9 @@ container.bind<Client>(TYPES.Client).toConstantValue(new Client());
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
 container.bind<QueueManager>(TYPES.Managers.Queue).to(QueueManager).inSingletonScope();
+
+// Helpers
+container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();
 
 // Commands
 container.bind<Command>(TYPES.Command).to(Clear).inSingletonScope();
