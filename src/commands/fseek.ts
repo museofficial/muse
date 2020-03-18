@@ -25,17 +25,24 @@ export default class implements Command {
   public async execute(msg: Message, args: string []): Promise<void> {
     const queue = this.queueManager.get(msg.guild!.id);
 
-    if (!queue.getCurrent()) {
+    const currentSong = queue.getCurrent();
+
+    if (!currentSong) {
       await msg.channel.send(errorMsg('nothing is playing'));
       return;
     }
 
-    if (queue.getCurrent()?.isLive) {
+    if (currentSong.isLive) {
       await msg.channel.send(errorMsg('can\'t seek in a livestream'));
       return;
     }
 
     const seekTime = parseInt(args[0], 10);
+
+    if (seekTime + this.playerManager.get(msg.guild!.id).getPosition() > currentSong.length) {
+      await msg.channel.send(errorMsg('can\'t seek past the end of the song'));
+      return;
+    }
 
     const loading = new LoadingMessage(msg.channel as TextChannel);
 

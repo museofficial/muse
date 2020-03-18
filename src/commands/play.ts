@@ -48,6 +48,8 @@ export default class implements Command {
 
     const queue = this.queueManager.get(msg.guild!.id);
 
+    const queueOldSize = queue.size();
+
     if (args.length === 0) {
       if (this.playerManager.get(msg.guild!.id).status === STATUS.PLAYING) {
         await res.stop(errorMsg('already playing, give me a song name'));
@@ -68,8 +70,6 @@ export default class implements Command {
     }
 
     const newSongs: QueuedSong[] = [];
-
-    let nSongsNotFound = 0;
 
     // Test if it's a complete URL
     try {
@@ -94,9 +94,7 @@ export default class implements Command {
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        const [convertedSongs, nMissing] = await this.getSongs.spotifySource(args[0]);
-
-        nSongsNotFound = nMissing;
+        const [convertedSongs] = await this.getSongs.spotifySource(args[0]);
 
         newSongs.push(...convertedSongs);
       }
@@ -119,17 +117,22 @@ export default class implements Command {
       return;
     }
 
-    newSongs.forEach(song => this.queueManager.get(msg.guild!.id).add(song));
+    newSongs.forEach(song => queue.add(song));
 
-    // TODO: better response
-    await res.stop(`song(s) queued (${nSongsNotFound} not found)`);
+    const firstSong = newSongs[0];
+
+    if (newSongs.length === 1) {
+      await res.stop(`u betcha, **${firstSong.title}** added to the queue`);
+    } else {
+      await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue`);
+    }
 
     if (this.playerManager.get(msg.guild!.id).voiceConnection === null) {
       await this.playerManager.get(msg.guild!.id).connect(targetVoiceChannel);
     }
 
-    if (this.queueManager.get(msg.guild!.id).size() === 0) {
-      // Only auto-play on first song added
+    if (queueOldSize === 0) {
+      // Only auto-play if queue was empty before
       await this.playerManager.get(msg.guild!.id).play();
     }
   }

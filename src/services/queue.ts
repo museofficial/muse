@@ -77,7 +77,7 @@ export default class {
 
     // Don't clear curently playing song
     if (this.queue.length > 0) {
-      newQueue.push(this.queue[0]);
+      newQueue.push(this.queue[this.position]);
     }
 
     this.queue = newQueue;

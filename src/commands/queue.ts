@@ -18,8 +18,10 @@ export default class implements Command {
   }
 
   public async execute(msg: Message, _: string []): Promise<void> {
-    const queue = this.queueManager.get(msg.guild!.id).get();
+    const queue = this.queueManager.get(msg.guild!.id);
 
-    await msg.channel.send('`' + JSON.stringify(queue.slice(0, 10)) + '`');
+    await msg.channel.send('`' + JSON.stringify(queue.getCurrent()) + '`');
+
+    await msg.channel.send('`' + JSON.stringify(queue.get().slice(0, 10)) + '`');
   }
 }

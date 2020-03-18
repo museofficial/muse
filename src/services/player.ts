@@ -64,6 +64,10 @@ export default class {
       throw new Error('No song currently playing');
     }
 
+    if (positionSeconds > currentSong.length) {
+      throw new Error('Seek position is outside the range of the song.');
+    }
+
     if (await this.isCached(currentSong.url)) {
       this.dispatcher = this.voiceConnection.play(this.getCachedPath(currentSong.url), {seek: positionSeconds});
     } else {
