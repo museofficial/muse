@@ -34,8 +34,16 @@ export default class {
     }
   }
 
+  getCurrent(): QueuedSong | null {
+    if (this.queue[this.position]) {
+      return this.queue[this.position];
+    }
+
+    return null;
+  }
+
   get(): QueuedSong[] {
-    return this.queue.slice(this.position);
+    return this.queue.slice(this.position + 1);
   }
 
   add(song: QueuedSong): void {
@@ -61,7 +69,7 @@ export default class {
   }
 
   shuffle(): void {
-    this.queue = [this.queue[0], ...shuffle(this.queue.slice(1))];
+    this.queue = [...this.queue.slice(0, this.position), this.queue[this.position], this.queue[0], ...shuffle(this.queue.slice(this.position + 1))];
   }
 
   clear(): void {
@@ -76,7 +84,7 @@ export default class {
   }
 
   size(): number {
-    return this.queue.length;
+    return this.get().length;
   }
 
   isEmpty(): boolean {

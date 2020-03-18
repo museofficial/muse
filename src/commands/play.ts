@@ -268,7 +268,10 @@ export default class implements Command {
 
     if (this.playerManager.get(msg.guild!.id).voiceConnection === null) {
       await this.playerManager.get(msg.guild!.id).connect(targetVoiceChannel);
+    }
 
+    if (this.queueManager.get(msg.guild!.id).size() === 0) {
+      // Only auto-play on first song added
       await this.playerManager.get(msg.guild!.id).play();
     }
   }

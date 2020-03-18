@@ -1,4 +1,4 @@
-import {TextChannel, Message} from 'discord.js';
+import {TextChannel, Message, GuildChannel} from 'discord.js';
 import {injectable} from 'inversify';
 import {Settings} from '../models';
 import errorMsg from '../utils/error-msg';
@@ -50,7 +50,13 @@ export default class implements Command {
       }
 
       case 'channel': {
-        const channel = msg.guild!.channels.cache.find(c => c.name === args[1]);
+        let channel: GuildChannel | undefined;
+
+        if (args[1].includes('<#') && args[1].includes('>')) {
+          channel = msg.guild!.channels.cache.find(c => c.id === args[1].slice(2, args[1].indexOf('>')));
+        } else {
+          channel = msg.guild!.channels.cache.find(c => c.name === args[1]);
+        }
 
         if (channel && channel.type === 'text') {
           await Settings.update({channel: channel.id}, {where: {guildId: msg.guild!.id}});

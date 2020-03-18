@@ -26,12 +26,12 @@ export default class implements Command {
   public async execute(msg: Message, args: string []): Promise<void> {
     const queue = this.queueManager.get(msg.guild!.id);
 
-    if (queue.get().length === 0) {
+    if (!queue.getCurrent()) {
       await msg.channel.send(errorMsg('nothing is playing'));
       return;
     }
 
-    if (queue.get()[0].isLive) {
+    if (queue.getCurrent()?.isLive) {
       await msg.channel.send(errorMsg('can\'t seek in a livestream'));
       return;
     }

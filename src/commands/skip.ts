@@ -26,7 +26,7 @@ export default class implements Command {
     try {
       queue.forward();
 
-      if (queue.isEmpty()) {
+      if (queue.isEmpty() && !queue.getCurrent()) {
         this.playerManager.get(msg.guild!.id).disconnect();
       } else {
         await this.playerManager.get(msg.guild!.id).play();

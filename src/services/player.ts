@@ -19,6 +19,7 @@ export default class {
   private readonly queue: Queue;
   private readonly cacheDir: string;
   private dispatcher: StreamDispatcher | null = null;
+  private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
 
   private positionInSeconds = 0;
@@ -44,6 +45,7 @@ export default class {
         this.voiceConnection.disconnect();
       }
 
+      this.positionInSeconds = 0;
       this.voiceConnection = null;
       this.dispatcher = null;
     }
@@ -56,7 +58,7 @@ export default class {
       throw new Error('Not connected to a voice channel.');
     }
 
-    const currentSong = this.getCurrentSong();
+    const currentSong = this.queue.getCurrent();
 
     if (!currentSong) {
       throw new Error('No song currently playing');
@@ -85,26 +87,17 @@ export default class {
       throw new Error('Not connected to a voice channel.');
     }
 
-    const currentSong = this.getCurrentSong();
+    const currentSong = this.queue.getCurrent();
 
     if (!currentSong) {
       throw new Error('Queue empty.');
     }
 
     // Resume from paused state
-    if (this.status === STATUS.PAUSED && this.getPosition() !== 0) {
-      if (this.dispatcher) {
-        this.dispatcher.resume();
-        this.status = STATUS.PLAYING;
-        return;
-      }
-
-      if (!currentSong.isLive) {
-        await this.seek(this.getPosition());
-        return;
-      }
-
-      // Must be livestream, continue
+    if (this.status === STATUS.PAUSED && this.getPosition() !== 0 && this.dispatcher && currentSong.url === this.nowPlaying?.url) {
+      this.dispatcher.resume();
+      this.status = STATUS.PLAYING;
+      return;
     }
 
     if (await this.isCached(currentSong.url)) {
@@ -117,6 +110,7 @@ export default class {
     this.attachListeners();
 
     this.status = STATUS.PLAYING;
+    this.nowPlaying = currentSong;
 
     this.startTrackingPosition();
   }
@@ -133,16 +127,6 @@ export default class {
     }
 
     this.stopTrackingPosition();
-  }
-
-  private getCurrentSong(): QueuedSong|null {
-    const songs = this.queue.get();
-
-    if (songs.length === 0) {
-      return null;
-    }
-
-    return songs[0];
   }
 
   private getCachedPath(url: string): string {
