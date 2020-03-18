@@ -211,8 +211,10 @@ export default class {
 
     youtubeStream.pipe(capacitor);
 
-    // Don't cache livestreams
-    if (!info.player_response.videoDetails.isLiveContent) {
+    // Don't cache livestreams or long videos
+    const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
+
+    if (!info.player_response.videoDetails.isLiveContent && parseInt(info.length_seconds, 10) < MAX_CACHE_LENGTH_SECONDS) {
       const cacheTempPath = this.getCachedPathTemp(url);
       const cacheStream = createWriteStream(cacheTempPath);
 
