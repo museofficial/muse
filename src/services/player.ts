@@ -45,7 +45,6 @@ export default class {
         this.voiceConnection.disconnect();
       }
 
-      this.positionInSeconds = 0;
       this.voiceConnection = null;
       this.dispatcher = null;
     }
@@ -97,10 +96,15 @@ export default class {
     }
 
     // Resume from paused state
-    if (this.status === STATUS.PAUSED && this.getPosition() !== 0 && this.dispatcher && currentSong.url === this.nowPlaying?.url) {
-      this.dispatcher.resume();
-      this.status = STATUS.PLAYING;
-      return;
+    if (this.status === STATUS.PAUSED && this.getPosition() !== 0 && currentSong.url === this.nowPlaying?.url) {
+      if (this.dispatcher) {
+        this.dispatcher.resume();
+        this.status = STATUS.PLAYING;
+        return;
+      }
+
+      // Was disconnected, need to recreate stream
+      return this.seek(this.getPosition());
     }
 
     const stream = await this.getStream(currentSong.url);

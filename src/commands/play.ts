@@ -57,7 +57,7 @@ export default class implements Command {
       }
 
       // Must be resuming play
-      if (queue.get().length === 0) {
+      if (queue.get().length === 0 && !queue.getCurrent()) {
         await res.stop(errorMsg('nothing to play'));
         return;
       }

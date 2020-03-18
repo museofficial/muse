@@ -27,6 +27,7 @@ import NaturalLanguage from './services/natural-language-commands';
 import Command from './commands';
 import Clear from './commands/clear';
 import Config from './commands/config';
+import Disconnect from './commands/disconnect';
 import ForwardSeek from './commands/fseek';
 import Help from './commands/help';
 import Pause from './commands/pause';
@@ -53,18 +54,23 @@ container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope(
 container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLanguage).inSingletonScope();
 
 // Commands
-container.bind<Command>(TYPES.Command).to(Clear).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(Config).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(ForwardSeek).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(Help).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(Pause).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(Play).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(QueueCommad).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(Seek).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(Shortcuts).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(Shuffle).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(Skip).inSingletonScope();
-container.bind<Command>(TYPES.Command).to(Unskip).inSingletonScope();
+[
+  Clear,
+  Config,
+  Disconnect,
+  ForwardSeek,
+  Help,
+  Pause,
+  Play,
+  QueueCommad,
+  Seek,
+  Shortcuts,
+  Shuffle,
+  Skip,
+  Unskip
+].forEach(command => {
+  container.bind<Command>(TYPES.Command).to(command).inSingletonScope();
+});
 
 // Config values
 container.bind<string>(TYPES.Config.DISCORD_TOKEN).toConstantValue(DISCORD_TOKEN);
