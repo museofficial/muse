@@ -287,6 +287,7 @@ export default class {
             await this.play();
           } else {
             this.status = STATUS.PAUSED;
+            this.disconnect();
           }
         }
       }
