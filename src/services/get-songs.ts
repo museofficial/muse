@@ -7,6 +7,7 @@ import Spotify from 'spotify-web-api-node';
 import ytsr from 'ytsr';
 import YouTube from 'youtube.ts';
 import pLimit from 'p-limit';
+import uniqueRandomArray from 'unique-random-array';
 import {QueuedSong, QueuedPlaylist} from '../services/queue';
 import {TYPES} from '../types';
 
@@ -77,10 +78,10 @@ export default class {
     });
   }
 
-  async spotifySource(url: string): Promise<[QueuedSong[], number]> {
+  async spotifySource(url: string): Promise<[QueuedSong[], number, number]> {
     const parsed = spotifyURI.parse(url);
 
-    const tracks: SpotifyApi.TrackObjectSimplified[] = [];
+    let tracks: SpotifyApi.TrackObjectSimplified[] = [];
 
     let playlist: QueuedPlaylist | null = null;
 
@@ -137,12 +138,24 @@ export default class {
       }
 
       default: {
-        return [[], 0];
+        return [[], 0, 0];
+      }
+    }
+
+    // Get 50 random songs if many
+    const originalNSongs = tracks.length;
+
+    if (tracks.length > 50) {
+      const random = uniqueRandomArray(tracks);
+
+      tracks = [];
+      for (let i = 0; i < 50; i++) {
+        tracks.push(random());
       }
     }
 
     // Limit concurrency so hopefully we don't get banned for searching
-    const limit = pLimit(3);
+    const limit = pLimit(5);
     let songs = await Promise.all(tracks.map(async track => limit(async () => this.spotifyToYouTube(track, playlist))));
 
     let nSongsNotFound = 0;
@@ -158,7 +171,7 @@ export default class {
       return accum;
     }, []);
 
-    return [songs as QueuedSong[], nSongsNotFound];
+    return [songs as QueuedSong[], nSongsNotFound, originalNSongs];
   }
 
   private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, playlist: QueuedPlaylist | null): Promise<QueuedSong | null> {

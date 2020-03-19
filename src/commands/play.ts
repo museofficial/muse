@@ -71,6 +71,7 @@ export default class implements Command {
     }
 
     const newSongs: QueuedSong[] = [];
+    let extraMsg = '';
 
     // Test if it's a complete URL
     try {
@@ -95,7 +96,15 @@ export default class implements Command {
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        const [convertedSongs] = await this.getSongs.spotifySource(args[0]);
+        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(args[0]);
+
+        if (totalSongs > 50) {
+          extraMsg = 'a random sample of 50 songs was taken';
+        }
+
+        if (nSongsNotFound !== 0) {
+          extraMsg += `and ${nSongsNotFound.toString()} songs were not found`;
+        }
 
         newSongs.push(...convertedSongs);
       }
@@ -122,10 +131,14 @@ export default class implements Command {
 
     const firstSong = newSongs[0];
 
+    if (extraMsg !== '') {
+      extraMsg = ` (${extraMsg})`;
+    }
+
     if (newSongs.length === 1) {
-      await res.stop(`u betcha, **${firstSong.title}** added to the queue`);
+      await res.stop(`u betcha, **${firstSong.title}** added to the queue${extraMsg}`);
     } else {
-      await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue`);
+      await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
     }
 
     if (this.playerManager.get(msg.guild!.id).voiceConnection === null) {

@@ -85,6 +85,7 @@
     "spotify-uri": "^2.0.0",
     "spotify-web-api-node": "^4.0.0",
     "sqlite3": "^4.1.1",
+    "unique-random-array": "^2.0.0",
     "youtube.ts": "^0.1.1",
     "ytdl-core": "^2.0.0",
     "ytsr": "^0.1.11"
