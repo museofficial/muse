@@ -14,6 +14,8 @@ export default class implements Command {
     ['pause', 'pauses currently playing song']
   ];
 
+  public requiresVC = true;
+
   private readonly playerManager: PlayerManager;
 
   constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {

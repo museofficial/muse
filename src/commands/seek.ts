@@ -17,6 +17,8 @@ export default class implements Command {
     ['seek 1:00:00', 'seeks to 1 hour from beginning of song']
   ];
 
+  public requiresVC = true;
+
   private readonly playerManager: PlayerManager;
   private readonly queueManager: QueueManager;
 

@@ -8,6 +8,8 @@ import debug from './utils/debug';
 import NaturalLanguage from './services/natural-language-commands';
 import handleGuildCreate from './events/guild-create';
 import handleVoiceStateUpdate from './events/voice-state-update';
+import errorMsg from './utils/error-msg';
+import {isUserInVoice} from './utils/channels';
 
 @injectable()
 export default class {
@@ -81,10 +83,15 @@ export default class {
       }
 
       try {
-        handler.execute(msg, args);
+        if (handler.requiresVC && !isUserInVoice(msg.guild, msg.author)) {
+          await msg.channel.send(errorMsg('gotta be in a voice channel'));
+          return;
+        }
+
+        await handler.execute(msg, args);
       } catch (error) {
         console.error(error);
-        msg.reply('there was an error trying to execute that command!');
+        await msg.channel.send(errorMsg('¯\\_(ツ)_/¯'));
       }
     });
 

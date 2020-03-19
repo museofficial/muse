@@ -12,6 +12,8 @@ export default class implements Command {
     ['clear', 'clears all songs in queue except currently playing']
   ];
 
+  public requiresVC = true;
+
   private readonly queueManager: QueueManager;
 
   constructor(@inject(TYPES.Managers.Queue) queueManager: QueueManager) {

@@ -14,6 +14,8 @@ export default class implements Command {
     ['unskip', 'goes back in the queue by one song']
   ];
 
+  public requiresVC = true;
+
   private readonly queueManager: QueueManager;
   private readonly playerManager: PlayerManager;
 

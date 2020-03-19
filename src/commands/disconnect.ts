@@ -13,6 +13,8 @@ export default class implements Command {
     ['disconnect', 'pauses and disconnects player']
   ];
 
+  public requiresVC = true;
+
   private readonly playerManager: PlayerManager;
 
   constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {

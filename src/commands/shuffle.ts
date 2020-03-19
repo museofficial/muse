@@ -13,6 +13,8 @@ export default class implements Command {
     ['shuffle', 'shuffles the current queue']
   ];
 
+  public requiresVC = true;
+
   private readonly queueManager: QueueManager;
 
   constructor(@inject(TYPES.Managers.Queue) queueManager: QueueManager) {

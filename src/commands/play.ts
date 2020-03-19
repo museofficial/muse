@@ -26,6 +26,8 @@ export default class implements Command {
     ['play https://open.spotify.com/playlist/37i9dQZF1DX94qaYRnkufr?si=r2fOVL_QQjGxFM5MWb84Xw', 'adds all songs from playlist to the queue']
   ];
 
+  public requiresVC = true;
+
   private readonly queueManager: QueueManager;
   private readonly playerManager: PlayerManager;
   private readonly getSongs: GetSongs;
@@ -37,15 +39,10 @@ export default class implements Command {
   }
 
   public async execute(msg: Message, args: string []): Promise<void> {
-    const [targetVoiceChannel, nInChannel] = getMostPopularVoiceChannel(msg.guild!);
+    const [targetVoiceChannel] = getMostPopularVoiceChannel(msg.guild!);
 
     const res = new LoadingMessage(msg.channel as TextChannel);
     await res.start();
-
-    if (nInChannel === 0) {
-      await res.stop(errorMsg('all voice channels are empty'));
-      return;
-    }
 
     const queue = this.queueManager.get(msg.guild!.id);
     const player = this.playerManager.get(msg.guild!.id);

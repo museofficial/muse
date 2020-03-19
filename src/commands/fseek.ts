@@ -15,6 +15,8 @@ export default class implements Command {
     ['fseek 10', 'skips forward in current song by 10 seconds']
   ];
 
+  public requiresVC = true;
+
   private readonly playerManager: PlayerManager;
   private readonly queueManager: QueueManager;
 
