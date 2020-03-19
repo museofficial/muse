@@ -100,7 +100,7 @@ export default class {
       case 'playlist': {
         const uri = parsed as spotifyURI.Playlist;
 
-        let [{body: playlistResponse}, {body: tracksResponse}] = await Promise.all([this.spotify.getPlaylist(uri.id), this.spotify.getPlaylistTracks(uri.id, {limit: 1})]);
+        let [{body: playlistResponse}, {body: tracksResponse}] = await Promise.all([this.spotify.getPlaylist(uri.id), this.spotify.getPlaylistTracks(uri.id, {limit: 50})]);
 
         playlist = {title: playlistResponse.name, source: playlistResponse.href};
 
@@ -109,7 +109,7 @@ export default class {
         while (tracksResponse.next) {
           // eslint-disable-next-line no-await-in-loop
           ({body: tracksResponse} = await this.spotify.getPlaylistTracks(uri.id, {
-            limit: parseInt(new URL(tracksResponse.next).searchParams.get('limit') ?? '1', 10),
+            limit: parseInt(new URL(tracksResponse.next).searchParams.get('limit') ?? '50', 10),
             offset: parseInt(new URL(tracksResponse.next).searchParams.get('offset') ?? '0', 10)
           }));
 

@@ -48,11 +48,13 @@ export default class implements Command {
     }
 
     const queue = this.queueManager.get(msg.guild!.id);
+    const player = this.playerManager.get(msg.guild!.id);
 
     const queueOldSize = queue.size();
+    const wasPlayingSong = queue.getCurrent() !== null;
 
     if (args.length === 0) {
-      if (this.playerManager.get(msg.guild!.id).status === STATUS.PLAYING) {
+      if (player.status === STATUS.PLAYING) {
         await res.stop(errorMsg('already playing, give me a song name'));
         return;
       }
@@ -63,8 +65,8 @@ export default class implements Command {
         return;
       }
 
-      await this.playerManager.get(msg.guild!.id).connect(targetVoiceChannel);
-      await this.playerManager.get(msg.guild!.id).play();
+      await player.connect(targetVoiceChannel);
+      await player.play();
 
       await res.stop('the stop-and-go light is now green');
       return;
@@ -141,13 +143,13 @@ export default class implements Command {
       await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
     }
 
-    if (this.playerManager.get(msg.guild!.id).voiceConnection === null) {
-      await this.playerManager.get(msg.guild!.id).connect(targetVoiceChannel);
+    if (player.voiceConnection === null) {
+      await player.connect(targetVoiceChannel);
     }
 
-    if (queueOldSize === 0) {
-      // Only auto-play if queue was empty before
-      await this.playerManager.get(msg.guild!.id).play();
+    if (queueOldSize === 0 && !wasPlayingSong) {
+      // Only auto-play if queue was empty before and nothing was playing
+      await player.play();
     }
   }
 }

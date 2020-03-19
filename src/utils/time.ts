@@ -1,0 +1,15 @@
+export const prettyTime = (seconds: number): string => {
+  const nSeconds = seconds % 60;
+  const nMinutes = Math.floor(seconds / 60);
+  const nHours = Math.floor(nMinutes / 60);
+
+  let res = '';
+
+  if (nHours !== 0) {
+    res += `${Math.round(nHours).toString().padStart(2, '0')}:`;
+  }
+
+  res += `${Math.round(nMinutes).toString().padStart(2, '0')}:${Math.round(nSeconds).toString().padStart(2, '0')}`;
+
+  return res;
+};

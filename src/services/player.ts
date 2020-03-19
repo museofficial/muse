@@ -21,6 +21,7 @@ export default class {
   private dispatcher: StreamDispatcher | null = null;
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
+  private lastSongURL = '';
 
   private positionInSeconds = 0;
 
@@ -100,6 +101,7 @@ export default class {
       if (this.dispatcher) {
         this.dispatcher.resume();
         this.status = STATUS.PLAYING;
+        this.startTrackingPosition();
         return;
       }
 
@@ -115,7 +117,13 @@ export default class {
     this.status = STATUS.PLAYING;
     this.nowPlaying = currentSong;
 
-    this.startTrackingPosition();
+    if (currentSong.url === this.lastSongURL) {
+      this.startTrackingPosition();
+    } else {
+      // Reset position counter
+      this.startTrackingPosition(0);
+      this.lastSongURL = currentSong.url;
+    }
   }
 
   pause(): void {
@@ -235,7 +243,7 @@ export default class {
   }
 
   private startTrackingPosition(initalPosition?: number): void {
-    if (initalPosition) {
+    if (initalPosition !== undefined) {
       this.positionInSeconds = initalPosition;
     }
 
@@ -270,9 +278,16 @@ export default class {
     this.dispatcher.on('speaking', async isSpeaking => {
       // Automatically advance queued song at end
       if (!isSpeaking && this.status === STATUS.PLAYING) {
-        if (this.queue.get().length > 0) {
+        if (this.queue.size() >= 0) {
           this.queue.forward();
-          await this.play();
+
+          this.positionInSeconds = 0;
+
+          if (this.queue.getCurrent()) {
+            await this.play();
+          } else {
+            this.status = STATUS.PAUSED;
+          }
         }
       }
     });

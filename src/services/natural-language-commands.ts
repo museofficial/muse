@@ -39,7 +39,7 @@ export default class {
         await player.connect(channel);
       }
 
-      const isPlaying = queue.getCurrent();
+      const isPlaying = queue.getCurrent() !== null;
       let oldPosition = 0;
 
       queue.add({title: 'GO PACKERS!', artist: 'Unknown', url: 'https://www.youtube.com/watch?v=qkdtID7mY3E', length: 204, playlist: null, isLive: false});
@@ -54,12 +54,11 @@ export default class {
       return new Promise((resolve, reject) => {
         try {
           setTimeout(async () => {
-            if (isPlaying) {
-              queue.back();
+            queue.removeCurrent();
 
+            if (isPlaying) {
               await player.seek(oldPosition);
             } else {
-              queue.forward();
               player.disconnect();
             }
 

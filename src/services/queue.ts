@@ -52,7 +52,7 @@ export default class {
       this.queue.push(song);
     } else {
       // Not from playlist, add immediately
-      let insertAt = 0;
+      let insertAt = this.position;
 
       // Loop until playlist song
       this.queue.some(song => {
@@ -81,6 +81,14 @@ export default class {
     }
 
     this.queue = newQueue;
+  }
+
+  removeCurrent(): void {
+    this.queue = [...this.queue.slice(0, this.position), ...this.queue.slice(this.position + 1)];
+
+    if (this.position !== 0) {
+      this.position--;
+    }
   }
 
   size(): number {
