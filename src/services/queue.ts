@@ -19,7 +19,7 @@ export default class {
   private position = 0;
 
   forward(): void {
-    if (this.position <= this.size() + 1) {
+    if (this.position < this.size() + 1) {
       this.position++;
     } else {
       throw new Error('No songs in queue to forward to.');
@@ -85,10 +85,6 @@ export default class {
 
   removeCurrent(): void {
     this.queue = [...this.queue.slice(0, this.position), ...this.queue.slice(this.position + 1)];
-
-    if (this.position !== 0) {
-      this.position--;
-    }
   }
 
   size(): number {

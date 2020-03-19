@@ -57,6 +57,7 @@ export default class {
             queue.removeCurrent();
 
             if (isPlaying) {
+              queue.back();
               await player.seek(oldPosition);
             } else {
               player.disconnect();
