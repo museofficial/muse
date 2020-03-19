@@ -30,7 +30,21 @@ export default class implements Command {
     const {prefix} = settings;
 
     const res = this.commands.sort((a, b) => a.name.localeCompare(b.name)).reduce((content, command) => {
-      content += `**${command.name}**:\n`;
+      const aliases = command.aliases.reduce((str, alias, i) => {
+        str += alias;
+
+        if (i !== command.aliases.length - 1) {
+          str += ', ';
+        }
+
+        return str;
+      }, '');
+
+      if (aliases === '') {
+        content += `**${command.name}**:\n`;
+      } else {
+        content += `**${command.name}** (${aliases}):\n`;
+      }
 
       command.examples.forEach(example => {
         content += `- \`${prefix}${example[0]}\`: ${example[1]}\n`;
