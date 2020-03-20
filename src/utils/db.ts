@@ -7,5 +7,6 @@ export const sequelize = new Sequelize({
   dialect: 'sqlite',
   database: 'muse',
   storage: path.join(DATA_DIR, 'db.sqlite'),
-  models: [Settings, Shortcut]
+  models: [Settings, Shortcut],
+  logging: false
 });
