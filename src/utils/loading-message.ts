@@ -1,11 +1,14 @@
 import {TextChannel, Message} from 'discord.js';
 import delay from 'delay';
 
+const INITAL_DELAY = 500;
+const PERIOD = 500;
+
 export default class {
+  public isStopped = true;
   private readonly channel: TextChannel;
   private readonly text: string;
   private msg!: Message;
-  private isStopped = false;
 
   constructor(channel: TextChannel, text = 'cows! count \'em') {
     this.channel = channel;
@@ -15,22 +18,25 @@ export default class {
   async start(): Promise<void> {
     this.msg = await this.channel.send(this.text);
 
-    const period = 500;
-
     const icons = ['🐮', '🐴', '🐄'];
 
     const reactions = [];
 
     let i = 0;
     let isRemoving = false;
+
+    this.isStopped = false;
+
     (async () => {
+      await delay(INITAL_DELAY);
+
       while (!this.isStopped) {
         if (reactions.length === icons.length) {
           isRemoving = true;
         }
 
         // eslint-disable-next-line no-await-in-loop
-        await delay(period);
+        await delay(PERIOD);
 
         if (isRemoving) {
           const reactionToRemove = reactions.shift();

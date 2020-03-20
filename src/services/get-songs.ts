@@ -176,7 +176,7 @@ export default class {
 
   private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, playlist: QueuedPlaylist | null): Promise<QueuedSong | null> {
     try {
-      const {items} = await ytsr(`${track.name} ${track.artists[0].name} offical`, {limit: 5});
+      const {items} = await ytsr(`"${track.name}" "${track.artists[0].name}" offical`, {limit: 5});
       const video = items.find((item: { type: string }) => item.type === 'video');
 
       if (!video) {

@@ -25,19 +25,18 @@ export default class implements Command {
 
   public async execute(msg: Message, _: string []): Promise<void> {
     const queue = this.queueManager.get(msg.guild!.id);
+    const player = this.playerManager.get(msg.guild!.id);
 
     try {
       queue.forward();
+      player.resetPosition();
 
       if (queue.isEmpty() && !queue.getCurrent()) {
-        this.playerManager.get(msg.guild!.id).disconnect();
-      } else {
-        await this.playerManager.get(msg.guild!.id).play();
+        player.disconnect();
       }
 
       await msg.channel.send('keep \'er movin\'');
     } catch (_) {
-      console.log(_);
       await msg.channel.send('no song to skip to');
     }
   }

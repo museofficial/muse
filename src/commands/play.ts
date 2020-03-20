@@ -102,7 +102,11 @@ export default class implements Command {
         }
 
         if (nSongsNotFound !== 0) {
-          extraMsg += `and ${nSongsNotFound.toString()} songs were not found`;
+          if (nSongsNotFound === 1) {
+            extraMsg += 'and 1 song was not found';
+          } else {
+            extraMsg += `and ${nSongsNotFound.toString()} songs were not found`;
+          }
         }
 
         newSongs.push(...convertedSongs);
@@ -140,12 +144,12 @@ export default class implements Command {
       await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
     }
 
-    if (player.voiceConnection === null) {
-      await player.connect(targetVoiceChannel);
-    }
-
     if (queueOldSize === 0 && !wasPlayingSong) {
       // Only auto-play if queue was empty before and nothing was playing
+      if (player.voiceConnection === null) {
+        await player.connect(targetVoiceChannel);
+      }
+
       await player.play();
     }
   }

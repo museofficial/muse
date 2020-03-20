@@ -26,11 +26,11 @@ export default class implements Command {
 
   public async execute(msg: Message, _: string []): Promise<void> {
     const queue = this.queueManager.get(msg.guild!.id);
+    const player = this.playerManager.get(msg.guild!.id);
 
     try {
       queue.back();
-
-      await this.playerManager.get(msg.guild!.id).play();
+      player.resetPosition();
 
       await msg.channel.send('back \'er up\'');
     } catch (_) {

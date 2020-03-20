@@ -140,6 +140,10 @@ export default class {
     this.stopTrackingPosition();
   }
 
+  resetPosition(): void {
+    this.positionInSeconds = 0;
+  }
+
   private getCachedPath(url: string): string {
     return path.join(this.cacheDir, hasha(url));
   }
