@@ -5,6 +5,7 @@ import PlayerManager from '../managers/player';
 import LoadingMessage from '../utils/loading-message';
 import errorMsg from '../utils/error-msg';
 import Command from '.';
+import {parseTime} from '../utils/time';
 
 @injectable()
 export default class implements Command {
@@ -44,14 +45,7 @@ export default class implements Command {
     let seekTime = 0;
 
     if (time.includes(':')) {
-      const timeGroups = time.split(':').map(t => parseInt(t, 10));
-      let currentTimePeriod = 1;
-
-      for (let i = timeGroups.length - 1; i >= 0; i--) {
-        seekTime += currentTimePeriod * timeGroups[i];
-
-        currentTimePeriod *= 60;
-      }
+      seekTime = parseTime(time);
     } else {
       seekTime = parseInt(time, 10);
     }
