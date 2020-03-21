@@ -14,8 +14,7 @@ export const TYPES = {
     Spotify: Symbol('Spotify')
   },
   Managers: {
-    Player: Symbol('PlayerManager'),
-    Queue: Symbol('QueueManager')
+    Player: Symbol('PlayerManager')
   },
   Services: {
     GetSongs: Symbol('GetSongs'),

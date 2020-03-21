@@ -2,17 +2,14 @@ import {inject, injectable} from 'inversify';
 import {Message} from 'discord.js';
 import {TYPES} from '../types';
 import PlayerManager from '../managers/player';
-import QueueManager from '../managers/queue';
 import {getMostPopularVoiceChannel} from '../utils/channels';
 
 @injectable()
 export default class {
   private readonly playerManager: PlayerManager;
-  private readonly queueManager: QueueManager;
 
-  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Managers.Queue) queueManager: QueueManager) {
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
     this.playerManager = playerManager;
-    this.queueManager = queueManager;
   }
 
   async execute(msg: Message): Promise<boolean> {
@@ -24,7 +21,6 @@ export default class {
     }
 
     if (msg.content.includes('packers')) {
-      const queue = this.queueManager.get(msg.guild!.id);
       const player = this.playerManager.get(msg.guild!.id);
 
       const [channel, n] = getMostPopularVoiceChannel(msg.guild!);
@@ -39,14 +35,15 @@ export default class {
         await player.connect(channel);
       }
 
-      const isPlaying = queue.getCurrent() !== null;
+      const isPlaying = player.getCurrent() !== null;
       let oldPosition = 0;
 
-      queue.add({title: 'GO PACKERS!', artist: 'Unknown', url: 'https://www.youtube.com/watch?v=qkdtID7mY3E', length: 204, playlist: null, isLive: false});
+      player.add({title: 'GO PACKERS!', artist: 'Unknown', url: 'https://www.youtube.com/watch?v=qkdtID7mY3E', length: 204, playlist: null, isLive: false}, {immediate: true});
 
       if (isPlaying) {
         oldPosition = player.getPosition();
-        queue.forward();
+
+        await player.forward();
       }
 
       await player.seek(8);
@@ -54,10 +51,10 @@ export default class {
       return new Promise((resolve, reject) => {
         try {
           setTimeout(async () => {
-            queue.removeCurrent();
+            player.removeCurrent();
 
             if (isPlaying) {
-              queue.back();
+              await player.back();
               await player.seek(oldPosition);
             } else {
               player.disconnect();

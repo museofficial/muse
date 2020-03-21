@@ -8,8 +8,9 @@ import ytsr from 'ytsr';
 import YouTube from 'youtube.ts';
 import pLimit from 'p-limit';
 import uniqueRandomArray from 'unique-random-array';
-import {QueuedSong, QueuedPlaylist} from '../services/queue';
+import {QueuedSong, QueuedPlaylist} from '../services/player';
 import {TYPES} from '../types';
+import {parseTime} from '../utils/time';
 
 @injectable()
 export default class {
@@ -186,7 +187,7 @@ export default class {
       return {
         title: video.title,
         artist: track.artists[0].name,
-        length: track.duration_ms / 1000,
+        length: parseTime(video.duration),
         url: video.link,
         playlist,
         isLive: video.live

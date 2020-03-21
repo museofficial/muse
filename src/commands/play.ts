@@ -2,9 +2,8 @@ import {TextChannel, Message} from 'discord.js';
 import {URL} from 'url';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
-import {QueuedSong} from '../services/queue';
+import {QueuedSong} from '../services/player';
 import {STATUS} from '../services/player';
-import QueueManager from '../managers/queue';
 import PlayerManager from '../managers/player';
 import {getMostPopularVoiceChannel} from '../utils/channels';
 import LoadingMessage from '../utils/loading-message';
@@ -28,12 +27,10 @@ export default class implements Command {
 
   public requiresVC = true;
 
-  private readonly queueManager: QueueManager;
   private readonly playerManager: PlayerManager;
   private readonly getSongs: GetSongs;
 
-  constructor(@inject(TYPES.Managers.Queue) queueManager: QueueManager, @inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Services.GetSongs) getSongs: GetSongs) {
-    this.queueManager = queueManager;
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Services.GetSongs) getSongs: GetSongs) {
     this.playerManager = playerManager;
     this.getSongs = getSongs;
   }
@@ -44,11 +41,10 @@ export default class implements Command {
     const res = new LoadingMessage(msg.channel as TextChannel);
     await res.start();
 
-    const queue = this.queueManager.get(msg.guild!.id);
     const player = this.playerManager.get(msg.guild!.id);
 
-    const queueOldSize = queue.size();
-    const wasPlayingSong = queue.getCurrent() !== null;
+    const queueOldSize = player.queueSize();
+    const wasPlayingSong = player.getCurrent() !== null;
 
     if (args.length === 0) {
       if (player.status === STATUS.PLAYING) {
@@ -57,7 +53,7 @@ export default class implements Command {
       }
 
       // Must be resuming play
-      if (queue.get().length === 0 && !queue.getCurrent()) {
+      if (!wasPlayingSong) {
         await res.stop(errorMsg('nothing to play'));
         return;
       }
@@ -101,11 +97,15 @@ export default class implements Command {
           extraMsg = 'a random sample of 50 songs was taken';
         }
 
+        if (totalSongs > 50 && nSongsNotFound !== 0) {
+          extraMsg += ' and ';
+        }
+
         if (nSongsNotFound !== 0) {
           if (nSongsNotFound === 1) {
-            extraMsg += 'and 1 song was not found';
+            extraMsg += '1 song was not found';
           } else {
-            extraMsg += `and ${nSongsNotFound.toString()} songs were not found`;
+            extraMsg += `${nSongsNotFound.toString()} songs were not found`;
           }
         }
 
@@ -130,7 +130,7 @@ export default class implements Command {
       return;
     }
 
-    newSongs.forEach(song => queue.add(song));
+    newSongs.forEach(song => player.add(song));
 
     const firstSong = newSongs[0];
 

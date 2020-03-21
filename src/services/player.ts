@@ -6,7 +6,21 @@ import hasha from 'hasha';
 import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
-import Queue, {QueuedSong} from './queue';
+import shuffle from 'array-shuffle';
+
+export interface QueuedPlaylist {
+  title: string;
+  source: string;
+}
+
+export interface QueuedSong {
+  title: string;
+  artist: string;
+  url: string;
+  length: number;
+  playlist: QueuedPlaylist | null;
+  isLive: boolean;
+}
 
 export enum STATUS {
   PLAYING,
@@ -16,7 +30,8 @@ export enum STATUS {
 export default class {
   public status = STATUS.PAUSED;
   public voiceConnection: VoiceConnection | null = null;
-  private readonly queue: Queue;
+  private queue: QueuedSong[] = [];
+  private queuePosition = 0;
   private readonly cacheDir: string;
   private dispatcher: StreamDispatcher | null = null;
   private nowPlaying: QueuedSong | null = null;
@@ -25,8 +40,7 @@ export default class {
 
   private positionInSeconds = 0;
 
-  constructor(queue: Queue, cacheDir: string) {
-    this.queue = queue;
+  constructor(cacheDir: string) {
     this.cacheDir = cacheDir;
   }
 
@@ -58,7 +72,7 @@ export default class {
       throw new Error('Not connected to a voice channel.');
     }
 
-    const currentSong = this.queue.getCurrent();
+    const currentSong = this.getCurrent();
 
     if (!currentSong) {
       throw new Error('No song currently playing');
@@ -90,14 +104,14 @@ export default class {
       throw new Error('Not connected to a voice channel.');
     }
 
-    const currentSong = this.queue.getCurrent();
+    const currentSong = this.getCurrent();
 
     if (!currentSong) {
       throw new Error('Queue empty.');
     }
 
     // Resume from paused state
-    if (this.status === STATUS.PAUSED && this.getPosition() !== 0 && currentSong.url === this.nowPlaying?.url) {
+    if (this.status === STATUS.PAUSED && currentSong.url === this.nowPlaying?.url) {
       if (this.dispatcher) {
         this.dispatcher.resume();
         this.status = STATUS.PLAYING;
@@ -109,20 +123,25 @@ export default class {
       return this.seek(this.getPosition());
     }
 
-    const stream = await this.getStream(currentSong.url);
-    this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
+    try {
+      const stream = await this.getStream(currentSong.url);
+      this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
 
-    this.attachListeners();
+      this.attachListeners();
 
-    this.status = STATUS.PLAYING;
-    this.nowPlaying = currentSong;
+      this.status = STATUS.PLAYING;
+      this.nowPlaying = currentSong;
 
-    if (currentSong.url === this.lastSongURL) {
-      this.startTrackingPosition();
-    } else {
-      // Reset position counter
-      this.startTrackingPosition(0);
-      this.lastSongURL = currentSong.url;
+      if (currentSong.url === this.lastSongURL) {
+        this.startTrackingPosition();
+      } else {
+        // Reset position counter
+        this.startTrackingPosition(0);
+        this.lastSongURL = currentSong.url;
+      }
+    } catch (error) {
+      this.removeCurrent();
+      throw error;
     }
   }
 
@@ -140,8 +159,103 @@ export default class {
     this.stopTrackingPosition();
   }
 
-  resetPosition(): void {
-    this.positionInSeconds = 0;
+  async forward(): Promise<void> {
+    if (this.queuePosition < this.queueSize() + 1) {
+      this.queuePosition++;
+
+      try {
+        if (this.getCurrent() && this.status !== STATUS.PAUSED) {
+          await this.play();
+        } else {
+          this.status = STATUS.PAUSED;
+          this.disconnect();
+        }
+      } catch (error) {
+        this.queuePosition--;
+        throw error;
+      }
+    } else {
+      throw new Error('No songs in queue to forward to.');
+    }
+  }
+
+  async back(): Promise<void> {
+    if (this.queuePosition - 1 >= 0) {
+      this.queuePosition--;
+      this.positionInSeconds = 0;
+
+      if (this.status !== STATUS.PAUSED) {
+        await this.play();
+      }
+    } else {
+      throw new Error('No songs in queue to go back to.');
+    }
+  }
+
+  getCurrent(): QueuedSong | null {
+    if (this.queue[this.queuePosition]) {
+      return this.queue[this.queuePosition];
+    }
+
+    return null;
+  }
+
+  getQueue(): QueuedSong[] {
+    return this.queue.slice(this.queuePosition + 1);
+  }
+
+  add(song: QueuedSong, {immediate = false} = {}): void {
+    if (song.playlist) {
+      // Add to end of queue
+      this.queue.push(song);
+    } else {
+      // Not from playlist, add immediately
+      let insertAt = this.queuePosition + 1;
+
+      if (!immediate) {
+      // Loop until playlist song
+        this.queue.some(song => {
+          if (song.playlist) {
+            return true;
+          }
+
+          insertAt++;
+          return false;
+        });
+      }
+
+      this.queue = [...this.queue.slice(0, insertAt), song, ...this.queue.slice(insertAt)];
+    }
+  }
+
+  shuffle(): void {
+    this.queue = [...this.queue.slice(0, this.queuePosition + 1), ...shuffle(this.queue.slice(this.queuePosition + 1))];
+  }
+
+  clear(): void {
+    const newQueue = [];
+
+    // Don't clear curently playing song
+    const current = this.getCurrent();
+
+    if (current) {
+      newQueue.push(current);
+    }
+
+    this.queuePosition = 0;
+    this.queue = newQueue;
+  }
+
+  removeCurrent(): void {
+    this.queue = [...this.queue.slice(0, this.queuePosition), ...this.queue.slice(this.queuePosition + 1)];
+  }
+
+  queueSize(): number {
+    return this.getQueue().length;
+  }
+
+  isQueueEmpty(): boolean {
+    return this.queueSize() === 0;
   }
 
   private getCachedPath(url: string): string {
@@ -271,30 +385,23 @@ export default class {
       return;
     }
 
-    this.voiceConnection.on('disconnect', () => {
-      this.disconnect(false);
-    });
+    this.voiceConnection.on('disconnect', this.onVoiceConnectionDisconnect.bind(this));
 
     if (!this.dispatcher) {
       return;
     }
 
-    this.dispatcher.on('speaking', async isSpeaking => {
-      // Automatically advance queued song at end
-      if (!isSpeaking && this.status === STATUS.PLAYING) {
-        if (this.queue.size() >= 0) {
-          this.queue.forward();
+    this.dispatcher.on('speaking', this.onVoiceConnectionSpeaking.bind(this));
+  }
 
-          this.positionInSeconds = 0;
+  private onVoiceConnectionDisconnect(): void {
+    this.disconnect(false);
+  }
 
-          if (this.queue.getCurrent()) {
-            await this.play();
-          } else {
-            this.status = STATUS.PAUSED;
-            this.disconnect();
-          }
-        }
-      }
-    });
+  private async onVoiceConnectionSpeaking(isSpeaking: boolean): Promise<void> {
+    // Automatically advance queued song at end
+    if (!isSpeaking && this.status === STATUS.PLAYING) {
+      await this.forward();
+    }
   }
 }

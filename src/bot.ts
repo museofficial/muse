@@ -90,8 +90,8 @@ export default class {
 
         await handler.execute(msg, args);
       } catch (error) {
-        console.error(error);
-        await msg.channel.send(errorMsg('¯\\_(ツ)_/¯'));
+        debug(error);
+        await msg.channel.send(errorMsg(error.message.toLowerCase()));
       }
     });
 

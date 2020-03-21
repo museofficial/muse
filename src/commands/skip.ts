@@ -1,9 +1,10 @@
-import {Message} from 'discord.js';
+import {Message, TextChannel} from 'discord.js';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player';
-import QueueManager from '../managers/queue';
 import Command from '.';
+import LoadingMessage from '../utils/loading-message';
+import errorMsg from '../utils/error-msg';
 
 @injectable()
 export default class implements Command {
@@ -15,29 +16,24 @@ export default class implements Command {
 
   public requiresVC = true;
 
-  private readonly queueManager: QueueManager;
   private readonly playerManager: PlayerManager;
 
-  constructor(@inject(TYPES.Managers.Queue) queueManager: QueueManager, @inject(TYPES.Managers.Player) playerManager: PlayerManager) {
-    this.queueManager = queueManager;
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
     this.playerManager = playerManager;
   }
 
   public async execute(msg: Message, _: string []): Promise<void> {
-    const queue = this.queueManager.get(msg.guild!.id);
     const player = this.playerManager.get(msg.guild!.id);
 
+    const loader = new LoadingMessage(msg.channel as TextChannel);
+
     try {
-      queue.forward();
-      player.resetPosition();
+      await loader.start();
+      await player.forward();
 
-      if (queue.isEmpty() && !queue.getCurrent()) {
-        player.disconnect();
-      }
-
-      await msg.channel.send('keep \'er movin\'');
+      await loader.stop('keep \'er movin\'');
     } catch (_) {
-      await msg.channel.send('no song to skip to');
+      await loader.stop(errorMsg('no song to skip to'));
     }
   }
 }

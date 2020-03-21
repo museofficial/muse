@@ -13,3 +13,5 @@ export const prettyTime = (seconds: number): string => {
 
   return res;
 };
+
+export const parseTime = (str: string): number => str.split(':').reduce((acc, time) => (60 * acc) + parseInt(time, 10), 0);

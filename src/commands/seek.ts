@@ -2,7 +2,6 @@ import {Message, TextChannel} from 'discord.js';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player';
-import QueueManager from '../managers/queue';
 import LoadingMessage from '../utils/loading-message';
 import errorMsg from '../utils/error-msg';
 import Command from '.';
@@ -20,17 +19,15 @@ export default class implements Command {
   public requiresVC = true;
 
   private readonly playerManager: PlayerManager;
-  private readonly queueManager: QueueManager;
 
-  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Managers.Queue) queueManager: QueueManager) {
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
     this.playerManager = playerManager;
-    this.queueManager = queueManager;
   }
 
   public async execute(msg: Message, args: string []): Promise<void> {
-    const queue = this.queueManager.get(msg.guild!.id);
+    const player = this.playerManager.get(msg.guild!.id);
 
-    const currentSong = queue.getCurrent();
+    const currentSong = player.getCurrent();
 
     if (!currentSong) {
       await msg.channel.send(errorMsg('nothing is playing'));
@@ -69,7 +66,7 @@ export default class implements Command {
     await loading.start();
 
     try {
-      await this.playerManager.get(msg.guild!.id).seek(seekTime);
+      await player.seek(seekTime);
 
       await loading.stop();
     } catch (error) {

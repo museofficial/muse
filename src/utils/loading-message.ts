@@ -60,10 +60,16 @@ export default class {
   }
 
   async stop(str = 'u betcha'): Promise<Message> {
+    const wasAlreadyStopped = this.isStopped;
+
     this.isStopped = true;
 
     if (str) {
-      await Promise.all([this.msg.reactions.removeAll(), this.msg.edit(str)]);
+      if (wasAlreadyStopped) {
+        await this.msg.edit(str);
+      } else {
+        await Promise.all([this.msg.reactions.removeAll(), this.msg.edit(str)]);
+      }
     } else {
       await this.msg.reactions.removeAll();
     }

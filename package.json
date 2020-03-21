@@ -73,6 +73,7 @@
     "dotenv": "^8.2.0",
     "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^6.1.0",
+    "get-youtube-id": "^1.0.1",
     "got": "^10.6.0",
     "hasha": "^5.2.0",
     "inversify": "^5.0.1",
