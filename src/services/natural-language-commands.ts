@@ -43,7 +43,7 @@ export default class {
       if (isPlaying) {
         oldPosition = player.getPosition();
 
-        await player.forward();
+        player.manualForward();
       }
 
       await player.seek(8);
@@ -51,13 +51,15 @@ export default class {
       return new Promise((resolve, reject) => {
         try {
           setTimeout(async () => {
-            player.removeCurrent();
+            if (player.getCurrent()?.title === 'GO PACKERS!') {
+              player.removeCurrent();
 
-            if (isPlaying) {
-              await player.back();
-              await player.seek(oldPosition);
-            } else {
-              player.disconnect();
+              if (isPlaying) {
+                await player.back();
+                await player.seek(oldPosition);
+              } else {
+                player.disconnect();
+              }
             }
 
             resolve(true);

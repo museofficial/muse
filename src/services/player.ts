@@ -120,7 +120,9 @@ export default class {
       }
 
       // Was disconnected, need to recreate stream
-      return this.seek(this.getPosition());
+      if (!currentSong.isLive) {
+        return this.seek(this.getPosition());
+      }
     }
 
     try {
@@ -160,20 +162,24 @@ export default class {
   }
 
   async forward(): Promise<void> {
-    if (this.queuePosition < this.queueSize() + 1) {
-      this.queuePosition++;
+    this.manualForward();
 
-      try {
-        if (this.getCurrent() && this.status !== STATUS.PAUSED) {
-          await this.play();
-        } else {
-          this.status = STATUS.PAUSED;
-          this.disconnect();
-        }
-      } catch (error) {
-        this.queuePosition--;
-        throw error;
+    try {
+      if (this.getCurrent() && this.status !== STATUS.PAUSED) {
+        await this.play();
+      } else {
+        this.status = STATUS.PAUSED;
+        this.disconnect();
       }
+    } catch (error) {
+      this.queuePosition--;
+      throw error;
+    }
+  }
+
+  manualForward(): void {
+    if (this.queuePosition < this.queue.length) {
+      this.queuePosition++;
     } else {
       throw new Error('No songs in queue to forward to.');
     }
