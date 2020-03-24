@@ -10,10 +10,10 @@ Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that
 - ⏩ Seeking within a song/video
 - 💾 Local caching for better performance
 - 📋 No vote-to-skip - this is anarchy, not a democracy
-- 1️⃣ Muse instance supports multiple guilds
-- ✍️ Written in TypeScript, easily extendable
 - ↔️ Autoconverts playlists / artists / albums / songs from Spotify
 - ↗️ Users can add custom shortcuts (aliases)
+- 1️⃣ Muse instance supports multiple guilds
+- ✍️ Written in TypeScript, easily extendable
 - ❤️ Loyal Packers fan
 
 ### Design Philosophy
