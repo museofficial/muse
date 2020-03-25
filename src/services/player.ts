@@ -180,6 +180,8 @@ export default class {
   manualForward(): void {
     if (this.queuePosition < this.queue.length) {
       this.queuePosition++;
+      this.positionInSeconds = 0;
+      this.stopTrackingPosition();
     } else {
       throw new Error('No songs in queue to forward to.');
     }
@@ -189,6 +191,7 @@ export default class {
     if (this.queuePosition - 1 >= 0) {
       this.queuePosition--;
       this.positionInSeconds = 0;
+      this.stopTrackingPosition();
 
       if (this.status !== STATUS.PAUSED) {
         await this.play();
@@ -286,7 +289,7 @@ export default class {
     const cachedPath = this.getCachedPath(url);
 
     let ffmpegInput = '';
-    const ffmpegInputOptions = [];
+    const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
     if (await this.isCached(url)) {
@@ -345,25 +348,41 @@ export default class {
     }
 
     // Create stream and pipe to capacitor
-    const youtubeStream = ffmpeg(ffmpegInput).inputOptions(ffmpegInputOptions).noVideo().audioCodec('libopus').outputFormat('webm').pipe() as PassThrough;
+    return new Promise((resolve, reject) => {
+      const youtubeStream = ffmpeg(ffmpegInput)
+        .inputOptions(ffmpegInputOptions)
+        .noVideo()
+        .audioCodec('libopus')
+        .outputFormat('webm')
+        .on('error', error => {
+          console.error(error);
+          reject(error);
+        })
+        .pipe() as PassThrough;
 
-    const capacitor = new WriteStream();
+      const capacitor = new WriteStream();
 
-    youtubeStream.pipe(capacitor);
+      youtubeStream.pipe(capacitor);
 
-    // Cache video if necessary
-    if (shouldCacheVideo) {
-      const cacheTempPath = this.getCachedPathTemp(url);
-      const cacheStream = createWriteStream(cacheTempPath);
+      // Cache video if necessary
+      if (shouldCacheVideo) {
+        const cacheTempPath = this.getCachedPathTemp(url);
+        const cacheStream = createWriteStream(cacheTempPath);
 
-      cacheStream.on('finish', async () => {
-        await fs.rename(cacheTempPath, cachedPath);
-      });
+        cacheStream.on('finish', async () => {
+        // Only move if size is non-zero (may have errored out)
+          const stats = await fs.stat(cacheTempPath);
 
-      capacitor.createReadStream().pipe(cacheStream);
-    }
+          if (stats.size !== 0) {
+            await fs.rename(cacheTempPath, cachedPath);
+          }
+        });
 
-    return capacitor.createReadStream();
+        capacitor.createReadStream().pipe(cacheStream);
+      }
+
+      resolve(capacitor.createReadStream());
+    });
   }
 
   private startTrackingPosition(initalPosition?: number): void {
