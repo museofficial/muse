@@ -238,7 +238,9 @@ export default class {
   }
 
   shuffle(): void {
-    this.queue = [...this.queue.slice(0, this.queuePosition + 1), ...shuffle(this.queue.slice(this.queuePosition + 1))];
+    const shuffledSongs = shuffle(this.queue.slice(this.queuePosition + 1));
+
+    this.queue = [...this.queue.slice(0, this.queuePosition + 1), ...shuffledSongs];
   }
 
   clear(): void {
@@ -306,7 +308,7 @@ export default class {
 
       const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
         if (formats[0].live) {
-          formats = formats.sort((a, b) => (b as any).audioBitrate - (a as any).audioBitrate); // Bad typings
+          formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate); // Bad typings
 
           return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10))); // Bad typings
         }

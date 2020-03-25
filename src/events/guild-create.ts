@@ -1,4 +1,4 @@
-import {Guild, MessageReaction, TextChannel} from 'discord.js';
+import {Guild, MessageReaction, TextChannel, User, Message} from 'discord.js';
 import emoji from 'node-emoji';
 import {Settings} from '../models';
 
@@ -45,7 +45,7 @@ export default async (guild: Guild): Promise<void> => {
     await msg.react(channel.emoji);
   }
 
-  const reactions = await msg.awaitReactions((reaction, user) => user.id !== msg.author.id && emojiChannels.map(e => e.emoji).includes(reaction.emoji.name), {max: 1});
+  const reactions = await msg.awaitReactions((reaction: MessageReaction, user: User) => user.id !== msg.author.id && emojiChannels.map(e => e.emoji).includes(reaction.emoji.name), {max: 1});
 
   const choice = reactions.first() as MessageReaction;
 
@@ -57,7 +57,7 @@ export default async (guild: Guild): Promise<void> => {
 
   await owner.send(secondStep);
 
-  const prefixResponses = await msg.channel.awaitMessages(r => r.content.length === 1, {max: 1});
+  const prefixResponses = await msg.channel.awaitMessages((r: Message) => r.content.length === 1, {max: 1});
 
   const prefixCharacter = prefixResponses.first()!.content;
 

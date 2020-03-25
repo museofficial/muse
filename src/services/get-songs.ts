@@ -56,8 +56,16 @@ export default class {
     const playlist = await this.youtube.playlists.get(listId);
     const {items} = await this.youtube.playlists.items(listId, {maxResults: '50'});
 
+    interface videoResult {
+      id: string;
+      contentDetails: {
+        videoId: string;
+        duration: string;
+      };
+    }
+
     // Unfortunately, package doesn't provide a method for this
-    const res: any = await got('https://www.googleapis.com/youtube/v3/videos', {searchParams: {
+    const {items: videos}: {items: videoResult[]} = await got('https://www.googleapis.com/youtube/v3/videos', {searchParams: {
       part: 'contentDetails',
       id: items.map(item => item.contentDetails.videoId).join(','),
       key: this.youtubeKey
@@ -66,7 +74,7 @@ export default class {
     const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
 
     return items.map(video => {
-      const length = toSeconds(parse(res.items.find((i: any) => i.id === video.contentDetails.videoId).contentDetails.duration));
+      const length = toSeconds(parse(videos.find((i: { id: string }) => i.id === video.contentDetails.videoId)!.contentDetails.duration));
 
       return {
         title: video.snippet.title,
@@ -178,7 +186,7 @@ export default class {
   private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, playlist: QueuedPlaylist | null): Promise<QueuedSong | null> {
     try {
       const {items} = await ytsr(`"${track.name}" "${track.artists[0].name}" offical`, {limit: 5});
-      const video = items.find((item: { type: string }) => item.type === 'video');
+      const video = items.find(item => item.type === 'video');
 
       if (!video) {
         throw new Error('No video found for query.');
