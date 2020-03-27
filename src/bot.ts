@@ -48,12 +48,12 @@ export default class {
         return this.client.emit('guildCreate', msg.guild);
       }
 
-      if (await this.naturalLanguage.execute(msg)) {
+      const {prefix, channel} = settings;
+
+      if (!msg.content.startsWith(prefix) && !msg.author.bot && msg.channel.id === channel && await this.naturalLanguage.execute(msg)) {
         // Natural language command handled message
         return;
       }
-
-      const {prefix, channel} = settings;
 
       if (!msg.content.startsWith(prefix) || msg.author.bot || msg.channel.id !== channel) {
         return;
