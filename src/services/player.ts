@@ -294,8 +294,14 @@ export default class {
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
+    let format: ytdl.videoFormat | undefined;
+
     if (await this.isCached(url)) {
       ffmpegInput = cachedPath;
+
+      if (options.seek) {
+        ffmpegInputOptions.push('-ss', options.seek.toString());
+      }
     } else {
       // Not yet cached, must download
       const info = await ytdl.getInfo(url);
@@ -304,7 +310,7 @@ export default class {
 
       const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
 
-      let format = formats.find(filter);
+      format = formats.find(filter);
 
       const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
         if (formats[0].live) {
@@ -332,7 +338,7 @@ export default class {
 
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-      shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.length_seconds, 10) < MAX_CACHE_LENGTH_SECONDS;
+      shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.length_seconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
 
       ffmpegInputOptions.push(...[
         '-reconnect',
@@ -342,11 +348,11 @@ export default class {
         '-reconnect_delay_max',
         '5'
       ]);
-    }
 
-    // Add seek parameter if necessary
-    if (options.seek) {
-      ffmpegInputOptions.push('-ss', options.seek.toString());
+      if (options.seek) {
+        // Fudge seek position since FFMPEG doesn't do a great job
+        ffmpegInputOptions.push('-ss', (options.seek + 7).toString());
+      }
     }
 
     // Create stream and pipe to capacitor
@@ -372,7 +378,7 @@ export default class {
         const cacheStream = createWriteStream(cacheTempPath);
 
         cacheStream.on('finish', async () => {
-        // Only move if size is non-zero (may have errored out)
+          // Only move if size is non-zero (may have errored out)
           const stats = await fs.stat(cacheTempPath);
 
           if (stats.size !== 0) {

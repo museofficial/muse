@@ -33,7 +33,7 @@ export default class {
     if (msg.content.toLowerCase().includes('bears')) {
       await Promise.all([
         msg.channel.send('F*** THE BEARS'),
-        this.playClip(msg.guild!, {title: 'GO PACKERS!', artist: 'Charlie Berens', url: 'https://www.youtube.com/watch?v=UaqlE9Pyy_Q', length: 385, playlist: null, isLive: false}, 358, 5)
+        this.playClip(msg.guild!, {title: 'GO PACKERS!', artist: 'Charlie Berens', url: 'https://www.youtube.com/watch?v=UaqlE9Pyy_Q', length: 385, playlist: null, isLive: false}, 358, 5.5)
       ]);
 
       return true;

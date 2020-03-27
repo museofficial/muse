@@ -7,7 +7,6 @@ import Command from './commands';
 import debug from './utils/debug';
 import NaturalLanguage from './services/natural-language-commands';
 import handleGuildCreate from './events/guild-create';
-import handleTypingStart from './events/handle-typing-start';
 import handleVoiceStateUpdate from './events/voice-state-update';
 import errorMsg from './utils/error-msg';
 import {isUserInVoice} from './utils/channels';
@@ -105,7 +104,6 @@ export default class {
 
     // Register event handlers
     this.client.on('guildCreate', handleGuildCreate);
-    this.client.on('typingStart', handleTypingStart);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
 
     return this.client.login(this.token);
