@@ -21,5 +21,5 @@ const spotify = container.get<Spotify>(TYPES.Lib.Spotify);
 
   await sequelize.sync({});
 
-  bot.listen();
+  await bot.listen();
 })();

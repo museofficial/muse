@@ -11,7 +11,7 @@ declare module 'ytsr' {
     items: VideoResult[];
   }
 
-  export default function (search: string, options: object): Promise<SearchResult>;
+  export default function (search: string, options: Record<string, unknown>): Promise<SearchResult>;
 }
 
 declare module 'array-shuffle' {
