@@ -188,14 +188,14 @@ export default class {
       const {items} = await ytsr(`"${track.name}" "${track.artists[0].name}" offical`, {limit: 5});
       const video = items.find(item => item.type === 'video');
 
-      if (!video) {
+      if (!video || video.type !== 'video') {
         throw new Error('No video found for query.');
       }
 
       return {
         title: video.title,
         artist: track.artists[0].name,
-        length: parseTime(video.duration),
+        length: video.duration ? parseTime(video.duration) : 0,
         url: video.link,
         playlist,
         isLive: video.live
