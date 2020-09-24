@@ -89,8 +89,8 @@
     "spotify-web-api-node": "^4.0.0",
     "sqlite3": "^5.0.0",
     "unique-random-array": "^2.0.0",
-    "youtube.ts": "^0.1.6",
+    "youtube.ts": "^0.1.8",
     "ytdl-core": "^3.2.2",
-    "ytsr": "^0.1.21"
+    "ytsr": "^1.0.1"
   }
 }
