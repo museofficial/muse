@@ -16,10 +16,10 @@
     "lint": "eslint 'src/**/*.ts'",
     "lint-fix": "eslint 'src/**/*.ts' --fix",
     "clean": "rm -rf dist dts",
-    "test": "yarn lint",
+    "test": "npm run lint",
     "build": "tsc",
     "watch": "tsc --watch",
-    "prepack": "yarn clean && yarn build",
+    "prepack": "npm run clean && npm run build",
     "start": "node dist/index.js",
     "dev": "nodemon",
     "docker-publish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t codetheweb/muse:latest --push ."
@@ -42,6 +42,7 @@
     "husky": "^4.3.0",
     "nodemon": "^2.0.6",
     "reflect-metadata": "^0.1.13",
+    "sqlite3": "^5.0.0",
     "ts-node": "^9.0.0",
     "typescript": "^4.0.3"
   },
@@ -88,7 +89,6 @@
     "sequelize-typescript": "^1.1.0",
     "spotify-uri": "^2.1.0",
     "spotify-web-api-node": "^5.0.0",
-    "sqlite3": "^5.0.0",
     "unique-random-array": "^2.0.0",
     "youtube.ts": "^0.1.8",
     "ytdl-core": "^3.4.2"

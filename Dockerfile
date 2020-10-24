@@ -1,19 +1,33 @@
-FROM jrottenberg/ffmpeg:4.0-scratch
-FROM node:13
+FROM node:14-alpine AS base
 
-# Copy ffmpeg bins
-COPY --from=0 / /
+# Install ffmpeg
+RUN apk add  --no-cache ffmpeg
 
 WORKDIR /usr/app
 
-COPY package.json .
+COPY package* ./
 
-RUN yarn install
+# Dependencies
+FROM base AS dependencies
+
+RUN npm install
+
+# Build app
+FROM dependencies AS builder
 
 COPY . .
 
-RUN yarn run build
+RUN npm run build
+
+RUN ls
+
+# Only copy essentials
+FROM base AS prod
+RUN ls
+COPY --from=builder /usr/app/dist dist
+
+RUN npm i --only=prod
 
 ENV DATA_DIR /data
 
-CMD ["yarn", "start"]
+CMD ["npm", "run", "start"]
