@@ -96,7 +96,7 @@ export default class {
     });
 
     this.client.on('ready', async () => {
-      console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.clientId}&scope=bot`);
+      console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.clientId}&scope=bot&permissions=36760640`);
     });
 
     this.client.on('error', console.error);
