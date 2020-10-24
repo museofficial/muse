@@ -68,6 +68,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["make-dir", "npm:3.1.0"],
             ["node-emoji", "npm:1.10.0"],
             ["nodemon", "npm:2.0.6"],
+            ["p-event", "npm:4.2.0"],
             ["p-limit", "npm:3.0.2"],
             ["reflect-metadata", "npm:0.1.13"],
             ["sequelize", "npm:5.22.3"],
@@ -3220,6 +3221,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["make-dir", "npm:3.1.0"],
             ["node-emoji", "npm:1.10.0"],
             ["nodemon", "npm:2.0.6"],
+            ["p-event", "npm:4.2.0"],
             ["p-limit", "npm:3.0.2"],
             ["reflect-metadata", "npm:0.1.13"],
             ["sequelize", "npm:5.22.3"],
@@ -3584,6 +3586,25 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD",
         }]
       ]],
+      ["p-event", [
+        ["npm:4.2.0", {
+          "packageLocation": "./.yarn/cache/p-event-npm-4.2.0-1d17e9941e-2f57be6597.zip/node_modules/p-event/",
+          "packageDependencies": [
+            ["p-event", "npm:4.2.0"],
+            ["p-timeout", "npm:3.2.0"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["p-finally", [
+        ["npm:1.0.0", {
+          "packageLocation": "./.yarn/cache/p-finally-npm-1.0.0-35fbaa57c6-01f49b2d9c.zip/node_modules/p-finally/",
+          "packageDependencies": [
+            ["p-finally", "npm:1.0.0"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
       ["p-limit", [
         ["npm:2.2.2", {
           "packageLocation": "./.yarn/cache/p-limit-npm-2.2.2-b674d9f268-10cd927c1e.zip/node_modules/p-limit/",
@@ -3608,6 +3629,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["p-locate", "npm:4.1.0"],
             ["p-limit", "npm:2.2.2"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["p-timeout", [
+        ["npm:3.2.0", {
+          "packageLocation": "./.yarn/cache/p-timeout-npm-3.2.0-7fdb33f733-d7e71c1547.zip/node_modules/p-timeout/",
+          "packageDependencies": [
+            ["p-timeout", "npm:3.2.0"],
+            ["p-finally", "npm:1.0.0"]
           ],
           "linkType": "HARD",
         }]

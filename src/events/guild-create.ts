@@ -1,6 +1,8 @@
-import {Guild, MessageReaction, TextChannel, User, Message} from 'discord.js';
+import {Guild, TextChannel, Message} from 'discord.js';
 import emoji from 'node-emoji';
+import pEvent from 'p-event';
 import {Settings} from '../models';
+import {chunk} from '../utils/arrays';
 
 const DEFAULT_PREFIX = '!';
 
@@ -13,6 +15,9 @@ export default async (guild: Guild): Promise<void> => {
   firstStep += 'I just need to ask a few questions before you start listening to music.\n\n';
   firstStep += 'First, what channel should I listen to for music commands?\n\n';
 
+  const firstStepMsg = await owner.send(firstStep);
+
+  // Show emoji selector
   interface EmojiChannel {
     name: string;
     id: string;
@@ -31,23 +36,30 @@ export default async (guild: Guild): Promise<void> => {
     }
   }
 
-  for (const channel of emojiChannels) {
-    firstStep += `${channel.emoji}: #${channel.name}\n`;
-  }
+  const sentMessageIds: string[] = [];
 
-  firstStep += '\n';
+  chunk(emojiChannels, 10).map(async chunk => {
+    let str = '';
+    for (const channel of chunk) {
+      str += `${channel.emoji}: #${channel.name}\n`;
+    }
 
-  // Send message
-  const msg = await owner.send(firstStep);
+    const msg = await owner.send(str);
 
-  // Add reactions
-  for await (const channel of emojiChannels) {
-    await msg.react(channel.emoji);
-  }
+    sentMessageIds.push(msg.id);
 
-  const reactions = await msg.awaitReactions((reaction: MessageReaction, user: User) => user.id !== msg.author.id && emojiChannels.map(e => e.emoji).includes(reaction.emoji.name), {max: 1});
+    await Promise.all(chunk.map(async channel => msg.react(channel.emoji)));
+  });
 
-  const choice = reactions.first() as MessageReaction;
+  // Wait for response from user
+
+  const [choice] = await pEvent(guild.client, 'messageReactionAdd', {
+    multiArgs: true,
+    filter: options => {
+      const [reaction, user] = options;
+      return sentMessageIds.includes(reaction.message.id) && user.id === owner.id;
+    }
+  });
 
   const chosenChannel = emojiChannels.find(e => e.emoji === choice.emoji.name) as EmojiChannel;
 
@@ -57,7 +69,7 @@ export default async (guild: Guild): Promise<void> => {
 
   await owner.send(secondStep);
 
-  const prefixResponses = await msg.channel.awaitMessages((r: Message) => r.content.length === 1, {max: 1});
+  const prefixResponses = await firstStepMsg.channel.awaitMessages((r: Message) => r.content.length === 1, {max: 1});
 
   const prefixCharacter = prefixResponses.first()!.content;
 
@@ -69,5 +81,5 @@ export default async (guild: Guild): Promise<void> => {
 
   await boundChannel.send(`hey <@${owner.id}> try \`${prefixCharacter}play https://www.youtube.com/watch?v=dQw4w9WgXcQ\``);
 
-  await msg.channel.send(`Sounds good. Check out **#${chosenChannel.name}** to get started.`);
+  await firstStepMsg.channel.send(`Sounds good. Check out **#${chosenChannel.name}** to get started.`);
 };

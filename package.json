@@ -82,6 +82,7 @@
     "iso8601-duration": "^1.2.0",
     "make-dir": "^3.1.0",
     "node-emoji": "^1.10.0",
+    "p-event": "^4.2.0",
     "p-limit": "^3.0.2",
     "sequelize": "^5.21.11",
     "sequelize-typescript": "^1.1.0",
