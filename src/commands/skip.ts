@@ -32,7 +32,7 @@ export default class implements Command {
       await player.forward();
 
       await loader.stop('keep \'er movin\'');
-    } catch (_) {
+    } catch (_: unknown) {
       await loader.stop(errorMsg('no song to skip to'));
     }
   }

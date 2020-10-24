@@ -2,8 +2,7 @@ import {TextChannel, Message} from 'discord.js';
 import {URL} from 'url';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
-import {QueuedSong} from '../services/player';
-import {STATUS} from '../services/player';
+import {QueuedSong, STATUS} from '../services/player';
 import PlayerManager from '../managers/player';
 import {getMostPopularVoiceChannel} from '../utils/channels';
 import LoadingMessage from '../utils/loading-message';
@@ -111,7 +110,7 @@ export default class implements Command {
 
         newSongs.push(...convertedSongs);
       }
-    } catch (_) {
+    } catch (_: unknown) {
       // Not a URL, must search YouTube
       const query = args.join(' ');
 

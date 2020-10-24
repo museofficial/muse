@@ -84,7 +84,7 @@ export default class {
 
           resolve();
         }, duration * 1000);
-      } catch (error) {
+      } catch (error: unknown) {
         reject(error);
       }
     });

@@ -2,6 +2,7 @@ data
 .DS_Store
 dist
 dts
+.yarn
 
 # Logs
 logs

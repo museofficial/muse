@@ -141,7 +141,7 @@ export default class {
         this.startTrackingPosition(0);
         this.lastSongURL = currentSong.url;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.removeCurrent();
       throw error;
     }
@@ -171,7 +171,7 @@ export default class {
         this.status = STATUS.PAUSED;
         this.disconnect();
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.queuePosition--;
       throw error;
     }
@@ -282,7 +282,7 @@ export default class {
       await fs.access(this.getCachedPath(url));
 
       return true;
-    } catch (_) {
+    } catch (_: unknown) {
       return false;
     }
   }
@@ -313,7 +313,7 @@ export default class {
       format = formats.find(filter);
 
       const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
-        if (formats[0].live) {
+        if (formats[0].isLive) {
           formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate); // Bad typings
 
           return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10))); // Bad typings
@@ -321,7 +321,13 @@ export default class {
 
         formats = formats
           .filter(format => format.averageBitrate)
-          .sort((a, b) => b.averageBitrate - a.averageBitrate);
+          .sort((a, b) => {
+            if (a && b) {
+              return b.averageBitrate! - a.averageBitrate!;
+            }
+
+            return 0;
+          });
         return formats.find(format => !format.bitrate) ?? formats[0];
       };
 

@@ -29,7 +29,7 @@ export default class {
       const {items: [video]} = await this.youtube.videos.search({q: query, maxResults: 1, type: 'video'});
 
       return await this.youtubeVideo(video.id.videoId);
-    } catch (_) {
+    } catch (_: unknown) {
       return null;
     }
   }
@@ -46,7 +46,7 @@ export default class {
         playlist: null,
         isLive: videoDetails.snippet.liveBroadcastContent === 'live'
       };
-    } catch (_) {
+    } catch (_: unknown) {
       return null;
     }
   }
@@ -200,7 +200,7 @@ export default class {
         playlist,
         isLive: video.live
       };
-    } catch (_) {
+    } catch (_: unknown) {
       return null;
     }
   }

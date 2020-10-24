@@ -28,7 +28,7 @@ export default class implements Command {
       await player.back();
 
       await msg.channel.send('back \'er up\'');
-    } catch (_) {
+    } catch (_: unknown) {
       await msg.channel.send(errorMsg('no song to go back to'));
     }
   }

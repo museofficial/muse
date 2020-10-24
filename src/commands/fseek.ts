@@ -52,8 +52,8 @@ export default class implements Command {
       await player.forwardSeek(seekTime);
 
       await loading.stop();
-    } catch (error) {
-      await loading.stop(errorMsg(error));
+    } catch (error: unknown) {
+      await loading.stop(errorMsg(error as Error));
     }
   }
 }

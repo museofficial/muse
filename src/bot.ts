@@ -89,7 +89,7 @@ export default class {
         }
 
         await handler.execute(msg, args);
-      } catch (error) {
+      } catch (error: unknown) {
         debug(error);
         await msg.channel.send(errorMsg((error as Error).message.toLowerCase()));
       }
