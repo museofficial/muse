@@ -2,7 +2,14 @@ data
 .DS_Store
 dist
 dts
-.yarn
+
+# Yarn
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
 
 # Logs
 logs

@@ -2746,7 +2746,6 @@ fsevents@~2.1.2:
     unique-random-array: ^2.0.0
     youtube.ts: ^0.1.8
     ytdl-core: ^3.4.2
-    ytsr: ^1.0.4
   languageName: unknown
   linkType: soft
 
@@ -4470,15 +4469,5 @@ typescript@^4.0.3:
     miniget: ^2.0.1
     sax: ^1.1.3
   checksum: e7be7d2cf0bcb378e07e67c5490d96344655f213893a8d1dc9b9be9c16a2b07bd6cc2ce17355dcc842b742432bf113581ae965111542598887d182b2e5a3db40
-  languageName: node
-  linkType: hard
-
-"ytsr@npm:^1.0.4":
-  version: 1.0.4
-  resolution: "ytsr@npm:1.0.4"
-  dependencies:
-    html-entities: ^1.3.1
-    miniget: ^2.0.1
-  checksum: 5938a1c278f0eb7cd24c52f0a7827d76a636e24b82fa3ad3762d91a43961b67d864f1ff3b3a9f91ec58347bfd97615f7afb61c2efd1bff735e2cf07d7b6d1b09
   languageName: node
   linkType: hard

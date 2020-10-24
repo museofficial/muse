@@ -79,8 +79,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["typescript", "patch:typescript@npm%3A4.0.3#builtin<compat/typescript>::version=4.0.3&hash=5bf698"],
             ["unique-random-array", "npm:2.0.0"],
             ["youtube.ts", "npm:0.1.8"],
-            ["ytdl-core", "npm:3.4.2"],
-            ["ytsr", "npm:1.0.4"]
+            ["ytdl-core", "npm:3.4.2"]
           ],
           "linkType": "SOFT",
         }]
@@ -3232,8 +3231,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["typescript", "patch:typescript@npm%3A4.0.3#builtin<compat/typescript>::version=4.0.3&hash=5bf698"],
             ["unique-random-array", "npm:2.0.0"],
             ["youtube.ts", "npm:0.1.8"],
-            ["ytdl-core", "npm:3.4.2"],
-            ["ytsr", "npm:1.0.4"]
+            ["ytdl-core", "npm:3.4.2"]
           ],
           "linkType": "SOFT",
         }]
@@ -5120,17 +5118,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["m3u8stream", "npm:0.7.1"],
             ["miniget", "npm:2.0.1"],
             ["sax", "npm:1.2.4"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
-      ["ytsr", [
-        ["npm:1.0.4", {
-          "packageLocation": "./.yarn/cache/ytsr-npm-1.0.4-62724bd203-5938a1c278.zip/node_modules/ytsr/",
-          "packageDependencies": [
-            ["ytsr", "npm:1.0.4"],
-            ["html-entities", "npm:1.3.1"],
-            ["miniget", "npm:2.0.1"]
           ],
           "linkType": "HARD",
         }]
