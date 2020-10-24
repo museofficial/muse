@@ -4,13 +4,11 @@ import {toSeconds, parse} from 'iso8601-duration';
 import got from 'got';
 import spotifyURI from 'spotify-uri';
 import Spotify from 'spotify-web-api-node';
-import ytsr from 'ytsr';
 import YouTube from 'youtube.ts';
 import pLimit from 'p-limit';
 import uniqueRandomArray from 'unique-random-array';
 import {QueuedSong, QueuedPlaylist} from '../services/player';
 import {TYPES} from '../types';
-import {parseTime} from '../utils/time';
 
 @injectable()
 export default class {
@@ -183,23 +181,16 @@ export default class {
     return [songs as QueuedSong[], nSongsNotFound, originalNSongs];
   }
 
-  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, playlist: QueuedPlaylist | null): Promise<QueuedSong | null> {
+  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSong | null> {
     try {
-      const {items} = await ytsr(`"${track.name}" "${track.artists[0].name}" offical`, {limit: 5});
-      const video = items.find(item => item.type === 'video');
+      const {items} = await this.youtube.videos.search({q: `"${track.name}" "${track.artists[0].name}"`, maxResults: 10});
+      const videoResult = items[0]; // Items.find(item => item.type === 'video');
 
-      if (!video || video.type !== 'video') {
+      if (!videoResult) {
         throw new Error('No video found for query.');
       }
 
-      return {
-        title: video.title,
-        artist: track.artists[0].name,
-        length: video.duration ? parseTime(video.duration) : 0,
-        url: video.link,
-        playlist,
-        isLive: video.live
-      };
+      return await this.youtubeVideo(videoResult.id.videoId);
     } catch (_: unknown) {
       return null;
     }

@@ -83,7 +83,7 @@ export default class {
     }
 
     const stream = await this.getStream(currentSong.url, {seek: positionSeconds});
-    this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
+    this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus', bitrate: 'auto'});
 
     this.attachListeners();
     this.startTrackingPosition(positionSeconds);
