@@ -19,11 +19,9 @@ COPY . .
 
 RUN npm run build
 
-RUN ls
-
 # Only copy essentials
 FROM base AS prod
-RUN ls
+
 COPY --from=builder /usr/app/dist dist
 
 RUN npm i --only=prod
