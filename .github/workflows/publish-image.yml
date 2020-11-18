@@ -41,5 +41,5 @@ jobs:
               env:
                 DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
                 DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-                DOCKERHUB_REPOSITORY: peterevans/dockerhub-description
+                DOCKERHUB_REPOSITORY: codetheweb/muse
             
