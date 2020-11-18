@@ -1,0 +1,25 @@
+name: Lint & build
+
+on: 'push'
+
+jobs:
+    build:
+        name: Lint & build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v1
+            - name: Cache dependencies
+              uses: actions/cache@v1
+              with:
+                path: ./node_modules
+                key: ${{ runner.OS }}-dependencies-${{ hashFiles('**/yarn.lock') }}
+                restore-keys: |
+                    ${{ runner.OS }}-dependencies-${{ env.cache-name }}-
+                    ${{ runner.OS }}-dependencies-
+                    ${{ runner.OS }}-
+            - name: Install dependencies
+              run: yarn install
+            - name: Run lint
+              run: yarn lint
+            - name: Build
+              run: yarn build
