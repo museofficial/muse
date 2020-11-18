@@ -25,7 +25,7 @@
     "docker-publish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t codetheweb/muse:latest --push ."
   },
   "devDependencies": {
-    "@types/bluebird": "^3.5.32",
+    "@types/bluebird": "^3.5.33",
     "@types/debug": "^4.1.5",
     "@types/fluent-ffmpeg": "^2.1.16",
     "@types/fs-capacitor": "^2.0.0",
