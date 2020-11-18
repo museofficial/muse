@@ -31,7 +31,7 @@ jobs:
               with:
                 push: true
                 tags: codetheweb/muse:latest
-                platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
+                platforms: linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
                 
             - name: Update Docker Hub description
               uses: peter-evans/dockerhub-description@v2.1.0
