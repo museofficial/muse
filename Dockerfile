@@ -7,9 +7,13 @@ WORKDIR /usr/app
 
 COPY package* ./
 
+# Install prod dependencies
+RUN npm i --only=prod
+
 # Dependencies
 FROM base AS dependencies
 
+# Install dev dependencies
 RUN npm install
 
 # Build app
@@ -23,8 +27,6 @@ RUN npm run build
 FROM base AS prod
 
 COPY --from=builder /usr/app/dist dist
-
-RUN npm i --only=prod
 
 ENV DATA_DIR /data
 
