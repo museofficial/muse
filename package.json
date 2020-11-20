@@ -68,7 +68,7 @@
   "dependencies": {
     "@discordjs/opus": "^0.3.3",
     "array-shuffle": "^1.0.1",
-    "debug": "^4.2.0",
+    "debug": "^4.3.1",
     "delay": "^4.4.0",
     "discord.js": "^12.4.1",
     "dotenv": "^8.2.0",
