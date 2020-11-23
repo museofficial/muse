@@ -1791,12 +1791,12 @@ lowercase-keys@^2.0.0:
   resolved "https://registry.yarnpkg.com/lowercase-keys/-/lowercase-keys-2.0.0.tgz#2603e78b7b4b0006cbca2fbcc8a3202558ac9479"
   integrity sha512-tqNXrS78oMOE73NMxK4EMLQsQowWf8jKooH9g7xPavRT706R6bkQJ6DY2Te7QukaZsulxa30wQ7bk0pm4XiHmA==
 
-m3u8stream@^0.8.1:
-  version "0.8.1"
-  resolved "https://registry.yarnpkg.com/m3u8stream/-/m3u8stream-0.8.1.tgz#a1528f2d8901375171c41c33b6727c6df277bdda"
-  integrity sha512-fzjOzn+eYHbHLaTg0R4BCvyKOl24a7fNnhFc/B2zKX3BilD7sHMTipcMDXjbKKqAgJZWbAe2sktDRaTD5KVb3g==
+m3u8stream@^0.8.2:
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/m3u8stream/-/m3u8stream-0.8.2.tgz#dacbe291a9a35140d81f24820a54abf172c4ee9f"
+  integrity sha512-UxOH/35QF12fnqdP8pQ3CJ2SLpjSl32DSSnC0kLdqUBkVgwvWfMIY1X816KC4Ulyzf/tZy8OYijqvdTQMiKurg==
   dependencies:
-    miniget "^3.0.0"
+    miniget "^4.0.0"
     sax "^1.2.4"
 
 make-dir@^3.0.0, make-dir@^3.1.0:
@@ -1856,10 +1856,10 @@ mimic-response@^3.1.0:
   resolved "https://registry.yarnpkg.com/mimic-response/-/mimic-response-3.1.0.tgz#2d1d59af9c1b129815accc2c46a022a5ce1fa3c9"
   integrity sha512-z0yWI+4FDrrweS8Zmt4Ej5HdJmky15+L2e6Wgn3+iK5fWzb6T3fhNFq2+MeTRb064c6Wr4N/wv0DzQTjNzHNGQ==
 
-miniget@^3.0.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/miniget/-/miniget-3.1.0.tgz#ce9b1059062d63dfe23620774654f4feb608fcb4"
-  integrity sha512-cf18w/CV7RIgGbsi8jg5gmrrrgziLPk3KzC3bWAZW58Rrunlii75eSKPZVAoG7XGA86AYitzY+8Z0j4pafydmw==
+miniget@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/miniget/-/miniget-4.0.0.tgz#3526259d19bb650278424ec2f1a9f6d23137c556"
+  integrity sha512-2ABQKSjxOqXcrHdD2yKM7G7VAlBkgMcgoFMlACJ4is6rAJtcB/LvvasJU43NqjoCnAGk72jFP/H6qCjWXwJwlA==
 
 minimatch@^3.0.4:
   version "3.0.4"
@@ -3142,12 +3142,12 @@ youtube.ts@^0.1.9:
     axios "^0.19.0"
     ytdl-core "^4.0.3"
 
-ytdl-core@^4.0.3, ytdl-core@^4.0.5:
-  version "4.0.5"
-  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.0.5.tgz#de7c00537c4f7c4f80792540bfc5c68edce48b21"
-  integrity sha512-pMs7S5tCs7SKxVWV9NJ5Fe+arzxV3aFtznecoVHjQtwcyjbQ8wZivQ0Y7FpZWsYW1WApDs2VxteEqT9VWw0yDQ==
+ytdl-core@^4.0.3, ytdl-core@^4.0.6:
+  version "4.0.6"
+  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.0.6.tgz#910151c87b010917aee0882e7a26214955de138b"
+  integrity sha512-QFFtwaY3D8FErr3kM71zpQlUzONabyzZrhNpO3b/Ies9Z+4hKI4zuM8AGPG5nOW0PKkyCXscKPW9K4CzPuhUkA==
   dependencies:
     html-entities "^1.3.1"
-    m3u8stream "^0.8.1"
-    miniget "^3.0.0"
+    m3u8stream "^0.8.2"
+    miniget "^4.0.0"
     sax "^1.1.3"
