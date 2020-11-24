@@ -34,7 +34,7 @@
     "@types/spotify-web-api-node": "^4.0.2",
     "@types/validator": "^13.1.0",
     "@types/ws": "^7.4.0",
-    "@typescript-eslint/eslint-plugin": "^4.8.1",
+    "@typescript-eslint/eslint-plugin": "^4.8.2",
     "@typescript-eslint/parser": "^4.8.2",
     "eslint": "^7.14.0",
     "eslint-config-xo": "^0.33.1",
