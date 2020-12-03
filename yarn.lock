@@ -405,10 +405,10 @@ argparse@^1.0.7:
   dependencies:
     sprintf-js "~1.0.2"
 
-array-shuffle@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/array-shuffle/-/array-shuffle-1.0.1.tgz#7ea4882a356b4bca5f545e0b6e52eaf6d971557a"
-  integrity sha1-fqSIKjVrS8pfVF4LblLq9tlxVXo=
+array-shuffle@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/array-shuffle/-/array-shuffle-2.0.0.tgz#fd36437cd7997d557055283c946e46379a7cd343"
+  integrity sha512-rJTchCppiO6QsQnN51KDH1cgMYm13B+ybxFS5GgdBdTTHpZcrq3M7SOBgzp+L9fqqnjkFDiwdEVcX1wINgl9DQ==
 
 array-union@^2.1.0:
   version "2.1.0"
