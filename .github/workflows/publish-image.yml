@@ -27,6 +27,11 @@ jobs:
               with:
                 username: ${{ secrets.DOCKERHUB_USERNAME }}
                 password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            - name: Limit concurrent builds to 1
+              uses: softprops/turnstyle@v1
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                 
             - name: Build and push
               id: docker_build
