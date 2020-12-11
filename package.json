@@ -75,7 +75,7 @@
     "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^6.2.0",
     "get-youtube-id": "^1.0.1",
-    "got": "^11.8.0",
+    "got": "^11.8.1",
     "hasha": "^5.2.2",
     "inversify": "^5.0.5",
     "iso8601-duration": "^1.3.0",
