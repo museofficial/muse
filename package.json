@@ -91,6 +91,6 @@
     "sqlite3": "^5.0.0",
     "unique-random-array": "^2.0.0",
     "youtube.ts": "^0.1.9",
-    "ytdl-core": "^4.1.4"
+    "ytdl-core": "^4.1.5"
   }
 }
