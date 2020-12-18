@@ -3133,10 +3133,10 @@ youtube.ts@^0.1.9:
     axios "^0.19.0"
     ytdl-core "^4.0.3"
 
-ytdl-core@^4.0.3, ytdl-core@^4.1.7:
-  version "4.1.7"
-  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.1.7.tgz#25ef424331682fbe7c3f71d81bbe2989ece53104"
-  integrity sha512-y0n0yejRIHljs8xM4v5SLB1WZeEhx4ZGJMEGHJurimu0ISqP91au+kFH8w9t31dWBca6hkhhnpFcFIz2xu2g4Q==
+ytdl-core@^4.0.3, ytdl-core@^4.2.0:
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.2.0.tgz#911c4a997c422ec12a5174e05e97008496948f99"
+  integrity sha512-DYXdooKcok4yuAHg6YdcSppGBWleBQ5nwxFDXArLv3Iiu0GcsfDQdJEjz2zm0oHA292mMyaRb17EYGdcU8D3hw==
   dependencies:
     m3u8stream "^0.8.3"
     miniget "^4.0.0"
