@@ -40,6 +40,8 @@ jobs:
                 push: true
                 tags: codetheweb/muse:latest
                 platforms: linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
+                cache-from: type=local,src=/tmp/.buildx-cache
+                cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
                 
             - name: Update Docker Hub description
               uses: peter-evans/dockerhub-description@v2.1.0
