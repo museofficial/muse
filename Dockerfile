@@ -5,7 +5,8 @@ RUN apk add --no-cache ffmpeg python make g++
 
 WORKDIR /usr/app
 
-COPY package* ./
+COPY package.json .
+COPY yarn.lock .
 
 # Install prod dependencies
 RUN yarn install --prod
