@@ -88,7 +88,7 @@
     "sequelize-typescript": "^1.1.0",
     "spotify-uri": "^2.1.0",
     "spotify-web-api-node": "^5.0.2",
-    "sqlite3": "^5.0.1",
+    "sqlite3": "^5.0.2",
     "unique-random-array": "^2.0.0",
     "youtube.ts": "^0.1.9",
     "ytdl-core": "^4.4.5"
