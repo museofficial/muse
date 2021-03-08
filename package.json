@@ -29,7 +29,7 @@
     "@types/debug": "^4.1.5",
     "@types/fluent-ffmpeg": "^2.1.16",
     "@types/fs-capacitor": "^2.0.0",
-    "@types/node": "^14.14.31",
+    "@types/node": "^14.14.32",
     "@types/node-emoji": "^1.8.1",
     "@types/spotify-web-api-node": "^4.0.2",
     "@types/validator": "^13.1.3",
