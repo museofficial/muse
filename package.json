@@ -86,7 +86,7 @@
     "reflect-metadata": "^0.1.13",
     "sequelize": "^5.22.4",
     "sequelize-typescript": "^1.1.0",
-    "spotify-uri": "^2.1.0",
+    "spotify-uri": "^2.2.0",
     "spotify-web-api-node": "^5.0.2",
     "sqlite3": "^5.0.2",
     "unique-random-array": "^2.0.0",
