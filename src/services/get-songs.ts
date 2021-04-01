@@ -4,7 +4,7 @@ import {toSeconds, parse} from 'iso8601-duration';
 import got from 'got';
 import spotifyURI from 'spotify-uri';
 import Spotify from 'spotify-web-api-node';
-import YouTube, {YoutubePlaylistItem, YoutubePlaylistItemsSearch} from 'youtube.ts';
+import YouTube, {YoutubePlaylistItem} from 'youtube.ts';
 import pLimit from 'p-limit';
 import uniqueRandomArray from 'unique-random-array';
 import {QueuedSong, QueuedPlaylist} from '../services/player';
@@ -68,9 +68,8 @@ export default class {
     let nextToken: string | undefined;
 
     while (playlistVideos.length !== playlist.contentDetails.itemCount) {
-      // TODO: https://github.com/Tenpi/youtube.ts/pull/7
       // eslint-disable-next-line no-await-in-loop
-      const {items, nextPageToken} = (await this.youtube.playlists.items(listId, {maxResults: '50', pageToken: nextToken})) as YoutubePlaylistItemsSearch & {nextPageToken: string | undefined};
+      const {items, nextPageToken} = await this.youtube.playlists.items(listId, {maxResults: '50', pageToken: nextToken});
 
       nextToken = nextPageToken;
 
