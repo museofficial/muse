@@ -4,7 +4,7 @@ import {toSeconds, parse} from 'iso8601-duration';
 import got from 'got';
 import spotifyURI from 'spotify-uri';
 import Spotify from 'spotify-web-api-node';
-import YouTube from 'youtube.ts';
+import YouTube, {YoutubePlaylistItem, YoutubePlaylistItemsSearch} from 'youtube.ts';
 import pLimit from 'p-limit';
 import uniqueRandomArray from 'unique-random-array';
 import {QueuedSong, QueuedPlaylist} from '../services/player';
@@ -52,9 +52,8 @@ export default class {
   async youtubePlaylist(listId: string): Promise<QueuedSong[]> {
     // YouTube playlist
     const playlist = await this.youtube.playlists.get(listId);
-    const {items} = await this.youtube.playlists.items(listId, {maxResults: '50'});
 
-    interface videoResult {
+    interface VideoDetailsResponse {
       id: string;
       contentDetails: {
         videoId: string;
@@ -62,27 +61,58 @@ export default class {
       };
     }
 
-    // Unfortunately, package doesn't provide a method for this
-    const {items: videos}: {items: videoResult[]} = await got('https://www.googleapis.com/youtube/v3/videos', {searchParams: {
-      part: 'contentDetails',
-      id: items.map(item => item.contentDetails.videoId).join(','),
-      key: this.youtubeKey
-    }}).json();
+    const playlistVideos: YoutubePlaylistItem[] = [];
+    const videoDetailsPromises: Array<Promise<void>> = [];
+    const videoDetails: VideoDetailsResponse[] = [];
+
+    let nextToken: string | undefined;
+
+    while (playlistVideos.length !== playlist.contentDetails.itemCount) {
+      // TODO: https://github.com/Tenpi/youtube.ts/pull/7
+      // eslint-disable-next-line no-await-in-loop
+      const {items, nextPageToken} = (await this.youtube.playlists.items(listId, {maxResults: '50', pageToken: nextToken})) as YoutubePlaylistItemsSearch & {nextPageToken: string | undefined};
+
+      nextToken = nextPageToken;
+
+      playlistVideos.push(...items);
+
+      // Start fetching extra details about videos
+      videoDetailsPromises.push((async () => {
+        // Unfortunately, package doesn't provide a method for this
+        const {items: videoDetailItems}: {items: VideoDetailsResponse[]} = await got('https://www.googleapis.com/youtube/v3/videos', {searchParams: {
+          part: 'contentDetails',
+          id: items.map(item => item.contentDetails.videoId).join(','),
+          key: this.youtubeKey
+        }}).json();
+
+        videoDetails.push(...videoDetailItems);
+      })());
+    }
+
+    await Promise.all(videoDetailsPromises);
 
     const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
 
-    return items.map(video => {
-      const length = toSeconds(parse(videos.find((i: { id: string }) => i.id === video.contentDetails.videoId)!.contentDetails.duration));
+    const songsToReturn: QueuedSong[] = [];
 
-      return {
-        title: video.snippet.title,
-        artist: video.snippet.channelTitle,
-        length,
-        url: video.contentDetails.videoId,
-        playlist: queuedPlaylist,
-        isLive: false
-      };
-    });
+    for (let video of playlistVideos) {
+      try {
+        const length = toSeconds(parse(videoDetails.find((i: { id: string }) => i.id === video.contentDetails.videoId)!.contentDetails.duration));
+
+        songsToReturn.push({
+          title: video.snippet.title,
+          artist: video.snippet.channelTitle,
+          length,
+          url: video.contentDetails.videoId,
+          playlist: queuedPlaylist,
+          isLive: false
+        });
+      } catch (_: unknown) {
+        // Private and deleted videos are sometimes in playlists, duration of these is not returned and they should not be added to the queue.
+      }
+    }
+
+    return songsToReturn;
   }
 
   async spotifySource(url: string): Promise<[QueuedSong[], number, number]> {
