@@ -63,7 +63,7 @@ export default class {
     if (isPlaying) {
       oldPosition = player.getPosition();
 
-      player.manualForward();
+      player.manualForward(1);
     }
 
     await player.seek(position);

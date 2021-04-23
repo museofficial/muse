@@ -161,8 +161,8 @@ export default class {
     this.stopTrackingPosition();
   }
 
-  async forward(): Promise<void> {
-    this.manualForward();
+  async forward(skip: number): Promise<void> {
+    this.manualForward(skip);
 
     try {
       if (this.getCurrent() && this.status !== STATUS.PAUSED) {
@@ -177,9 +177,9 @@ export default class {
     }
   }
 
-  manualForward(): void {
-    if (this.queuePosition < this.queue.length) {
-      this.queuePosition++;
+  manualForward(skip: number): void {
+    if ((this.queuePosition + skip - 1) < this.queue.length) {
+      this.queuePosition += skip;
       this.positionInSeconds = 0;
       this.stopTrackingPosition();
     } else {
@@ -440,7 +440,7 @@ export default class {
   private async onVoiceConnectionSpeaking(isSpeaking: boolean): Promise<void> {
     // Automatically advance queued song at end
     if (!isSpeaking && this.status === STATUS.PLAYING) {
-      await this.forward();
+      await this.forward(1);
     }
   }
 }

@@ -11,7 +11,8 @@ export default class implements Command {
   public name = 'skip';
   public aliases = ['s'];
   public examples = [
-    ['skip', 'skips the current song']
+    ['skip', 'skips the current song'],
+    ['skip 2', 'skips the next 2 songs']
   ];
 
   public requiresVC = true;
@@ -22,14 +23,22 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async execute(msg: Message, _: string []): Promise<void> {
+  public async execute(msg: Message, args: string []): Promise<void> {
+    let numToSkip = 1;
+
+    if (args.length === 1) {
+      if (!Number.isNaN(parseInt(args[0], 10))) {
+        numToSkip = parseInt(args[0], 10);
+      }
+    }
+
     const player = this.playerManager.get(msg.guild!.id);
 
     const loader = new LoadingMessage(msg.channel as TextChannel);
 
     try {
       await loader.start();
-      await player.forward();
+      await player.forward(numToSkip);
 
       await loader.stop('keep \'er movin\'');
     } catch (_: unknown) {
