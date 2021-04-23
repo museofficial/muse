@@ -27,22 +27,22 @@
   "devDependencies": {
     "@types/bluebird": "^3.5.33",
     "@types/debug": "^4.1.5",
-    "@types/fluent-ffmpeg": "^2.1.16",
+    "@types/fluent-ffmpeg": "^2.1.17",
     "@types/fs-capacitor": "^2.0.0",
-    "@types/node": "^14.14.37",
+    "@types/node": "^14.14.41",
     "@types/node-emoji": "^1.8.1",
     "@types/spotify-web-api-node": "^4.0.2",
     "@types/validator": "^13.1.3",
-    "@types/ws": "^7.4.0",
-    "@typescript-eslint/eslint-plugin": "^4.20.0",
-    "@typescript-eslint/parser": "^4.20.0",
-    "eslint": "^7.23.0",
+    "@types/ws": "^7.4.1",
+    "@typescript-eslint/eslint-plugin": "^4.22.0",
+    "@typescript-eslint/parser": "^4.22.0",
+    "eslint": "^7.24.0",
     "eslint-config-xo": "^0.35.0",
     "eslint-config-xo-typescript": "^0.36.0",
     "husky": "^4.3.8",
     "nodemon": "^2.0.7",
     "ts-node": "^9.1.1",
-    "typescript": "^4.2.3"
+    "typescript": "^4.2.4"
   },
   "eslintConfig": {
     "extends": [
@@ -70,7 +70,7 @@
     "array-shuffle": "^2.0.0",
     "debug": "^4.3.1",
     "delay": "^5.0.0",
-    "discord.js": "^12.5.1",
+    "discord.js": "^12.5.3",
     "dotenv": "^8.2.0",
     "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^6.2.0",
