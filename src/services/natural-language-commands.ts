@@ -39,6 +39,15 @@ export default class {
       return true;
     }
 
+    if (msg.content.toLowerCase().includes('bitconnect')) {
+      await Promise.all([
+        msg.channel.send('🌊 🌊 🌊 🌊'),
+        this.playClip(msg.guild!, {title: 'BITCONNEEECCT', artist: 'Carlos Matos', url: 'https://www.youtube.com/watch?v=lCcwn6bGUtU', length: 227, playlist: null, isLive: false}, 50, 13)
+      ]);
+
+      return true;
+    }
+
     return false;
   }
 
