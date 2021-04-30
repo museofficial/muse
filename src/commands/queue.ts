@@ -35,7 +35,9 @@ export default class implements Command {
       const queueSize = player.queueSize();
       const queuePage = args[0] ? parseInt(args[0], 10) : 1;
 
-      if (queuePage * PAGE_SIZE > queueSize && queuePage > Math.ceil((queueSize + 1) / PAGE_SIZE)) {
+      const maxQueuePage = Math.ceil((queueSize + 1) / PAGE_SIZE);
+
+      if (queuePage > maxQueuePage) {
         await msg.channel.send(errorMsg('the queue isn\'t that big'));
         return;
       }
@@ -69,6 +71,8 @@ export default class implements Command {
       player.getQueue().slice(queuePageBegin, queuePageEnd).forEach((song, i) => {
         embed.addField(`${(i + 1 + queuePageBegin).toString()}/${queueSize.toString()}`, song.title, false);
       });
+
+      embed.addField('Page', `${queuePage} out of ${maxQueuePage}`, false);
 
       await msg.channel.send(embed);
     } else {

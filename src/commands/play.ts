@@ -21,7 +21,9 @@ export default class implements Command {
     ['play https://www.youtube.com/watch?list=PLi9drqWffJ9FWBo7ZVOiaVy0UQQEm4IbP', 'adds the playlist to the queue'],
     ['play https://open.spotify.com/track/3ebXMykcMXOcLeJ9xZ17XH?si=tioqSuyMRBWxhThhAW51Ig', 'plays a song from Spotify'],
     ['play https://open.spotify.com/album/5dv1oLETxdsYOkS2Sic00z?si=bDa7PaloRx6bMIfKdnvYQw', 'adds all songs from album to the queue'],
-    ['play https://open.spotify.com/playlist/37i9dQZF1DX94qaYRnkufr?si=r2fOVL_QQjGxFM5MWb84Xw', 'adds all songs from playlist to the queue']
+    ['play https://open.spotify.com/playlist/37i9dQZF1DX94qaYRnkufr?si=r2fOVL_QQjGxFM5MWb84Xw', 'adds all songs from playlist to the queue'],
+    ['play cool music immediate', 'adds the first search result for "cool music" to the front of the queue'],
+    ['play cool music i', 'adds the first search result for "cool music" to the front of the queue']
   ];
 
   public requiresVC = true;
@@ -63,6 +65,8 @@ export default class implements Command {
       await res.stop('the stop-and-go light is now green');
       return;
     }
+
+    const addToFrontOfQueue = args[args.length - 1] === 'i' || args[args.length - 1] === 'immediate';
 
     const newSongs: QueuedSong[] = [];
     let extraMsg = '';
@@ -112,7 +116,7 @@ export default class implements Command {
       }
     } catch (_: unknown) {
       // Not a URL, must search YouTube
-      const query = args.join(' ');
+      const query = addToFrontOfQueue ? args.slice(0, args.length - 1).join(' ') : args.join(' ');
 
       const song = await this.getSongs.youtubeVideoSearch(query);
 
@@ -129,7 +133,7 @@ export default class implements Command {
       return;
     }
 
-    newSongs.forEach(song => player.add(song));
+    newSongs.forEach(song => player.add(song, {immediate: addToFrontOfQueue}));
 
     const firstSong = newSongs[0];
 
@@ -138,7 +142,7 @@ export default class implements Command {
     }
 
     if (newSongs.length === 1) {
-      await res.stop(`u betcha, **${firstSong.title}** added to the queue${extraMsg}`);
+      await res.stop(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
     } else {
       await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
     }
