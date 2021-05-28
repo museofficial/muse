@@ -3023,17 +3023,17 @@ undefsafe@^2.0.3:
   dependencies:
     debug "^2.2.0"
 
-unique-random-array@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/unique-random-array/-/unique-random-array-2.0.0.tgz#9e639b1a9dc141e97350a6fc6f17da4b0717b1ad"
-  integrity sha512-xR87O95fZ7hljw84J8r1YDXrvffPLWN513BNOP4Bv0KcgG5dyEUrHwsvP7mVAOKg4Y80uqRbpUk0GKr8il70qg==
+unique-random-array@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/unique-random-array/-/unique-random-array-3.0.0.tgz#db0c11c885d674c39050a79cf25d11b09ff97c22"
+  integrity sha512-AETNmMf8dV7VfCu4pM5SO1nKkZZp3lZsbHk9VxkvR2ZjMYy4mzWwzez0g+ZtYIr+RaVH+UN8A003E7woM/ud7Q==
   dependencies:
-    unique-random "^2.1.0"
+    unique-random "^3.0.0"
 
-unique-random@^2.1.0:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/unique-random/-/unique-random-2.1.0.tgz#7a8413da5176d028567168b57125ac5c0cec5c25"
-  integrity sha512-iQ1ZgWac3b8YxGThecQFRQiqgk6xFERRwHZIWeVVsqlbmgCRl0PY13R4mUkodNgctmg5b5odG1nyW/IbOxQTqg==
+unique-random@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/unique-random/-/unique-random-3.0.0.tgz#ddf20e62d2f5af1dbd606602fb5b5821588c8469"
+  integrity sha512-4vjtE3pH6xO5OmsSmjc6KPgHy2rbCw66BbMRLIyXkuq+WzOKA1oNkqQ+Y7Lh+sE0DrOrWMSpFkivhhzCF7J6HA==
 
 unique-string@^2.0.0:
   version "2.0.0"
