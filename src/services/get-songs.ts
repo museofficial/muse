@@ -6,7 +6,7 @@ import spotifyURI from 'spotify-uri';
 import Spotify from 'spotify-web-api-node';
 import YouTube, {YoutubePlaylistItem} from 'youtube.ts';
 import pLimit from 'p-limit';
-import uniqueRandomArray from 'unique-random-array';
+import shuffle from 'array-shuffle';
 import {QueuedSong, QueuedPlaylist} from '../services/player';
 import {TYPES} from '../types';
 
@@ -182,12 +182,9 @@ export default class {
     const originalNSongs = tracks.length;
 
     if (tracks.length > 50) {
-      const random = uniqueRandomArray(tracks);
+      const shuffled = shuffle(tracks);
 
-      tracks = [];
-      for (let i = 0; i < 50; i++) {
-        tracks.push(random());
-      }
+      tracks = shuffled.slice(0, 50);
     }
 
     // Limit concurrency so hopefully we don't get banned for searching
