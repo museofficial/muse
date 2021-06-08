@@ -1028,10 +1028,10 @@ escape-string-regexp@^4.0.0:
   resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-4.0.0.tgz#14ba83a5d373e3d311e5afca29cf5bfad965bf34"
   integrity sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==
 
-eslint-config-xo-typescript@^0.36.0:
-  version "0.36.0"
-  resolved "https://registry.yarnpkg.com/eslint-config-xo-typescript/-/eslint-config-xo-typescript-0.36.0.tgz#4161d6342198c176f7264e76fc5fab20dfcc021e"
-  integrity sha512-wze9CboL9XHj4KRfqFedXjsJ9yM7iiJJnnVgiXJWdwzPXewFfdIUWHQVRoEYjGZ94cA8kVBkKnTCp8pi3EU3HQ==
+eslint-config-xo-typescript@^0.41.1:
+  version "0.41.1"
+  resolved "https://registry.yarnpkg.com/eslint-config-xo-typescript/-/eslint-config-xo-typescript-0.41.1.tgz#1f30f76fe220577b2a742269a3ad6120fc2f4c76"
+  integrity sha512-MiO3vyF5CRhGwEwNmwq+7PPgc1kYsDCQyt010vXOQJTXbJctjRytzvE8fFgs4X7MCjgtkj1sgrhDyZPVICjAAA==
 
 eslint-config-xo@^0.35.0:
   version "0.35.0"
