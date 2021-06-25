@@ -1,0 +1,32 @@
+version: 2
+updates:
+- package-ecosystem: npm
+  directory: "/"
+  schedule:
+    interval: daily
+    time: "10:00"
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: "@types/node"
+    versions:
+    - 15.0.0
+  - dependency-name: eslint-config-xo-typescript
+    versions:
+    - 0.37.0
+    - 0.38.0
+    - 0.39.0
+  - dependency-name: husky
+    versions:
+    - 5.0.9
+    - 5.1.0
+    - 5.1.1
+    - 5.1.2
+    - 5.1.3
+    - 5.2.0
+  - dependency-name: "@types/spotify-web-api-node"
+    versions:
+    - 5.0.0
+    - 5.0.1
+  - dependency-name: "@discordjs/opus"
+    versions:
+    - 0.4.0
