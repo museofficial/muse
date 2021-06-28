@@ -90,6 +90,6 @@
     "spotify-web-api-node": "^5.0.2",
     "sqlite3": "^5.0.2",
     "youtube.ts": "^0.2.0",
-    "ytdl-core": "^4.8.2"
+    "ytdl-core": "^4.8.3"
   }
 }
