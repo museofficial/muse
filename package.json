@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.35",
-    "@types/debug": "^4.1.5",
+    "@types/debug": "^4.1.7",
     "@types/fluent-ffmpeg": "^2.1.17",
     "@types/fs-capacitor": "^2.0.0",
     "@types/node": "^14.14.41",
