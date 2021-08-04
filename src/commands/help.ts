@@ -55,7 +55,7 @@ export default class implements Command {
       return content;
     }, '');
 
-    await msg.author.send(res);
+    await msg.author.send(res, {split: true});
     await msg.react('🇩');
     await msg.react('🇲');
   }
