@@ -31,18 +31,18 @@
     "@types/fs-capacitor": "^2.0.0",
     "@types/node": "^14.14.41",
     "@types/node-emoji": "^1.8.1",
-    "@types/spotify-web-api-node": "^4.0.2",
-    "@types/validator": "^13.1.3",
+    "@types/spotify-web-api-node": "^5.0.2",
+    "@types/validator": "^13.1.4",
     "@types/ws": "^7.4.4",
     "@typescript-eslint/eslint-plugin": "^4.25.0",
-    "@typescript-eslint/parser": "^4.25.0",
-    "eslint": "^7.27.0",
+    "@typescript-eslint/parser": "^4.26.1",
+    "eslint": "^7.28.0",
     "eslint-config-xo": "^0.35.0",
     "eslint-config-xo-typescript": "^0.36.0",
     "husky": "^4.3.8",
     "nodemon": "^2.0.7",
     "ts-node": "^9.1.1",
-    "typescript": "^4.3.2"
+    "typescript": "^4.3.4"
   },
   "eslintConfig": {
     "extends": [
@@ -66,7 +66,7 @@
     }
   },
   "dependencies": {
-    "@discordjs/opus": "^0.5.0",
+    "@discordjs/opus": "^0.5.3",
     "array-shuffle": "^2.0.0",
     "debug": "^4.3.1",
     "delay": "^5.0.0",
@@ -90,6 +90,6 @@
     "spotify-web-api-node": "^5.0.2",
     "sqlite3": "^5.0.2",
     "youtube.ts": "^0.2.0",
-    "ytdl-core": "^4.8.2"
+    "ytdl-core": "^4.8.3"
   }
 }
