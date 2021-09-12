@@ -64,15 +64,17 @@ export default class {
 
     this.isStopped = true;
 
-    if (str) {
-      if (wasAlreadyStopped) {
-        await this.msg.edit(str);
-      } else {
-        await Promise.all([this.msg.reactions.removeAll(), this.msg.edit(str)]);
-      }
-    } else {
-      await this.msg.reactions.removeAll();
-    }
+    const editPromise = str ? this.msg.edit(str) : null;
+    const reactPromise = str && !wasAlreadyStopped ? (async () => {
+      await this.msg.fetch();
+      await Promise.all(this.msg.reactions.cache.map(async react => {
+        if (react.me) {
+          await react.users.remove(this.msg.client.user!.id);
+        }
+      }));
+    })() : null;
+
+    await Promise.all([editPromise, reactPromise]);
 
     return this.msg;
   }
