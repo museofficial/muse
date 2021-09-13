@@ -1,4 +1,4 @@
-import {TextChannel, Message} from 'discord.js';
+import {TextChannel, Message, MessageReaction} from 'discord.js';
 import delay from 'delay';
 
 const INITAL_DELAY = 500;
@@ -20,7 +20,7 @@ export default class {
 
     const icons = ['🐮', '🐴', '🐄'];
 
-    const reactions = [];
+    const reactions: MessageReaction[] = [];
 
     let i = 0;
     let isRemoving = false;
