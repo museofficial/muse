@@ -43,7 +43,7 @@ export default class {
 
           if (reactionToRemove) {
             // eslint-disable-next-line no-await-in-loop
-            await reactionToRemove.remove();
+            await reactionToRemove.users.remove(this.msg.client.user!.id);
           } else {
             isRemoving = false;
           }
