@@ -43,7 +43,7 @@ export default class {
 
           if (reactionToRemove) {
             // eslint-disable-next-line no-await-in-loop
-            await reactionToRemove.remove();
+            await reactionToRemove.users.remove(this.msg.client.user!.id);
           } else {
             isRemoving = false;
           }
@@ -64,15 +64,17 @@ export default class {
 
     this.isStopped = true;
 
-    if (str) {
-      if (wasAlreadyStopped) {
-        await this.msg.edit(str);
-      } else {
-        await Promise.all([this.msg.reactions.removeAll(), this.msg.edit(str)]);
-      }
-    } else {
-      await this.msg.reactions.removeAll();
-    }
+    const editPromise = str ? this.msg.edit(str) : null;
+    const reactPromise = str && !wasAlreadyStopped ? (async () => {
+      await this.msg.fetch();
+      await Promise.all(this.msg.reactions.cache.map(async react => {
+        if (react.me) {
+          await react.users.remove(this.msg.client.user!.id);
+        }
+      }));
+    })() : null;
+
+    await Promise.all([editPromise, reactPromise]);
 
     return this.msg;
   }
