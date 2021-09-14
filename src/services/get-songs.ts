@@ -34,7 +34,16 @@ export default class {
 
   async youtubeVideo(url: string): Promise<QueuedSong|null> {
     try {
-      const videoDetails = await this.youtube.videos.get(url);
+      // Clean URL
+      const u = new URL(url);
+
+      for (const [name] of u.searchParams) {
+        if (name !== 'v') {
+          u.searchParams.delete(name);
+        }
+      }
+
+      const videoDetails = await this.youtube.videos.get(u.toString());
 
       return {
         title: videoDetails.snippet.title,
