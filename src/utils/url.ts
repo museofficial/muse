@@ -10,9 +10,9 @@ export const cleanUrl = (url: string) => {
         u.searchParams.delete(name);
       }
     }
+
     return u.toString();
-  }
-  catch (_: unknown) {
+  } catch (_: unknown) {
     return url;
   }
-}
+};
