@@ -1,4 +1,5 @@
 import {VoiceConnection, VoiceChannel, StreamDispatcher} from 'discord.js';
+import {Settings} from '../models';
 import {promises as fs, createWriteStream} from 'fs';
 import {Readable, PassThrough} from 'stream';
 import path from 'path';
