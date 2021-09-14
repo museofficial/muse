@@ -20,7 +20,8 @@ export default class implements Command {
 
       if (settings) {
         let response = `prefix: \`${settings.prefix}\`\n`;
-        response += `channel: ${msg.guild!.channels.cache.get(settings.channel)!.toString()}`;
+        response += `channel: ${msg.guild!.channels.cache.get(settings.channel)!.toString()}\n`;
+        response += `stayAfter: ${settings.stayAfterQueueEnds.toString()}`;
 
         await msg.channel.send(response);
       }
@@ -70,6 +71,15 @@ export default class implements Command {
           await msg.channel.send(errorMsg('either that channel doesn\'t exist or you want me to become sentient and listen to a voice channel'));
         }
 
+        break;
+      }
+
+      case 'stayAfter': {
+        const value = args[1] === '1' || args[1] === 'true';
+
+        await Settings.update({stayAfterQueueEnds: value}, {where: {guildId: msg.guild!.id}});
+
+        await msg.channel.send(`👍 stayAfter updated to \`${value.toString()}\``);
         break;
       }
 

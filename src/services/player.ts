@@ -169,7 +169,12 @@ export default class {
         await this.play();
       } else {
         this.status = STATUS.PAUSED;
-        this.disconnect();
+
+        let settings = await Settings.findByPk(this.voiceConnection?.channel.guild.id);
+
+        if (!settings?.stayAfterQueueEnds) {
+          this.disconnect();
+        }
       }
     } catch (error: unknown) {
       this.queuePosition--;

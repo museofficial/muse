@@ -27,7 +27,7 @@ const refreshSpotifyToken = async () => {
   await makeDir(container.get(TYPES.Config.CACHE_DIR));
   await makeDir(path.join(container.get(TYPES.Config.CACHE_DIR), 'tmp'));
 
-  await sequelize.sync({});
+  await sequelize.sync({alter: true});
 
   await bot.listen();
 })();

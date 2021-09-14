@@ -15,4 +15,8 @@ export default class Settings extends Model<Settings> {
   @Default(false)
   @Column
   finishedSetup!: boolean;
+
+  @Default(false)
+  @Column
+  stayAfterQueueEnds!: boolean;
 }
