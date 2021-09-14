@@ -9,6 +9,7 @@ import pLimit from 'p-limit';
 import shuffle from 'array-shuffle';
 import {QueuedSong, QueuedPlaylist} from '../services/player';
 import {TYPES} from '../types';
+import {cleanUrl} from '../utils/url';
 
 @injectable()
 export default class {
@@ -34,7 +35,7 @@ export default class {
 
   async youtubeVideo(url: string): Promise<QueuedSong|null> {
     try {
-      const videoDetails = await this.youtube.videos.get(url);
+      const videoDetails = await this.youtube.videos.get(cleanUrl(url));
 
       return {
         title: videoDetails.snippet.title,
