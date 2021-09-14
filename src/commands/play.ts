@@ -83,6 +83,18 @@ export default class implements Command {
           // YouTube playlist
           newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list') as string));
         } else {
+          let extraParameters: string[] = [];
+
+          url.searchParams.forEach((value, name) => {
+            if (name !== 'v' && value) {
+              extraParameters.push(name);
+            }
+          });
+
+          extraParameters.forEach(p => {
+            url.searchParams.delete(p);
+          });
+
           // Single video
           const song = await this.getSongs.youtubeVideo(url.href);
 
