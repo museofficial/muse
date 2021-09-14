@@ -9,6 +9,7 @@ export default class implements Command {
   public name = 'config';
   public aliases = [];
   public examples = [
+    ['config', 'see all available settings'],
     ['config prefix !', 'set the prefix to !'],
     ['config channel music-commands', 'bind the bot to the music-commands channel']
   ];
