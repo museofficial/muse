@@ -4,7 +4,7 @@ import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
 import {QueuedSong, STATUS} from '../services/player';
 import PlayerManager from '../managers/player';
-import {getMostPopularVoiceChannel} from '../utils/channels';
+import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels';
 import LoadingMessage from '../utils/loading-message';
 import errorMsg from '../utils/error-msg';
 import Command from '.';
@@ -36,8 +36,8 @@ export default class implements Command {
     this.getSongs = getSongs;
   }
 
-  public async execute(msg: Message, args: string []): Promise<void> {
-    const [targetVoiceChannel] = getMostPopularVoiceChannel(msg.guild!);
+  public async execute(msg: Message, args: string[]): Promise<void> {
+    const [targetVoiceChannel] = getMemberVoiceChannel(msg.member!) ?? getMostPopularVoiceChannel(msg.guild!);
 
     const res = new LoadingMessage(msg.channel as TextChannel);
     await res.start();
