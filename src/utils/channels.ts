@@ -1,4 +1,4 @@
-import {Guild, VoiceChannel, User} from 'discord.js';
+import {Guild, VoiceChannel, User, GuildMember} from 'discord.js';
 
 export const isUserInVoice = (guild: Guild, user: User): boolean => {
   let inVoice = false;
@@ -19,6 +19,18 @@ export const getSizeWithoutBots = (channel: VoiceChannel): number => channel.mem
 
   return s;
 }, 0);
+
+export const getMemberVoiceChannel = (member?: GuildMember): [VoiceChannel, number] | null => {
+  const channel = member?.voice?.channel;
+  if (channel && channel.type === 'voice') {
+    return [
+      channel,
+      getSizeWithoutBots(channel)
+    ];
+  }
+
+  return null;
+};
 
 export const getMostPopularVoiceChannel = (guild: Guild): [VoiceChannel, number] => {
   interface PopularResult {
