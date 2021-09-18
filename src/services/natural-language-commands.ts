@@ -24,7 +24,15 @@ export default class {
     if (msg.content.toLowerCase().includes('packers')) {
       await Promise.all([
         msg.channel.send('GO PACKERS GO!!!'),
-        this.playClip(msg.guild!, msg.member!, {title: 'GO PACKERS!', artist: 'Unknown', url: 'https://www.youtube.com/watch?v=qkdtID7mY3E', length: 204, playlist: null, isLive: false}, 8, 10)
+        this.playClip(msg.guild!, msg.member!, {
+          title: 'GO PACKERS!',
+          artist: 'Unknown',
+          url: 'https://www.youtube.com/watch?v=qkdtID7mY3E',
+          length: 204,
+          playlist: null,
+          isLive: false,
+          addedInChannelId: msg.channel.id
+        }, 8, 10)
       ]);
 
       return true;
@@ -33,7 +41,15 @@ export default class {
     if (msg.content.toLowerCase().includes('bears')) {
       await Promise.all([
         msg.channel.send('F*** THE BEARS'),
-        this.playClip(msg.guild!, msg.member!, {title: 'GO PACKERS!', artist: 'Charlie Berens', url: 'https://www.youtube.com/watch?v=UaqlE9Pyy_Q', length: 385, playlist: null, isLive: false}, 358, 5.5)
+        this.playClip(msg.guild!, msg.member!, {
+          title: 'GO PACKERS!',
+          artist: 'Charlie Berens',
+          url: 'https://www.youtube.com/watch?v=UaqlE9Pyy_Q',
+          length: 385,
+          playlist: null,
+          isLive: false,
+          addedInChannelId: msg.channel.id
+        }, 358, 5.5)
       ]);
 
       return true;
@@ -42,7 +58,15 @@ export default class {
     if (msg.content.toLowerCase().includes('bitconnect')) {
       await Promise.all([
         msg.channel.send('🌊 🌊 🌊 🌊'),
-        this.playClip(msg.guild!, msg.member!, {title: 'BITCONNEEECCT', artist: 'Carlos Matos', url: 'https://www.youtube.com/watch?v=lCcwn6bGUtU', length: 227, playlist: null, isLive: false}, 50, 13)
+        this.playClip(msg.guild!, msg.member!, {
+          title: 'BITCONNEEECCT',
+          artist: 'Carlos Matos',
+          url: 'https://www.youtube.com/watch?v=lCcwn6bGUtU',
+          length: 227,
+          playlist: null,
+          isLive: false,
+          addedInChannelId: msg.channel.id
+        }, 50, 13)
       ]);
 
       return true;

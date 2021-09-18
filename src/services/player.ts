@@ -1,4 +1,4 @@
-import {VoiceConnection, VoiceChannel, StreamDispatcher} from 'discord.js';
+import {VoiceConnection, VoiceChannel, StreamDispatcher, Snowflake, Client, TextChannel} from 'discord.js';
 import {promises as fs, createWriteStream} from 'fs';
 import {Readable, PassThrough} from 'stream';
 import path from 'path';
@@ -7,6 +7,7 @@ import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
+import errorMsg from '../utils/error-msg';
 
 export interface QueuedPlaylist {
   title: string;
@@ -20,6 +21,7 @@ export interface QueuedSong {
   length: number;
   playlist: QueuedPlaylist | null;
   isLive: boolean;
+  addedInChannelId: Snowflake;
 }
 
 export enum STATUS {
@@ -40,8 +42,11 @@ export default class {
 
   private positionInSeconds = 0;
 
-  constructor(cacheDir: string) {
+  private readonly discordClient: Client;
+
+  constructor(cacheDir: string, client: Client) {
     this.cacheDir = cacheDir;
+    this.discordClient = client;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -142,7 +147,18 @@ export default class {
         this.lastSongURL = currentSong.url;
       }
     } catch (error: unknown) {
-      this.removeCurrent();
+      const currentSong = this.getCurrent();
+      await this.forward(1);
+
+      if ((error as {statusCode: number}).statusCode === 410 && currentSong) {
+        const channelId = currentSong.addedInChannelId;
+
+        if (channelId) {
+          await (this.discordClient.channels.cache.get(channelId) as TextChannel).send(errorMsg(`${currentSong.title} is unavailable`));
+          return;
+        }
+      }
+
       throw error;
     }
   }

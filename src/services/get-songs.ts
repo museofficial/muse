@@ -7,9 +7,12 @@ import Spotify from 'spotify-web-api-node';
 import YouTube, {YoutubePlaylistItem} from 'youtube.ts';
 import pLimit from 'p-limit';
 import shuffle from 'array-shuffle';
+import {Except} from 'type-fest';
 import {QueuedSong, QueuedPlaylist} from '../services/player';
 import {TYPES} from '../types';
 import {cleanUrl} from '../utils/url';
+
+type QueuedSongWithoutChannel = Except<QueuedSong, 'addedInChannelId'>;
 
 @injectable()
 export default class {
@@ -23,7 +26,7 @@ export default class {
     this.spotify = spotify;
   }
 
-  async youtubeVideoSearch(query: string): Promise<QueuedSong|null> {
+  async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel|null> {
     try {
       const {items: [video]} = await this.youtube.videos.search({q: query, maxResults: 1, type: 'video'});
 
@@ -33,7 +36,7 @@ export default class {
     }
   }
 
-  async youtubeVideo(url: string): Promise<QueuedSong|null> {
+  async youtubeVideo(url: string): Promise<QueuedSongWithoutChannel|null> {
     try {
       const videoDetails = await this.youtube.videos.get(cleanUrl(url));
 
@@ -50,7 +53,7 @@ export default class {
     }
   }
 
-  async youtubePlaylist(listId: string): Promise<QueuedSong[]> {
+  async youtubePlaylist(listId: string): Promise<QueuedSongWithoutChannel[]> {
     // YouTube playlist
     const playlist = await this.youtube.playlists.get(listId);
 
@@ -93,7 +96,7 @@ export default class {
 
     const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
 
-    const songsToReturn: QueuedSong[] = [];
+    const songsToReturn: QueuedSongWithoutChannel[] = [];
 
     for (let video of playlistVideos) {
       try {
@@ -115,7 +118,7 @@ export default class {
     return songsToReturn;
   }
 
-  async spotifySource(url: string): Promise<[QueuedSong[], number, number]> {
+  async spotifySource(url: string): Promise<[QueuedSongWithoutChannel[], number, number]> {
     const parsed = spotifyURI.parse(url);
 
     let tracks: SpotifyApi.TrackObjectSimplified[] = [];
@@ -195,7 +198,7 @@ export default class {
     let nSongsNotFound = 0;
 
     // Get rid of null values
-    songs = songs.reduce((accum: QueuedSong[], song) => {
+    songs = songs.reduce((accum: QueuedSongWithoutChannel[], song) => {
       if (song) {
         accum.push(song);
       } else {
@@ -205,10 +208,10 @@ export default class {
       return accum;
     }, []);
 
-    return [songs as QueuedSong[], nSongsNotFound, originalNSongs];
+    return [songs as QueuedSongWithoutChannel[], nSongsNotFound, originalNSongs];
   }
 
-  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSong | null> {
+  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSongWithoutChannel | null> {
     try {
       const {items} = await this.youtube.videos.search({q: `"${track.name}" "${track.artists[0].name}"`, maxResults: 10});
       const videoResult = items[0]; // Items.find(item => item.type === 'video');

@@ -1,5 +1,6 @@
 import {TextChannel, Message} from 'discord.js';
 import {URL} from 'url';
+import {Except} from 'type-fest';
 import {TYPES} from '../types';
 import {inject, injectable} from 'inversify';
 import {QueuedSong, STATUS} from '../services/player';
@@ -68,7 +69,7 @@ export default class implements Command {
 
     const addToFrontOfQueue = args[args.length - 1] === 'i' || args[args.length - 1] === 'immediate';
 
-    const newSongs: QueuedSong[] = [];
+    const newSongs: Array<Except<QueuedSong, 'addedInChannelId'>> = [];
     let extraMsg = '';
 
     // Test if it's a complete URL
@@ -133,7 +134,7 @@ export default class implements Command {
       return;
     }
 
-    newSongs.forEach(song => player.add(song, {immediate: addToFrontOfQueue}));
+    newSongs.forEach(song => player.add({...song, addedInChannelId: msg.channel.id}, {immediate: addToFrontOfQueue}));
 
     const firstSong = newSongs[0];
 
