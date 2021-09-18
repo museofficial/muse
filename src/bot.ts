@@ -16,14 +16,12 @@ export default class {
   private readonly client: Client;
   private readonly naturalLanguage: NaturalLanguage;
   private readonly token: string;
-  private readonly clientId: string;
   private readonly commands!: Collection<string, Command>;
 
-  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Services.NaturalLanguage) naturalLanguage: NaturalLanguage, @inject(TYPES.Config.DISCORD_TOKEN) token: string, @inject(TYPES.Config.DISCORD_CLIENT_ID) clientId: string) {
+  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Services.NaturalLanguage) naturalLanguage: NaturalLanguage, @inject(TYPES.Config.DISCORD_TOKEN) token: string) {
     this.client = client;
     this.naturalLanguage = naturalLanguage;
     this.token = token;
-    this.clientId = clientId;
     this.commands = new Collection();
   }
 
@@ -96,7 +94,7 @@ export default class {
     });
 
     this.client.on('ready', async () => {
-      console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.clientId}&scope=bot&permissions=36752448`);
+      console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot&permissions=36752448`);
     });
 
     this.client.on('error', console.error);

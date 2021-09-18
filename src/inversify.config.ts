@@ -7,7 +7,6 @@ import YouTube from 'youtube.ts';
 import Spotify from 'spotify-web-api-node';
 import {
   DISCORD_TOKEN,
-  DISCORD_CLIENT_ID,
   YOUTUBE_API_KEY,
   SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET,
@@ -72,7 +71,6 @@ container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLangua
 
 // Config values
 container.bind<string>(TYPES.Config.DISCORD_TOKEN).toConstantValue(DISCORD_TOKEN);
-container.bind<string>(TYPES.Config.DISCORD_CLIENT_ID).toConstantValue(DISCORD_CLIENT_ID);
 container.bind<string>(TYPES.Config.YOUTUBE_API_KEY).toConstantValue(YOUTUBE_API_KEY);
 container.bind<string>(TYPES.Config.DATA_DIR).toConstantValue(DATA_DIR);
 container.bind<string>(TYPES.Config.CACHE_DIR).toConstantValue(CACHE_DIR);
