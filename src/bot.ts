@@ -10,6 +10,7 @@ import handleGuildCreate from './events/guild-create';
 import handleVoiceStateUpdate from './events/voice-state-update';
 import errorMsg from './utils/error-msg';
 import {isUserInVoice} from './utils/channels';
+import Config from './services/config';
 
 @injectable()
 export default class {
@@ -18,10 +19,10 @@ export default class {
   private readonly token: string;
   private readonly commands!: Collection<string, Command>;
 
-  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Services.NaturalLanguage) naturalLanguage: NaturalLanguage, @inject(TYPES.Config.DISCORD_TOKEN) token: string) {
+  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Services.NaturalLanguage) naturalLanguage: NaturalLanguage, @inject(TYPES.Config) config: Config) {
     this.client = client;
     this.naturalLanguage = naturalLanguage;
-    this.token = token;
+    this.token = config.DISCORD_TOKEN;
     this.commands = new Collection();
   }
 

@@ -11,6 +11,8 @@ import {Except} from 'type-fest';
 import {QueuedSong, QueuedPlaylist} from '../services/player';
 import {TYPES} from '../types';
 import {cleanUrl} from '../utils/url';
+import ThirdParty from './third-party';
+import Config from './config';
 
 type QueuedSongWithoutChannel = Except<QueuedSong, 'addedInChannelId'>;
 
@@ -20,10 +22,10 @@ export default class {
   private readonly youtubeKey: string;
   private readonly spotify: Spotify;
 
-  constructor(@inject(TYPES.Lib.YouTube) youtube: YouTube, @inject(TYPES.Config.YOUTUBE_API_KEY) youtubeKey: string, @inject(TYPES.Lib.Spotify) spotify: Spotify) {
-    this.youtube = youtube;
-    this.youtubeKey = youtubeKey;
-    this.spotify = spotify;
+  constructor(@inject(TYPES.ThirdParty) thirdParty: ThirdParty, @inject(TYPES.Config) config: Config) {
+    this.youtube = thirdParty.youtube;
+    this.youtubeKey = config.YOUTUBE_API_KEY;
+    this.spotify = thirdParty.spotify;
   }
 
   async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel|null> {
@@ -214,7 +216,7 @@ export default class {
   private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSongWithoutChannel | null> {
     try {
       const {items} = await this.youtube.videos.search({q: `"${track.name}" "${track.artists[0].name}"`, maxResults: 10});
-      const videoResult = items[0]; // Items.find(item => item.type === 'video');
+      const videoResult = items[0];
 
       if (!videoResult) {
         throw new Error('No video found for query.');

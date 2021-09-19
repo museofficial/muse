@@ -2,6 +2,7 @@ import {inject, injectable} from 'inversify';
 import {TYPES} from '../types';
 import Player from '../services/player';
 import {Client} from 'discord.js';
+import Config from '../services/config';
 
 @injectable()
 export default class {
@@ -9,9 +10,9 @@ export default class {
   private readonly cacheDir: string;
   private readonly discordClient: Client;
 
-  constructor(@inject(TYPES.Config.CACHE_DIR) cacheDir: string, @inject(TYPES.Client) client: Client) {
+  constructor(@inject(TYPES.Config) config: Config, @inject(TYPES.Client) client: Client) {
     this.guildPlayers = new Map();
-    this.cacheDir = cacheDir;
+    this.cacheDir = config.CACHE_DIR;
     this.discordClient = client;
   }
 

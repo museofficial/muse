@@ -1,6 +1,6 @@
 import {Sequelize} from 'sequelize-typescript';
 import path from 'path';
-import {DATA_DIR} from '../utils/config';
+import {DATA_DIR} from '../services/config';
 import {Settings, Shortcut} from '../models';
 
 export const sequelize = new Sequelize({

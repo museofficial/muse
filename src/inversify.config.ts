@@ -3,16 +3,7 @@ import {Container} from 'inversify';
 import {TYPES} from './types';
 import Bot from './bot';
 import {Client} from 'discord.js';
-import YouTube from 'youtube.ts';
-import Spotify from 'spotify-web-api-node';
-import {
-  DISCORD_TOKEN,
-  YOUTUBE_API_KEY,
-  SPOTIFY_CLIENT_ID,
-  SPOTIFY_CLIENT_SECRET,
-  DATA_DIR,
-  CACHE_DIR
-} from './utils/config';
+import ConfigProvider from './services/config';
 
 // Managers
 import PlayerManager from './managers/player';
@@ -36,6 +27,7 @@ import Shortcuts from './commands/shortcuts';
 import Shuffle from './commands/shuffle';
 import Skip from './commands/skip';
 import Unskip from './commands/unskip';
+import ThirdParty from './services/third-party';
 
 let container = new Container();
 
@@ -70,13 +62,9 @@ container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLangua
 });
 
 // Config values
-container.bind<string>(TYPES.Config.DISCORD_TOKEN).toConstantValue(DISCORD_TOKEN);
-container.bind<string>(TYPES.Config.YOUTUBE_API_KEY).toConstantValue(YOUTUBE_API_KEY);
-container.bind<string>(TYPES.Config.DATA_DIR).toConstantValue(DATA_DIR);
-container.bind<string>(TYPES.Config.CACHE_DIR).toConstantValue(CACHE_DIR);
+container.bind(TYPES.Config).toConstantValue(new ConfigProvider());
 
 // Static libraries
-container.bind<YouTube>(TYPES.Lib.YouTube).toConstantValue(new YouTube(YOUTUBE_API_KEY));
-container.bind<Spotify>(TYPES.Lib.Spotify).toConstantValue(new Spotify({clientId: SPOTIFY_CLIENT_ID, clientSecret: SPOTIFY_CLIENT_SECRET}));
+container.bind(TYPES.ThirdParty).to(ThirdParty);
 
 export default container;
