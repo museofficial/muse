@@ -22,7 +22,7 @@ export default class CacheProvider {
 
     const {
       key = JSON.stringify(functionArgs),
-      expiresIn
+      expiresIn,
     } = options[options.length - 1] as Options;
 
     const cachedResult = await Cache.findByPk(key);
@@ -30,7 +30,7 @@ export default class CacheProvider {
     if (cachedResult) {
       if (new Date() < cachedResult.expiresAt) {
         debug(`Cache hit: ${key}`);
-        return JSON.parse(cachedResult.value);
+        return JSON.parse(cachedResult.value) as F;
       }
 
       await cachedResult.destroy();
@@ -44,7 +44,7 @@ export default class CacheProvider {
     await Cache.upsert({
       key,
       value: JSON.stringify(result),
-      expiresAt: futureTimeToDate(expiresIn)
+      expiresAt: futureTimeToDate(expiresIn),
     });
 
     return result;

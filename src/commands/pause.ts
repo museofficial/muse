@@ -11,7 +11,7 @@ export default class implements Command {
   public name = 'pause';
   public aliases = [];
   public examples = [
-    ['pause', 'pauses currently playing song']
+    ['pause', 'pauses currently playing song'],
   ];
 
   public requiresVC = true;

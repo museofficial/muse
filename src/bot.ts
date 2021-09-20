@@ -67,7 +67,7 @@ export default class {
       let handler: Command;
 
       if (this.commands.has(command)) {
-        handler = this.commands.get(command) as Command;
+        handler = this.commands.get(command)!;
       } else if (shortcut) {
         const possibleHandler = this.commands.get(shortcut.command.split(' ')[0]);
 

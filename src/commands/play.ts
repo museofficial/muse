@@ -24,7 +24,7 @@ export default class implements Command {
     ['play https://open.spotify.com/album/5dv1oLETxdsYOkS2Sic00z?si=bDa7PaloRx6bMIfKdnvYQw', 'adds all songs from album to the queue'],
     ['play https://open.spotify.com/playlist/37i9dQZF1DX94qaYRnkufr?si=r2fOVL_QQjGxFM5MWb84Xw', 'adds all songs from playlist to the queue'],
     ['play cool music immediate', 'adds the first search result for "cool music" to the front of the queue'],
-    ['play cool music i', 'adds the first search result for "cool music" to the front of the queue']
+    ['play cool music i', 'adds the first search result for "cool music" to the front of the queue'],
   ];
 
   public requiresVC = true;
@@ -82,7 +82,7 @@ export default class implements Command {
         // YouTube source
         if (url.searchParams.get('list')) {
           // YouTube playlist
-          newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list') as string));
+          newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!));
         } else {
           // Single video
           const song = await this.getSongs.youtubeVideo(url.href);
@@ -135,7 +135,9 @@ export default class implements Command {
       return;
     }
 
-    newSongs.forEach(song => player.add({...song, addedInChannelId: msg.channel.id}, {immediate: addToFrontOfQueue}));
+    newSongs.forEach(song => {
+      player.add({...song, addedInChannelId: msg.channel.id}, {immediate: addToFrontOfQueue});
+    });
 
     const firstSong = newSongs[0];
 

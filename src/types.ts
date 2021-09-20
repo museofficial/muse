@@ -6,10 +6,10 @@ export const TYPES = {
   Command: Symbol('Command'),
   ThirdParty: Symbol('ThirdParty'),
   Managers: {
-    Player: Symbol('PlayerManager')
+    Player: Symbol('PlayerManager'),
   },
   Services: {
     GetSongs: Symbol('GetSongs'),
-    NaturalLanguage: Symbol('NaturalLanguage')
-  }
+    NaturalLanguage: Symbol('NaturalLanguage'),
+  },
 };

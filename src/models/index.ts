@@ -5,5 +5,5 @@ import Shortcut from './shortcut.js';
 export {
   Cache,
   Settings,
-  Shortcut
+  Shortcut,
 };

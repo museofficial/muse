@@ -11,7 +11,7 @@ const CONFIG_MAP = {
   SPOTIFY_CLIENT_ID: process.env.SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET: process.env.SPOTIFY_CLIENT_SECRET,
   DATA_DIR,
-  CACHE_DIR: path.join(DATA_DIR, 'cache')
+  CACHE_DIR: path.join(DATA_DIR, 'cache'),
 } as const;
 
 @injectable()

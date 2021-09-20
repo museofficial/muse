@@ -30,7 +30,7 @@ import Unskip from './commands/unskip.js';
 import ThirdParty from './services/third-party.js';
 import CacheProvider from './services/cache.js';
 
-let container = new Container();
+const container = new Container();
 
 // Bot
 container.bind<Bot>(TYPES.Bot).to(Bot).inSingletonScope();
@@ -57,7 +57,7 @@ container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLangua
   Shortcuts,
   Shuffle,
   Skip,
-  Unskip
+  Unskip,
 ].forEach(command => {
   container.bind<Command>(TYPES.Command).to(command).inSingletonScope();
 });

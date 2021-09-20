@@ -26,7 +26,7 @@ export interface QueuedSong {
 
 export enum STATUS {
   PLAYING,
-  PAUSED
+  PAUSED,
 }
 
 export default class {
@@ -368,7 +368,7 @@ export default class {
         '-reconnect_streamed',
         '1',
         '-reconnect_delay_max',
-        '5'
+        '5',
       ]);
 
       if (options.seek) {

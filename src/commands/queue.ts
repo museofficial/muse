@@ -17,7 +17,7 @@ export default class implements Command {
   public aliases = ['q'];
   public examples = [
     ['queue', 'shows current queue'],
-    ['queue 2', 'shows second page of queue']
+    ['queue 2', 'shows second page of queue'],
   ];
 
   private readonly playerManager: PlayerManager;

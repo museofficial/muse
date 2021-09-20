@@ -10,7 +10,7 @@ export default class implements Command {
   public name = 'disconnect';
   public aliases = ['dc'];
   public examples = [
-    ['disconnect', 'pauses and disconnects player']
+    ['disconnect', 'pauses and disconnects player'],
   ];
 
   public requiresVC = true;

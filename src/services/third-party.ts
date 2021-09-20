@@ -13,10 +13,11 @@ export default class ThirdParty {
 
   constructor(@inject(TYPES.Config) config: Config) {
     // Library is transpiled incorrectly
+    // eslint-disable-next-line
     this.youtube = new ((Youtube as any).default)(config.YOUTUBE_API_KEY);
     this.spotify = new SpotifyWebApi({
       clientId: config.SPOTIFY_CLIENT_ID,
-      clientSecret: config.SPOTIFY_CLIENT_SECRET
+      clientSecret: config.SPOTIFY_CLIENT_SECRET,
     });
 
     void this.refreshSpotifyToken();

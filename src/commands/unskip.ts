@@ -10,7 +10,7 @@ export default class implements Command {
   public name = 'unskip';
   public aliases = ['back'];
   public examples = [
-    ['unskip', 'goes back in the queue by one song']
+    ['unskip', 'goes back in the queue by one song'],
   ];
 
   public requiresVC = true;

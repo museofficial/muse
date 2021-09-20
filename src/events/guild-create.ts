@@ -1,4 +1,4 @@
-import {Guild, TextChannel, Message} from 'discord.js';
+import {Guild, TextChannel, Message, MessageReaction, User} from 'discord.js';
 import emoji from 'node-emoji';
 import pEvent from 'p-event';
 import {Settings} from '../models/index.js';
@@ -31,7 +31,7 @@ export default async (guild: Guild): Promise<void> => {
       emojiChannels.push({
         name: channel.name,
         id: channelId,
-        emoji: emoji.random().emoji
+        emoji: emoji.random().emoji,
       });
     }
   }
@@ -52,16 +52,12 @@ export default async (guild: Guild): Promise<void> => {
   });
 
   // Wait for response from user
-
   const [choice] = await pEvent(guild.client, 'messageReactionAdd', {
     multiArgs: true,
-    filter: options => {
-      const [reaction, user] = options;
-      return sentMessageIds.includes(reaction.message.id) && user.id === owner.id;
-    }
+    filter: ([reaction, user]: [MessageReaction, User]) => sentMessageIds.includes(reaction.message.id) && user.id === owner.id,
   });
 
-  const chosenChannel = emojiChannels.find(e => e.emoji === choice.emoji.name) as EmojiChannel;
+  const chosenChannel = emojiChannels.find(e => e.emoji === (choice as unknown as MessageReaction).emoji.name)!;
 
   // Second setup step (get prefix)
   let secondStep = `👍 Cool, I'll listen to **#${chosenChannel.name}** \n\n`;

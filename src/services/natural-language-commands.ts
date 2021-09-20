@@ -31,8 +31,8 @@ export default class {
           length: 204,
           playlist: null,
           isLive: false,
-          addedInChannelId: msg.channel.id
-        }, 8, 10)
+          addedInChannelId: msg.channel.id,
+        }, 8, 10),
       ]);
 
       return true;
@@ -48,8 +48,8 @@ export default class {
           length: 385,
           playlist: null,
           isLive: false,
-          addedInChannelId: msg.channel.id
-        }, 358, 5.5)
+          addedInChannelId: msg.channel.id,
+        }, 358, 5.5),
       ]);
 
       return true;
@@ -65,8 +65,8 @@ export default class {
           length: 227,
           playlist: null,
           isLive: false,
-          addedInChannelId: msg.channel.id
-        }, 50, 13)
+          addedInChannelId: msg.channel.id,
+        }, 50, 13),
       ]);
 
       return true;

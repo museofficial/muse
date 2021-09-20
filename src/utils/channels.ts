@@ -25,7 +25,7 @@ export const getMemberVoiceChannel = (member?: GuildMember): [VoiceChannel, numb
   if (channel && channel.type === 'voice') {
     return [
       channel,
-      getSizeWithoutBots(channel)
+      getSizeWithoutBots(channel),
     ];
   }
 
@@ -46,7 +46,7 @@ export const getMostPopularVoiceChannel = (guild: Guild): [VoiceChannel, number]
 
       voiceChannels.push({
         channel: channel as VoiceChannel,
-        n: size
+        n: size,
       });
     }
   }

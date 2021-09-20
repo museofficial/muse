@@ -8,5 +8,5 @@ export const sequelize = new Sequelize({
   database: 'muse',
   storage: path.join(DATA_DIR, 'db.sqlite'),
   models: [Cache, Settings, Shortcut],
-  logging: false
+  logging: false,
 });

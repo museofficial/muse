@@ -12,7 +12,7 @@ export default class implements Command {
   public aliases = ['s'];
   public examples = [
     ['skip', 'skips the current song'],
-    ['skip 2', 'skips the next 2 songs']
+    ['skip 2', 'skips the next 2 songs'],
   ];
 
   public requiresVC = true;

@@ -42,17 +42,17 @@ export default class {
     this.ytsrQueue = new PQueue({concurrency: 4});
   }
 
-  async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel|null> {
+  async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel | null> {
     try {
       const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
         ytsr,
         query,
         {
-          limit: 10
+          limit: 10,
         },
         {
-          expiresIn: ONE_HOUR_IN_SECONDS
-        }
+          expiresIn: ONE_HOUR_IN_SECONDS,
+        },
       ));
 
       let firstVideo: Video | undefined;
@@ -74,14 +74,14 @@ export default class {
     }
   }
 
-  async youtubeVideo(url: string): Promise<QueuedSongWithoutChannel|null> {
+  async youtubeVideo(url: string): Promise<QueuedSongWithoutChannel | null> {
     try {
       const videoDetails = await this.cache.wrap(
         this.youtube.videos.get,
         cleanUrl(url),
         {
-          expiresIn: ONE_HOUR_IN_SECONDS
-        }
+          expiresIn: ONE_HOUR_IN_SECONDS,
+        },
       );
 
       return {
@@ -90,7 +90,7 @@ export default class {
         length: toSeconds(parse(videoDetails.contentDetails.duration)),
         url: videoDetails.id,
         playlist: null,
-        isLive: videoDetails.snippet.liveBroadcastContent === 'live'
+        isLive: videoDetails.snippet.liveBroadcastContent === 'live',
       };
     } catch (_: unknown) {
       return null;
@@ -103,8 +103,8 @@ export default class {
       this.youtube.playlists.get,
       listId,
       {
-        expiresIn: ONE_MINUTE_IN_SECONDS
-      }
+        expiresIn: ONE_MINUTE_IN_SECONDS,
+      },
     );
 
     interface VideoDetailsResponse {
@@ -128,8 +128,8 @@ export default class {
         listId,
         {maxResults: '50', pageToken: nextToken},
         {
-          expiresIn: ONE_MINUTE_IN_SECONDS
-        }
+          expiresIn: ONE_MINUTE_IN_SECONDS,
+        },
       );
 
       nextToken = nextPageToken;
@@ -140,22 +140,20 @@ export default class {
       videoDetailsPromises.push((async () => {
         // Unfortunately, package doesn't provide a method for this
         const {items: videoDetailItems} = await this.cache.wrap(
-          () => {
-            return got(
-              'https://www.googleapis.com/youtube/v3/videos',
-              {
-                searchParams: {
-                  part: 'contentDetails',
-                  id: items.map(item => item.contentDetails.videoId).join(','),
-                  key: this.youtubeKey,
-                  responseType: 'json'
-                }
-              }
-            ).json();
-          },
+          async () => got(
+            'https://www.googleapis.com/youtube/v3/videos',
+            {
+              searchParams: {
+                part: 'contentDetails',
+                id: items.map(item => item.contentDetails.videoId).join(','),
+                key: this.youtubeKey,
+                responseType: 'json',
+              },
+            },
+          ).json() as Promise<{items: VideoDetailsResponse[]}>,
           {
-            expiresIn: ONE_MINUTE_IN_SECONDS
-          }
+            expiresIn: ONE_MINUTE_IN_SECONDS,
+          },
         );
 
         videoDetails.push(...videoDetailItems);
@@ -168,9 +166,9 @@ export default class {
 
     const songsToReturn: QueuedSongWithoutChannel[] = [];
 
-    for (let video of playlistVideos) {
+    for (const video of playlistVideos) {
       try {
-        const length = toSeconds(parse(videoDetails.find((i: { id: string }) => i.id === video.contentDetails.videoId)!.contentDetails.duration));
+        const length = toSeconds(parse(videoDetails.find((i: {id: string}) => i.id === video.contentDetails.videoId)!.contentDetails.duration));
 
         songsToReturn.push({
           title: video.snippet.title,
@@ -178,7 +176,7 @@ export default class {
           length,
           url: video.contentDetails.videoId,
           playlist: queuedPlaylist,
-          isLive: false
+          isLive: false,
         });
       } catch (_: unknown) {
         // Private and deleted videos are sometimes in playlists, duration of these is not returned and they should not be added to the queue.
@@ -220,7 +218,7 @@ export default class {
           // eslint-disable-next-line no-await-in-loop
           ({body: tracksResponse} = await this.spotify.getPlaylistTracks(uri.id, {
             limit: parseInt(new URL(tracksResponse.next).searchParams.get('limit') ?? '50', 10),
-            offset: parseInt(new URL(tracksResponse.next).searchParams.get('offset') ?? '0', 10)
+            offset: parseInt(new URL(tracksResponse.next).searchParams.get('offset') ?? '0', 10),
           }));
 
           tracks.push(...tracksResponse.items.map(playlistItem => playlistItem.track));

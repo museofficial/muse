@@ -10,7 +10,7 @@ export default class implements Command {
   public name = 'help';
   public aliases = ['h'];
   public examples = [
-    ['help', 'you don\'t need a description']
+    ['help', 'you don\'t need a description'],
   ];
 
   private commands: Command[] = [];
