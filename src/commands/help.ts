@@ -1,9 +1,9 @@
 import {Message} from 'discord.js';
 import {injectable} from 'inversify';
 import Command from '.';
-import {TYPES} from '../types';
-import {Settings} from '../models';
-import container from '../inversify.config';
+import {TYPES} from '../types.js';
+import {Settings} from '../models/index.js';
+import container from '../inversify.config.js';
 
 @injectable()
 export default class implements Command {

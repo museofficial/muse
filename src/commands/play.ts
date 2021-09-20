@@ -1,15 +1,15 @@
 import {TextChannel, Message} from 'discord.js';
 import {URL} from 'url';
 import {Except} from 'type-fest';
-import {TYPES} from '../types';
+import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
-import {QueuedSong, STATUS} from '../services/player';
-import PlayerManager from '../managers/player';
-import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels';
-import LoadingMessage from '../utils/loading-message';
-import errorMsg from '../utils/error-msg';
+import {QueuedSong, STATUS} from '../services/player.js';
+import PlayerManager from '../managers/player.js';
+import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels.js';
+import LoadingMessage from '../utils/loading-message.js';
+import errorMsg from '../utils/error-msg.js';
 import Command from '.';
-import GetSongs from '../services/get-songs';
+import GetSongs from '../services/get-songs.js';
 
 @injectable()
 export default class implements Command {
@@ -124,6 +124,7 @@ export default class implements Command {
       if (song) {
         newSongs.push(song);
       } else {
+        console.log(_);
         await res.stop(errorMsg('that doesn\'t exist'));
         return;
       }

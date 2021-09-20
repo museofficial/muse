@@ -1,7 +1,7 @@
 import {TextChannel, Message, GuildChannel} from 'discord.js';
 import {injectable} from 'inversify';
-import {Settings} from '../models';
-import errorMsg from '../utils/error-msg';
+import {Settings} from '../models/index.js';
+import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 
 @injectable()

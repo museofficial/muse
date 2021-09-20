@@ -7,7 +7,7 @@ import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
-import errorMsg from '../utils/error-msg';
+import errorMsg from '../utils/error-msg.js';
 
 export interface QueuedPlaylist {
   title: string;

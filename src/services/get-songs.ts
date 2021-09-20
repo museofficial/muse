@@ -2,37 +2,73 @@ import {URL} from 'url';
 import {inject, injectable} from 'inversify';
 import {toSeconds, parse} from 'iso8601-duration';
 import got from 'got';
+import ytsr, {Video} from 'ytsr';
 import spotifyURI from 'spotify-uri';
 import Spotify from 'spotify-web-api-node';
 import YouTube, {YoutubePlaylistItem} from 'youtube.ts';
-import pLimit from 'p-limit';
+import PQueue from 'p-queue';
 import shuffle from 'array-shuffle';
 import {Except} from 'type-fest';
-import {QueuedSong, QueuedPlaylist} from '../services/player';
-import {TYPES} from '../types';
-import {cleanUrl} from '../utils/url';
-import ThirdParty from './third-party';
-import Config from './config';
+import {QueuedSong, QueuedPlaylist} from '../services/player.js';
+import {TYPES} from '../types.js';
+import {cleanUrl} from '../utils/url.js';
+import ThirdParty from './third-party.js';
+import Config from './config.js';
+import CacheProvider from './cache.js';
 
 type QueuedSongWithoutChannel = Except<QueuedSong, 'addedInChannelId'>;
+
+const ONE_HOUR_IN_SECONDS = 60 * 60;
+const ONE_MINUTE_IN_SECONDS = 1 * 60;
 
 @injectable()
 export default class {
   private readonly youtube: YouTube;
   private readonly youtubeKey: string;
   private readonly spotify: Spotify;
+  private readonly cache: CacheProvider;
 
-  constructor(@inject(TYPES.ThirdParty) thirdParty: ThirdParty, @inject(TYPES.Config) config: Config) {
+  private readonly ytsrQueue: PQueue;
+
+  constructor(
+  @inject(TYPES.ThirdParty) thirdParty: ThirdParty,
+    @inject(TYPES.Config) config: Config,
+    @inject(TYPES.Cache) cache: CacheProvider) {
     this.youtube = thirdParty.youtube;
     this.youtubeKey = config.YOUTUBE_API_KEY;
     this.spotify = thirdParty.spotify;
+    this.cache = cache;
+
+    this.ytsrQueue = new PQueue({concurrency: 4});
   }
 
   async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel|null> {
     try {
-      const {items: [video]} = await this.youtube.videos.search({q: query, maxResults: 1, type: 'video'});
+      const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
+        ytsr,
+        query,
+        {
+          limit: 10
+        },
+        {
+          expiresIn: ONE_HOUR_IN_SECONDS
+        }
+      ));
 
-      return await this.youtubeVideo(video.id.videoId);
+      let firstVideo: Video | undefined;
+
+      for (const item of items) {
+        if (item.type === 'video') {
+          firstVideo = item;
+          break;
+        }
+      }
+
+      if (!firstVideo) {
+        throw new Error('No video found.');
+      }
+
+      return await this.youtubeVideo(firstVideo.id);
     } catch (_: unknown) {
       return null;
     }
@@ -40,7 +76,13 @@ export default class {
 
   async youtubeVideo(url: string): Promise<QueuedSongWithoutChannel|null> {
     try {
-      const videoDetails = await this.youtube.videos.get(cleanUrl(url));
+      const videoDetails = await this.cache.wrap(
+        this.youtube.videos.get,
+        cleanUrl(url),
+        {
+          expiresIn: ONE_HOUR_IN_SECONDS
+        }
+      );
 
       return {
         title: videoDetails.snippet.title,
@@ -57,7 +99,13 @@ export default class {
 
   async youtubePlaylist(listId: string): Promise<QueuedSongWithoutChannel[]> {
     // YouTube playlist
-    const playlist = await this.youtube.playlists.get(listId);
+    const playlist = await this.cache.wrap(
+      this.youtube.playlists.get,
+      listId,
+      {
+        expiresIn: ONE_MINUTE_IN_SECONDS
+      }
+    );
 
     interface VideoDetailsResponse {
       id: string;
@@ -75,7 +123,14 @@ export default class {
 
     while (playlistVideos.length !== playlist.contentDetails.itemCount) {
       // eslint-disable-next-line no-await-in-loop
-      const {items, nextPageToken} = await this.youtube.playlists.items(listId, {maxResults: '50', pageToken: nextToken});
+      const {items, nextPageToken} = await this.cache.wrap(
+        this.youtube.playlists.items,
+        listId,
+        {maxResults: '50', pageToken: nextToken},
+        {
+          expiresIn: ONE_MINUTE_IN_SECONDS
+        }
+      );
 
       nextToken = nextPageToken;
 
@@ -84,11 +139,24 @@ export default class {
       // Start fetching extra details about videos
       videoDetailsPromises.push((async () => {
         // Unfortunately, package doesn't provide a method for this
-        const {items: videoDetailItems}: {items: VideoDetailsResponse[]} = await got('https://www.googleapis.com/youtube/v3/videos', {searchParams: {
-          part: 'contentDetails',
-          id: items.map(item => item.contentDetails.videoId).join(','),
-          key: this.youtubeKey
-        }}).json();
+        const {items: videoDetailItems} = await this.cache.wrap(
+          () => {
+            return got(
+              'https://www.googleapis.com/youtube/v3/videos',
+              {
+                searchParams: {
+                  part: 'contentDetails',
+                  id: items.map(item => item.contentDetails.videoId).join(','),
+                  key: this.youtubeKey,
+                  responseType: 'json'
+                }
+              }
+            ).json();
+          },
+          {
+            expiresIn: ONE_MINUTE_IN_SECONDS
+          }
+        );
 
         videoDetails.push(...videoDetailItems);
       })());
@@ -193,9 +261,7 @@ export default class {
       tracks = shuffled.slice(0, 50);
     }
 
-    // Limit concurrency so hopefully we don't get banned for searching
-    const limit = pLimit(5);
-    let songs = await Promise.all(tracks.map(async track => limit(async () => this.spotifyToYouTube(track, playlist))));
+    let songs = await Promise.all(tracks.map(async track => this.spotifyToYouTube(track, playlist)));
 
     let nSongsNotFound = 0;
 
@@ -215,14 +281,7 @@ export default class {
 
   private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSongWithoutChannel | null> {
     try {
-      const {items} = await this.youtube.videos.search({q: `"${track.name}" "${track.artists[0].name}"`, maxResults: 10});
-      const videoResult = items[0];
-
-      if (!videoResult) {
-        throw new Error('No video found for query.');
-      }
-
-      return await this.youtubeVideo(videoResult.id.videoId);
+      return await this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`);
     } catch (_: unknown) {
       return null;
     }

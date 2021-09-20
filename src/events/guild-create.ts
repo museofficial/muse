@@ -1,8 +1,8 @@
 import {Guild, TextChannel, Message} from 'discord.js';
 import emoji from 'node-emoji';
 import pEvent from 'p-event';
-import {Settings} from '../models';
-import {chunk} from '../utils/arrays';
+import {Settings} from '../models/index.js';
+import {chunk} from '../utils/arrays.js';
 
 const DEFAULT_PREFIX = '!';
 

@@ -1,9 +1,9 @@
 import {inject, injectable} from 'inversify';
 import {Message, Guild, GuildMember} from 'discord.js';
-import {TYPES} from '../types';
-import PlayerManager from '../managers/player';
-import {QueuedSong} from '../services/player';
-import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels';
+import {TYPES} from '../types.js';
+import PlayerManager from '../managers/player.js';
+import {QueuedSong} from '../services/player.js';
+import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels.js';
 
 @injectable()
 export default class {

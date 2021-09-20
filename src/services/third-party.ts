@@ -1,8 +1,8 @@
 import {inject, injectable} from 'inversify';
 import SpotifyWebApi from 'spotify-web-api-node';
-import Youtube from 'youtube.ts';
-import {TYPES} from '../types';
-import Config from './config';
+import Youtube from 'youtube.ts/dist/youtube.js';
+import {TYPES} from '../types.js';
+import Config from './config.js';
 
 @injectable()
 export default class ThirdParty {
@@ -12,7 +12,8 @@ export default class ThirdParty {
   private spotifyTokenTimerId?: NodeJS.Timeout;
 
   constructor(@inject(TYPES.Config) config: Config) {
-    this.youtube = new Youtube(config.YOUTUBE_API_KEY);
+    // Library is transpiled incorrectly
+    this.youtube = new ((Youtube as any).default)(config.YOUTUBE_API_KEY);
     this.spotify = new SpotifyWebApi({
       clientId: config.SPOTIFY_CLIENT_ID,
       clientSecret: config.SPOTIFY_CLIENT_SECRET

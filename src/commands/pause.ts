@@ -1,9 +1,9 @@
 import {Message} from 'discord.js';
-import {TYPES} from '../types';
+import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
-import PlayerManager from '../managers/player';
-import {STATUS} from '../services/player';
-import errorMsg from '../utils/error-msg';
+import PlayerManager from '../managers/player.js';
+import {STATUS} from '../services/player.js';
+import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 
 @injectable()

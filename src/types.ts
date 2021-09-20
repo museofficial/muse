@@ -1,5 +1,6 @@
 export const TYPES = {
   Bot: Symbol('Bot'),
+  Cache: Symbol('Cache'),
   Client: Symbol('Client'),
   Config: Symbol('Config'),
   Command: Symbol('Command'),

@@ -2,12 +2,16 @@
   "name": "muse",
   "version": "0.1.0",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
-  "main": "dist/index.js",
+  "exports": "./dist/index.js",
   "repository": "git@github.com:codetheweb/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
   "license": "MIT",
   "private": true,
   "types": "dts/types",
+  "type": "module",
+  "engines": {
+    "node": "^12.20.0 || ^14.13.1 || >=16.0.0"
+  },
   "files": [
     "dist",
     "dts"
@@ -83,13 +87,15 @@
     "node-emoji": "^1.10.0",
     "p-event": "^4.2.0",
     "p-limit": "^3.1.0",
+    "p-queue": "^7.1.0",
     "reflect-metadata": "^0.1.13",
     "sequelize": "^5.22.4",
     "sequelize-typescript": "^1.1.0",
     "spotify-uri": "^2.2.0",
     "spotify-web-api-node": "^5.0.2",
     "sqlite3": "^5.0.2",
-    "youtube.ts": "^0.2.0",
-    "ytdl-core": "^4.9.1"
+    "youtube.ts": "^0.2.2",
+    "ytdl-core": "^4.9.1",
+    "ytsr": "^3.5.3"
   }
 }

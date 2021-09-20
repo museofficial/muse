@@ -1,8 +1,8 @@
 import {inject, injectable} from 'inversify';
-import {TYPES} from '../types';
-import Player from '../services/player';
 import {Client} from 'discord.js';
-import Config from '../services/config';
+import {TYPES} from '../types.js';
+import Player from '../services/player.js';
+import Config from '../services/config.js';
 
 @injectable()
 export default class {

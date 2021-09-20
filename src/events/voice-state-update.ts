@@ -1,8 +1,8 @@
 import {VoiceState} from 'discord.js';
-import container from '../inversify.config';
-import {TYPES} from '../types';
-import PlayerManager from '../managers/player';
-import {getSizeWithoutBots} from '../utils/channels';
+import container from '../inversify.config.js';
+import {TYPES} from '../types.js';
+import PlayerManager from '../managers/player.js';
+import {getSizeWithoutBots} from '../utils/channels.js';
 
 export default (oldState: VoiceState, _: VoiceState): void => {
   const playerManager = container.get<PlayerManager>(TYPES.Managers.Player);

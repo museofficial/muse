@@ -1,10 +1,10 @@
 import makeDir from 'make-dir';
 import path from 'path';
-import container from './inversify.config';
-import {TYPES} from './types';
-import Bot from './bot';
-import {sequelize} from './utils/db';
-import Config from './services/config';
+import container from './inversify.config.js';
+import {TYPES} from './types.js';
+import Bot from './bot.js';
+import {sequelize} from './utils/db.js';
+import Config from './services/config.js';
 
 const bot = container.get<Bot>(TYPES.Bot);
 
@@ -16,7 +16,7 @@ const bot = container.get<Bot>(TYPES.Bot);
   await makeDir(config.CACHE_DIR);
   await makeDir(path.join(config.CACHE_DIR, 'tmp'));
 
-  await sequelize.sync({});
+  await sequelize.sync({alter: true});
 
   await bot.listen();
 })();

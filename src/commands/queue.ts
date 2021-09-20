@@ -1,13 +1,13 @@
 import {Message, MessageEmbed} from 'discord.js';
-import {TYPES} from '../types';
-import {inject, injectable} from 'inversify';
-import PlayerManager from '../managers/player';
-import {STATUS} from '../services/player';
-import Command from '.';
-import getProgressBar from '../utils/get-progress-bar';
-import errorMsg from '../utils/error-msg';
-import {prettyTime} from '../utils/time';
 import getYouTubeID from 'get-youtube-id';
+import {inject, injectable} from 'inversify';
+import {TYPES} from '../types.js';
+import PlayerManager from '../managers/player.js';
+import {STATUS} from '../services/player.js';
+import Command from '.';
+import getProgressBar from '../utils/get-progress-bar.js';
+import errorMsg from '../utils/error-msg.js';
+import {prettyTime} from '../utils/time.js';
 
 const PAGE_SIZE = 10;
 

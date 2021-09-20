@@ -1,7 +1,9 @@
-import Settings from './settings';
-import Shortcut from './shortcut';
+import Cache from './cache.js';
+import Settings from './settings.js';
+import Shortcut from './shortcut.js';
 
 export {
+  Cache,
   Settings,
   Shortcut
 };

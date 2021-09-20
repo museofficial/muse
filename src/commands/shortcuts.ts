@@ -1,7 +1,7 @@
 import {Message} from 'discord.js';
 import {injectable} from 'inversify';
-import {Shortcut, Settings} from '../models';
-import errorMsg from '../utils/error-msg';
+import {Shortcut, Settings} from '../models/index.js';
+import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 
 @injectable()

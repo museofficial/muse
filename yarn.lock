@@ -1153,6 +1153,11 @@ event-target-shim@^5.0.0:
   resolved "https://registry.yarnpkg.com/event-target-shim/-/event-target-shim-5.0.1.tgz#5d4d3ebdf9583d63a5333ce2deb7480ab2b05789"
   integrity sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==
 
+eventemitter3@^4.0.7:
+  version "4.0.7"
+  resolved "https://registry.yarnpkg.com/eventemitter3/-/eventemitter3-4.0.7.tgz#2de9b68f6528d5644ef5c59526a1b4a07306169f"
+  integrity sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==
+
 extend@~3.0.2:
   version "3.0.2"
   resolved "https://registry.yarnpkg.com/extend/-/extend-3.0.2.tgz#f8b1136b4071fbd8eb140aff858b1019ec2915fa"
@@ -1997,7 +2002,7 @@ mimic-response@^3.1.0:
   resolved "https://registry.yarnpkg.com/mimic-response/-/mimic-response-3.1.0.tgz#2d1d59af9c1b129815accc2c46a022a5ce1fa3c9"
   integrity sha512-z0yWI+4FDrrweS8Zmt4Ej5HdJmky15+L2e6Wgn3+iK5fWzb6T3fhNFq2+MeTRb064c6Wr4N/wv0DzQTjNzHNGQ==
 
-miniget@^4.0.0:
+miniget@^4.0.0, miniget@^4.2.1:
   version "4.2.1"
   resolved "https://registry.yarnpkg.com/miniget/-/miniget-4.2.1.tgz#11a1c24817a059e292378eb9cff4328d9240c665"
   integrity sha512-O/DduzDR6f+oDtVype9S/Qu5hhnx73EDYGyZKwU/qN82lehFZdfhoa4DT51SpsO+8epYrB3gcRmws56ROfTIoQ==
@@ -2332,12 +2337,25 @@ p-locate@^5.0.0:
   dependencies:
     p-limit "^3.0.2"
 
+p-queue@^7.1.0:
+  version "7.1.0"
+  resolved "https://registry.yarnpkg.com/p-queue/-/p-queue-7.1.0.tgz#c2bb28f8dc0ebf3fadb985b8706cf2ce5fe5f275"
+  integrity sha512-V+0vPJbhYkBqknPp0qnaz+dWcj8cNepfXZcsVIVEHPbFQXMPwrzCNIiM4FoxGtwHXtPzVCPHDvqCr1YrOJX2Gw==
+  dependencies:
+    eventemitter3 "^4.0.7"
+    p-timeout "^5.0.0"
+
 p-timeout@^3.1.0:
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/p-timeout/-/p-timeout-3.2.0.tgz#c7e17abc971d2a7962ef83626b35d635acf23dfe"
   integrity sha512-rhIwUycgwwKcP9yTOOFK/AKsAopjjCakVqLHePO3CC6Mir1Z99xT+R63jZxAT5lFZLa2inS5h+ZS2GvR99/FBg==
   dependencies:
     p-finally "^1.0.0"
+
+p-timeout@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/p-timeout/-/p-timeout-5.0.0.tgz#0f5dc08422e7243f8317669c461734cd1257a8dc"
+  integrity sha512-z+bU/N7L1SABsqKnQzvAnINgPX7NHdzwUV+gHyJE7VGNDZSr03rhcPODCZSWiiT9k+gf74QPmzcZzqJRvxYZow==
 
 package-json@^6.3.0:
   version "6.5.0"
@@ -3287,22 +3305,13 @@ yocto-queue@^0.1.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-0.1.0.tgz#0294eb3dee05028d31ee1a5fa2c556a6aaf10a1b"
   integrity sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==
 
-youtube.ts@^0.2.0:
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/youtube.ts/-/youtube.ts-0.2.0.tgz#a6cbc153bda9aa712a10098b22060877fb2995f3"
-  integrity sha512-cRHN/7L9FO+DkdKTzvUAiB/hQo+ZtzLb4GfVywPTTtf9JBol87fqzLKf86cBWwuXLOJzJNLB/wvZmUmsxpbByQ==
+youtube.ts@^0.2.2:
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/youtube.ts/-/youtube.ts-0.2.2.tgz#d068bd13da7d2a98743d78682d54535d9c1a2833"
+  integrity sha512-2p5RGp66h77XlLlc2YyxSDU1Gql9cWDhq35TS1kAr5wSU/yIWxeXeuqKyKaFBW8uNqWUkQCiyUbn5tfqPgyzeQ==
   dependencies:
     axios "^0.19.0"
-    ytdl-core "^4.0.3"
-
-ytdl-core@^4.0.3:
-  version "4.8.3"
-  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.8.3.tgz#21570d1834db13dec7828cf87bbf4c83c0fe68d7"
-  integrity sha512-cWCBeX4FCgjcKmuVK384MT582RIAakpUSeMF/NPVmhO8cWiG+LeQLnBordvLolb0iXYzfUvalgmycYAE5Sy6Xw==
-  dependencies:
-    m3u8stream "^0.8.3"
-    miniget "^4.0.0"
-    sax "^1.1.3"
+    ytdl-core "^4.9.1"
 
 ytdl-core@^4.9.1:
   version "4.9.1"
@@ -3312,3 +3321,10 @@ ytdl-core@^4.9.1:
     m3u8stream "^0.8.3"
     miniget "^4.0.0"
     sax "^1.1.3"
+
+ytsr@^3.5.3:
+  version "3.5.3"
+  resolved "https://registry.yarnpkg.com/ytsr/-/ytsr-3.5.3.tgz#88e8e2df11ce53c28b456b5510272495cb42ac3a"
+  integrity sha512-BEyIKbQULmk27hiVUQ1cBszAqP8roPBOQTWPZpBioKxjSZBeicfgF2qPIQoY7koodQwRuo1DmCFz3DyrXjADxg==
+  dependencies:
+    miniget "^4.2.1"

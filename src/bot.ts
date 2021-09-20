@@ -1,16 +1,16 @@
 import {Client, Message, Collection} from 'discord.js';
 import {inject, injectable} from 'inversify';
-import {TYPES} from './types';
-import {Settings, Shortcut} from './models';
-import container from './inversify.config';
-import Command from './commands';
-import debug from './utils/debug';
-import NaturalLanguage from './services/natural-language-commands';
-import handleGuildCreate from './events/guild-create';
-import handleVoiceStateUpdate from './events/voice-state-update';
-import errorMsg from './utils/error-msg';
-import {isUserInVoice} from './utils/channels';
-import Config from './services/config';
+import {TYPES} from './types.js';
+import {Settings, Shortcut} from './models/index.js';
+import container from './inversify.config.js';
+import Command from './commands/index.js';
+import debug from './utils/debug.js';
+import NaturalLanguage from './services/natural-language-commands.js';
+import handleGuildCreate from './events/guild-create.js';
+import handleVoiceStateUpdate from './events/voice-state-update.js';
+import errorMsg from './utils/error-msg.js';
+import {isUserInVoice} from './utils/channels.js';
+import Config from './services/config.js';
 
 @injectable()
 export default class {
