@@ -67,3 +67,5 @@ services:
 3. `yarn install` (or `npm i`)
 4. `yarn build` (or `npm run build`)
 5. `yarn start` (or `npm run start`)
+
+**Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/codetheweb/muse/issues/345) for details.
