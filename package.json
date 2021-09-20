@@ -70,7 +70,7 @@
     }
   },
   "dependencies": {
-    "@discordjs/opus": "^0.5.3",
+    "@discordjs/opus": "^0.6.0",
     "array-shuffle": "^2.0.0",
     "debug": "^4.3.1",
     "delay": "^5.0.0",
