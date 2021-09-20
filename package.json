@@ -43,7 +43,7 @@
     "eslint": "^7.32.0",
     "eslint-config-xo": "^0.38.0",
     "eslint-config-xo-typescript": "^0.44.0",
-    "husky": "^4.3.8",
+    "husky": "^7.0.2",
     "nodemon": "^2.0.7",
     "ts-node": "^9.1.1",
     "typescript": "^4.4.3"
