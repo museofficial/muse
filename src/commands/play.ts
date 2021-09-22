@@ -76,7 +76,13 @@ export default class implements Command {
     try {
       const url = new URL(args[0]);
 
-      const YOUTUBE_HOSTS = ['www.youtube.com', 'youtu.be', 'youtube.com'];
+      const YOUTUBE_HOSTS = [
+        'www.youtube.com',
+        'youtu.be',
+        'youtube.com',
+        'music.youtube.com',
+        'www.music.youtube.com',
+      ];
 
       if (YOUTUBE_HOSTS.includes(url.host)) {
         // YouTube source
