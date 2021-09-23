@@ -25,6 +25,10 @@ export default class CacheProvider {
       expiresIn,
     } = options[options.length - 1] as Options;
 
+    if (key.length < 4) {
+      throw new Error(`Cache key ${key} is too short.`);
+    }
+
     const cachedResult = await Cache.findByPk(key);
 
     if (cachedResult) {
