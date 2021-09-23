@@ -139,18 +139,20 @@ export default class {
       // Start fetching extra details about videos
       videoDetailsPromises.push((async () => {
         // Unfortunately, package doesn't provide a method for this
+        const p = {
+          searchParams: {
+            part: 'contentDetails',
+            id: items.map(item => item.contentDetails.videoId).join(','),
+            key: this.youtubeKey,
+            responseType: 'json',
+          },
+        };
         const {items: videoDetailItems} = await this.cache.wrap(
           async () => got(
             'https://www.googleapis.com/youtube/v3/videos',
-            {
-              searchParams: {
-                part: 'contentDetails',
-                id: items.map(item => item.contentDetails.videoId).join(','),
-                key: this.youtubeKey,
-                responseType: 'json',
-              },
-            },
+            p,
           ).json() as Promise<{items: VideoDetailsResponse[]}>,
+          p,
           {
             expiresIn: ONE_MINUTE_IN_SECONDS,
           },
