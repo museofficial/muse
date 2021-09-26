@@ -33,6 +33,6 @@ export default class ThirdParty {
     const auth = await this.spotify.clientCredentialsGrant();
     this.spotify.setAccessToken(auth.body.access_token);
 
-    this.spotifyTokenTimerId = setTimeout(this.refreshSpotifyToken, (auth.body.expires_in / 2) * 1000);
+    this.spotifyTokenTimerId = setTimeout(this.refreshSpotifyToken.bind(this), (auth.body.expires_in / 2) * 1000);
   }
 }
