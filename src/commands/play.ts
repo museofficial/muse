@@ -10,6 +10,7 @@ import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import GetSongs from '../services/get-songs.js';
+import Config from '../services/config.js';
 
 @injectable()
 export default class implements Command {
@@ -31,10 +32,16 @@ export default class implements Command {
 
   private readonly playerManager: PlayerManager;
   private readonly getSongs: GetSongs;
+  private readonly playlistLimit: number;
 
-  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Services.GetSongs) getSongs: GetSongs) {
+  constructor(
+  @inject(TYPES.Managers.Player) playerManager: PlayerManager,
+    @inject(TYPES.Services.GetSongs) getSongs: GetSongs,
+    @inject(TYPES.Config) config: Config,
+  ) {
     this.playerManager = playerManager;
     this.getSongs = getSongs;
+    this.playlistLimit = config.getPlaylistLimit();
   }
 
   public async execute(msg: Message, args: string[]): Promise<void> {
@@ -103,11 +110,11 @@ export default class implements Command {
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
         const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(args[0]);
 
-        if (totalSongs > 50) {
-          extraMsg = 'a random sample of 50 songs was taken';
+        if (totalSongs > this.playlistLimit) {
+          extraMsg = `a random sample of ${this.playlistLimit} songs was taken`;
         }
 
-        if (totalSongs > 50 && nSongsNotFound !== 0) {
+        if (totalSongs > this.playlistLimit && nSongsNotFound !== 0) {
           extraMsg += ' and ';
         }
 
