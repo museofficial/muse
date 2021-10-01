@@ -126,7 +126,7 @@ export default class {
       const {items, nextPageToken} = await this.cache.wrap(
         this.youtube.playlists.items,
         listId,
-        {maxResults: `${limit}`, pageToken: nextToken},
+        {maxResults: limit, pageToken: nextToken},
         {
           expiresIn: ONE_MINUTE_IN_SECONDS,
         },
@@ -219,7 +219,7 @@ export default class {
         while (tracksResponse.next) {
           // eslint-disable-next-line no-await-in-loop
           ({body: tracksResponse} = await this.spotify.getPlaylistTracks(uri.id, {
-            limit: parseInt(new URL(tracksResponse.next).searchParams.get('limit') ?? `${limit}`, 10),
+            limit,
             offset: parseInt(new URL(tracksResponse.next).searchParams.get('offset') ?? '0', 10),
           }));
 
