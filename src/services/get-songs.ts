@@ -27,7 +27,6 @@ export default class {
   private readonly youtubeKey: string;
   private readonly spotify: Spotify;
   private readonly cache: CacheProvider;
-  private readonly playlistLimit: number;
 
   private readonly ytsrQueue: PQueue;
 
@@ -39,7 +38,6 @@ export default class {
     this.youtubeKey = config.YOUTUBE_API_KEY;
     this.spotify = thirdParty.spotify;
     this.cache = cache;
-    this.playlistLimit = config.getPlaylistLimit();
 
     this.ytsrQueue = new PQueue({concurrency: 4});
   }
@@ -128,7 +126,7 @@ export default class {
       const {items, nextPageToken} = await this.cache.wrap(
         this.youtube.playlists.items,
         listId,
-        {maxResults: `${this.playlistLimit}`, pageToken: nextToken},
+        {maxResults: '50', pageToken: nextToken},
         {
           expiresIn: ONE_MINUTE_IN_SECONDS,
         },
@@ -201,7 +199,7 @@ export default class {
       case 'album': {
         const uri = parsed as spotifyURI.Album;
 
-        const [{body: album}, {body: {items}}] = await Promise.all([this.spotify.getAlbum(uri.id), this.spotify.getAlbumTracks(uri.id, {limit: this.playlistLimit})]);
+        const [{body: album}, {body: {items}}] = await Promise.all([this.spotify.getAlbum(uri.id), this.spotify.getAlbumTracks(uri.id, {limit: 50})]);
 
         tracks.push(...items);
 
@@ -212,7 +210,7 @@ export default class {
       case 'playlist': {
         const uri = parsed as spotifyURI.Playlist;
 
-        let [{body: playlistResponse}, {body: tracksResponse}] = await Promise.all([this.spotify.getPlaylist(uri.id), this.spotify.getPlaylistTracks(uri.id, {limit: this.playlistLimit})]);
+        let [{body: playlistResponse}, {body: tracksResponse}] = await Promise.all([this.spotify.getPlaylist(uri.id), this.spotify.getPlaylistTracks(uri.id, {limit: 50})]);
 
         playlist = {title: playlistResponse.name, source: playlistResponse.href};
 
@@ -221,7 +219,7 @@ export default class {
         while (tracksResponse.next) {
           // eslint-disable-next-line no-await-in-loop
           ({body: tracksResponse} = await this.spotify.getPlaylistTracks(uri.id, {
-            limit: parseInt(new URL(tracksResponse.next).searchParams.get('limit') ?? `${this.playlistLimit}`, 10),
+            limit: parseInt(new URL(tracksResponse.next).searchParams.get('limit') ?? '50', 10),
             offset: parseInt(new URL(tracksResponse.next).searchParams.get('offset') ?? '0', 10),
           }));
 
@@ -254,13 +252,13 @@ export default class {
       }
     }
 
-    // Get random songs if many then limit to playlistLimit (defaults to 50)
+    // Get 50 random songs if many
     const originalNSongs = tracks.length;
 
-    if (tracks.length > this.playlistLimit) {
+    if (tracks.length > 50) {
       const shuffled = shuffle(tracks);
 
-      tracks = shuffled.slice(0, this.playlistLimit);
+      tracks = shuffled.slice(0, 50);
     }
 
     let songs = await Promise.all(tracks.map(async track => this.spotifyToYouTube(track, playlist)));
