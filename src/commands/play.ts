@@ -40,7 +40,8 @@ export default class implements Command {
 
   public async execute(msg: Message, args: string[]): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(msg.member!) ?? getMostPopularVoiceChannel(msg.guild!);
-    const playlistLimit = await this.getPlaylistLimit(msg.guild!.id);
+    const settings = await Settings.findByPk(msg.guild!.id);
+    const {playlistLimit} = settings!;
 
     const res = new LoadingMessage(msg.channel as TextChannel);
     await res.start();
@@ -168,10 +169,5 @@ export default class implements Command {
 
       await player.play();
     }
-  }
-
-  private async getPlaylistLimit(guildId: string) {
-    const settings = await Settings.findByPk(guildId);
-    return settings?.playlistLimit ?? 50;
   }
 }
