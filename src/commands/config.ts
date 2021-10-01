@@ -11,6 +11,7 @@ export default class implements Command {
   public examples = [
     ['config prefix !', 'set the prefix to !'],
     ['config channel music-commands', 'bind the bot to the music-commands channel'],
+    ['config playlist-limit 30', 'set the playlist song limit to 30'],
   ];
 
   public async execute(msg: Message, args: string []): Promise<void> {
@@ -20,7 +21,8 @@ export default class implements Command {
 
       if (settings) {
         let response = `prefix: \`${settings.prefix}\`\n`;
-        response += `channel: ${msg.guild!.channels.cache.get(settings.channel)!.toString()}`;
+        response += `channel: ${msg.guild!.channels.cache.get(settings.channel)!.toString()}\n`;
+        response += `playlist-limit: ${settings.playlistLimit}`;
 
         await msg.channel.send(response);
       }
@@ -70,6 +72,18 @@ export default class implements Command {
           await msg.channel.send(errorMsg('either that channel doesn\'t exist or you want me to become sentient and listen to a voice channel'));
         }
 
+        break;
+      }
+
+      case 'playlist-limit': {
+        const playlistLimit = Number(args[1]);
+        if (!playlistLimit || playlistLimit <= 0) {
+          await msg.channel.send(errorMsg('please enter a valid number'));
+          return;
+        }
+
+        await Settings.update({playlistLimit}, {where: {guildId: msg.guild!.id}});
+        await msg.channel.send(`👍 playlist-limit updated to ${playlistLimit}`);
         break;
       }
 
