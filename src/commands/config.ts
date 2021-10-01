@@ -76,8 +76,8 @@ export default class implements Command {
       }
 
       case 'playlist-limit': {
-        const playlistLimit = Number(args[1]);
-        if (!playlistLimit || playlistLimit <= 0) {
+        const playlistLimit = parseInt(args[1], 10);
+        if (playlistLimit <= 0) {
           await msg.channel.send(errorMsg('please enter a valid number'));
           return;
         }
