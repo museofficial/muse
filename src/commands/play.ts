@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 import {TextChannel, Message} from 'discord.js';
 import {URL} from 'url';
 import {Except} from 'type-fest';
