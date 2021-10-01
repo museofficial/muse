@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import {TextChannel, Message} from 'discord.js';
 import {URL} from 'url';
 import {Except} from 'type-fest';
@@ -10,6 +11,7 @@ import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import GetSongs from '../services/get-songs.js';
+import Settings from '../models/settings.js';
 
 @injectable()
 export default class implements Command {
@@ -39,6 +41,7 @@ export default class implements Command {
 
   public async execute(msg: Message, args: string[]): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(msg.member!) ?? getMostPopularVoiceChannel(msg.guild!);
+    const playlistLimit = await this.getPlaylistLimit(msg.guild!.id);
 
     const res = new LoadingMessage(msg.channel as TextChannel);
     await res.start();
@@ -88,7 +91,8 @@ export default class implements Command {
         // YouTube source
         if (url.searchParams.get('list')) {
           // YouTube playlist
-          newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!));
+          const playlist = await this.getSongs.youtubePlaylist(url.searchParams.get('list')!, playlistLimit);
+          newSongs.push(...playlist);
         } else {
           // Single video
           const song = await this.getSongs.youtubeVideo(url.href);
@@ -101,13 +105,13 @@ export default class implements Command {
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(args[0]);
+        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(args[0], playlistLimit);
 
-        if (totalSongs > 50) {
-          extraMsg = 'a random sample of 50 songs was taken';
+        if (totalSongs > playlistLimit) {
+          extraMsg = `a random sample of ${playlistLimit} songs was taken`;
         }
 
-        if (totalSongs > 50 && nSongsNotFound !== 0) {
+        if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
           extraMsg += ' and ';
         }
 
@@ -165,5 +169,10 @@ export default class implements Command {
 
       await player.play();
     }
+  }
+
+  private async getPlaylistLimit(guildId: string) {
+    const settings = await Settings.findByPk(guildId);
+    return settings?.playlistLimit ?? 50;
   }
 }

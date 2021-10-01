@@ -15,4 +15,8 @@ export default class Settings extends Model<Settings> {
   @Default(false)
   @Column
   finishedSetup!: boolean;
+
+  @Default(50)
+  @Column
+  playlistLimit!: number;
 }
