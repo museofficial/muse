@@ -157,12 +157,16 @@ export default class implements Command {
       await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
     }
 
+    if (player.voiceConnection === null) {
+      await player.connect(targetVoiceChannel);
+
+      if (player.status === STATUS.PAUSED && queueOldSize) {
+        await msg.channel.send('joined, but I\'m paused, use a lonely `-p` to resume playback');
+      }
+    }
+
     if (queueOldSize === 0 && !wasPlayingSong) {
       // Only auto-play if queue was empty before and nothing was playing
-      if (player.voiceConnection === null) {
-        await player.connect(targetVoiceChannel);
-      }
-
       await player.play();
     }
   }
