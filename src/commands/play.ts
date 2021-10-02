@@ -161,7 +161,8 @@ export default class implements Command {
       await player.connect(targetVoiceChannel);
 
       if (player.status === STATUS.PAUSED && queueOldSize) {
-        await msg.channel.send('joined, but I\'m paused, use a lonely `-p` to resume playback');
+        // Resume playing from queue after being paused
+        await player.play();
       }
     }
 
