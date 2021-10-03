@@ -441,13 +441,17 @@ export default class {
       return;
     }
 
-    this.voiceConnection.on('disconnect', this.onVoiceConnectionDisconnect.bind(this));
+    if (this.voiceConnection.listeners('disconnect').length === 0) {
+      this.voiceConnection.on('disconnect', this.onVoiceConnectionDisconnect.bind(this));
+    }
 
     if (!this.dispatcher) {
       return;
     }
 
-    this.dispatcher.on('speaking', this.onVoiceConnectionSpeaking.bind(this));
+    if (this.dispatcher.listeners('speaking').length === 0) {
+      this.dispatcher.on('speaking', this.onVoiceConnectionSpeaking.bind(this));
+    }
   }
 
   private onVoiceConnectionDisconnect(): void {
