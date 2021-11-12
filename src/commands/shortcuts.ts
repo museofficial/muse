@@ -55,7 +55,7 @@ export default class implements Command {
           const newShortcut = {shortcut: shortcutName, command, guildId: msg.guild!.id, authorId: msg.author.id};
 
           if (shortcut) {
-            if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.owner!.id) {
+            if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.ownerId) {
               await msg.channel.send(errorMsg('you do\'nt have permission to do that'));
               return;
             }
@@ -80,7 +80,7 @@ export default class implements Command {
           }
 
           // Check permissions
-          if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.owner!.id) {
+          if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.ownerId) {
             await msg.channel.send(errorMsg('you don\'t have permission to do that'));
             return;
           }

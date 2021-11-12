@@ -9,7 +9,7 @@ const DEFAULT_PREFIX = '!';
 export default async (guild: Guild): Promise<void> => {
   await Settings.upsert({guildId: guild.id, prefix: DEFAULT_PREFIX});
 
-  const owner = await guild.client.users.fetch(guild.ownerID);
+  const owner = await guild.client.users.fetch(guild.ownerId);
 
   let firstStep = '👋 Hi!\n';
   firstStep += 'I just need to ask a few questions before you start listening to music.\n\n';
@@ -27,7 +27,7 @@ export default async (guild: Guild): Promise<void> => {
   const emojiChannels: EmojiChannel[] = [];
 
   for (const [channelId, channel] of guild.channels.cache) {
-    if (channel.type === 'text') {
+    if (channel.type === 'GUILD_TEXT') {
       emojiChannels.push({
         name: channel.name,
         id: channelId,
@@ -65,7 +65,7 @@ export default async (guild: Guild): Promise<void> => {
 
   await owner.send(secondStep);
 
-  const prefixResponses = await firstStepMsg.channel.awaitMessages((r: Message) => r.content.length === 1, {max: 1});
+  const prefixResponses = await firstStepMsg.channel.awaitMessages({filter: (r: Message) => r.content.length === 1, max: 1});
 
   const prefixCharacter = prefixResponses.first()!.content;
 
