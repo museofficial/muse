@@ -11,6 +11,7 @@ import handleVoiceStateUpdate from './events/voice-state-update.js';
 import errorMsg from './utils/error-msg.js';
 import {isUserInVoice} from './utils/channels.js';
 import Config from './services/config.js';
+import {generateDependencyReport} from '@discordjs/voice';
 
 @injectable()
 export default class {
@@ -34,7 +35,7 @@ export default class {
       commandNames.forEach(commandName => this.commands.set(commandName, command));
     });
 
-    this.client.on('message', async (msg: Message) => {
+    this.client.on('messageCreate', async (msg: Message) => {
       // Get guild settings
       if (!msg.guild) {
         return;
@@ -44,7 +45,8 @@ export default class {
 
       if (!settings) {
         // Got into a bad state, send owner welcome message
-        return this.client.emit('guildCreate', msg.guild);
+        this.client.emit('guildCreate', msg.guild);
+        return;
       }
 
       const {prefix, channel} = settings;
@@ -95,6 +97,7 @@ export default class {
     });
 
     this.client.on('ready', async () => {
+      debug(generateDependencyReport());
       console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot&permissions=36752448`);
     });
 

@@ -10,7 +10,7 @@
   "types": "dts/types",
   "type": "module",
   "engines": {
-    "node": "^12.20.0 || ^14.13.1 || >=16.0.0"
+    "node": ">=16.0.0"
   },
   "files": [
     "dist",
@@ -33,11 +33,11 @@
     "@types/debug": "^4.1.5",
     "@types/fluent-ffmpeg": "^2.1.17",
     "@types/fs-capacitor": "^2.0.0",
-    "@types/node": "^14.14.41",
+    "@types/node": "^16.11.6",
     "@types/node-emoji": "^1.8.1",
     "@types/spotify-web-api-node": "^5.0.2",
     "@types/validator": "^13.1.4",
-    "@types/ws": "^7.4.4",
+    "@types/ws": "^8.2.0",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
     "eslint": "^7.32.0",
@@ -45,7 +45,7 @@
     "eslint-config-xo-typescript": "^0.44.0",
     "husky": "^4.3.8",
     "nodemon": "^2.0.7",
-    "ts-node": "^9.1.1",
+    "ts-node": "^10.4.0",
     "typescript": "^4.4.3"
   },
   "eslintConfig": {
@@ -70,11 +70,13 @@
     }
   },
   "dependencies": {
-    "@discordjs/opus": "^0.5.3",
+    "@discordjs/opus": "^0.6.0",
+    "@discordjs/voice": "^0.7.5",
+    "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^2.0.0",
     "debug": "^4.3.1",
     "delay": "^5.0.0",
-    "discord.js": "^12.5.3",
+    "discord.js": "^13.3.0",
     "dotenv": "^8.5.1",
     "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^6.2.0",
@@ -83,6 +85,7 @@
     "hasha": "^5.2.2",
     "inversify": "^5.1.1",
     "iso8601-duration": "^1.3.0",
+    "libsodium-wrappers": "^0.7.9",
     "make-dir": "^3.1.0",
     "node-emoji": "^1.10.0",
     "p-event": "^4.2.0",

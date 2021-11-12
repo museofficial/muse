@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import {Container} from 'inversify';
 import {TYPES} from './types.js';
 import Bot from './bot.js';
-import {Client} from 'discord.js';
+import {Client, Intents} from 'discord.js';
 import ConfigProvider from './services/config.js';
 
 // Managers
@@ -32,9 +32,16 @@ import CacheProvider from './services/cache.js';
 
 const container = new Container();
 
+// Intents
+const intents = new Intents();
+intents.add(Intents.FLAGS.GUILDS); // To listen for guildCreate event
+intents.add(Intents.FLAGS.GUILD_MESSAGES); // To listen for messages (messageCreate event)
+intents.add(Intents.FLAGS.DIRECT_MESSAGE_REACTIONS); // To listen for message reactions (messageReactionAdd event)
+intents.add(Intents.FLAGS.GUILD_VOICE_STATES); // To listen for voice state changes (voiceStateUpdate event)
+
 // Bot
 container.bind<Bot>(TYPES.Bot).to(Bot).inSingletonScope();
-container.bind<Client>(TYPES.Client).toConstantValue(new Client());
+container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
 
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
