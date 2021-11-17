@@ -241,25 +241,12 @@ export default class {
   }
 
   add(song: QueuedSong, {immediate = false} = {}): void {
-    if (song.playlist) {
+    if (song.playlist || !immediate) {
       // Add to end of queue
       this.queue.push(song);
     } else {
-      // Not from playlist, add immediately
-      let insertAt = this.queuePosition + 1;
-
-      if (!immediate) {
-      // Loop until playlist song
-        this.queue.some(song => {
-          if (song.playlist) {
-            return true;
-          }
-
-          insertAt++;
-          return false;
-        });
-      }
-
+      // Add as the next song to be played
+      const insertAt = this.queuePosition + 1;
       this.queue = [...this.queue.slice(0, insertAt), song, ...this.queue.slice(insertAt)];
     }
   }
