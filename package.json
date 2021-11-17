@@ -70,7 +70,7 @@
     }
   },
   "dependencies": {
-    "@discordjs/opus": "^0.6.0",
+    "@discordjs/opus": "^0.7.0",
     "@discordjs/voice": "^0.7.5",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^2.0.0",
