@@ -37,6 +37,7 @@ const intents = new Intents();
 intents.add(Intents.FLAGS.GUILDS); // To listen for guildCreate event
 intents.add(Intents.FLAGS.GUILD_MESSAGES); // To listen for messages (messageCreate event)
 intents.add(Intents.FLAGS.DIRECT_MESSAGE_REACTIONS); // To listen for message reactions (messageReactionAdd event)
+intents.add(Intents.FLAGS.DIRECT_MESSAGES); // To receive the prefix message
 intents.add(Intents.FLAGS.GUILD_VOICE_STATES); // To listen for voice state changes (voiceStateUpdate event)
 
 // Bot
