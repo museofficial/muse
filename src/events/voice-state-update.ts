@@ -1,4 +1,4 @@
-import {VoiceState} from 'discord.js';
+import {VoiceChannel, VoiceState} from 'discord.js';
 import container from '../inversify.config.js';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
@@ -10,7 +10,8 @@ export default (oldState: VoiceState, _: VoiceState): void => {
   const player = playerManager.get(oldState.guild.id);
 
   if (player.voiceConnection) {
-    if (getSizeWithoutBots(player.voiceConnection.channel) === 0) {
+    const voiceChannel: VoiceChannel = oldState.guild.channels.cache.get(player.voiceConnection.joinConfig.channelId!) as VoiceChannel;
+    if (!voiceChannel || getSizeWithoutBots(voiceChannel) === 0) {
       player.disconnect();
     }
   }

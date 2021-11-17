@@ -1,4 +1,4 @@
-import {VoiceConnection, VoiceChannel, StreamDispatcher, Snowflake, Client, TextChannel} from 'discord.js';
+import {VoiceChannel, Snowflake, Client, TextChannel} from 'discord.js';
 import {promises as fs, createWriteStream} from 'fs';
 import {Readable, PassThrough} from 'stream';
 import path from 'path';
@@ -8,6 +8,7 @@ import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
 import errorMsg from '../utils/error-msg.js';
+import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
 
 export interface QueuedPlaylist {
   title: string;
@@ -35,7 +36,7 @@ export default class {
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
   private readonly cacheDir: string;
-  private dispatcher: StreamDispatcher | null = null;
+  private audioPlayer: AudioPlayer | null = null;
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
@@ -50,23 +51,26 @@ export default class {
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
-    const conn = await channel.join();
+    const conn = joinVoiceChannel({
+      channelId: channel.id,
+      guildId: channel.guild.id,
+      adapterCreator: channel.guild.voiceAdapterCreator,
+    });
 
     this.voiceConnection = conn;
   }
 
-  disconnect(breakConnection = true): void {
+  disconnect(): void {
     if (this.voiceConnection) {
       if (this.status === STATUS.PLAYING) {
         this.pause();
       }
 
-      if (breakConnection) {
-        this.voiceConnection.disconnect();
-      }
+      this.voiceConnection.destroy();
+      this.audioPlayer?.stop();
 
       this.voiceConnection = null;
-      this.dispatcher = null;
+      this.audioPlayer = null;
     }
   }
 
@@ -88,8 +92,11 @@ export default class {
     }
 
     const stream = await this.getStream(currentSong.url, {seek: positionSeconds});
-    this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus', bitrate: 'auto'});
-
+    this.audioPlayer = createAudioPlayer();
+    this.voiceConnection.subscribe(this.audioPlayer);
+    this.audioPlayer.play(createAudioResource(stream, {
+      inputType: StreamType.WebmOpus,
+    }));
     this.attachListeners();
     this.startTrackingPosition(positionSeconds);
 
@@ -117,8 +124,8 @@ export default class {
 
     // Resume from paused state
     if (this.status === STATUS.PAUSED && currentSong.url === this.nowPlaying?.url) {
-      if (this.dispatcher) {
-        this.dispatcher.resume();
+      if (this.audioPlayer) {
+        this.audioPlayer.unpause();
         this.status = STATUS.PLAYING;
         this.startTrackingPosition();
         return;
@@ -132,7 +139,11 @@ export default class {
 
     try {
       const stream = await this.getStream(currentSong.url);
-      this.dispatcher = this.voiceConnection.play(stream, {type: 'webm/opus'});
+      this.audioPlayer = createAudioPlayer();
+      this.voiceConnection.subscribe(this.audioPlayer);
+      this.audioPlayer.play(createAudioResource(stream, {
+        inputType: StreamType.WebmOpus,
+      }));
 
       this.attachListeners();
 
@@ -170,8 +181,8 @@ export default class {
 
     this.status = STATUS.PAUSED;
 
-    if (this.dispatcher) {
-      this.dispatcher.pause();
+    if (this.audioPlayer) {
+      this.audioPlayer.pause();
     }
 
     this.stopTrackingPosition();
@@ -441,22 +452,22 @@ export default class {
       return;
     }
 
-    this.voiceConnection.on('disconnect', this.onVoiceConnectionDisconnect.bind(this));
+    this.voiceConnection.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
 
-    if (!this.dispatcher) {
+    if (!this.audioPlayer) {
       return;
     }
 
-    this.dispatcher.on('speaking', this.onVoiceConnectionSpeaking.bind(this));
+    this.audioPlayer.on('stateChange', this.onAudioPlayerStateChange.bind(this));
   }
 
   private onVoiceConnectionDisconnect(): void {
-    this.disconnect(false);
+    this.disconnect();
   }
 
-  private async onVoiceConnectionSpeaking(isSpeaking: boolean): Promise<void> {
+  private async onAudioPlayerStateChange(_oldState: {status: AudioPlayerStatus}, newState: {status: AudioPlayerStatus}): Promise<void> {
     // Automatically advance queued song at end
-    if (!isSpeaking && this.status === STATUS.PLAYING) {
+    if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
     }
   }
