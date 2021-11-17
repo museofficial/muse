@@ -452,13 +452,17 @@ export default class {
       return;
     }
 
-    this.voiceConnection.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
+    if (this.voiceConnection.listeners(VoiceConnectionStatus.Disconnected).length === 0) {
+      this.voiceConnection.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
+    }
 
     if (!this.audioPlayer) {
       return;
     }
 
-    this.audioPlayer.on('stateChange', this.onAudioPlayerStateChange.bind(this));
+    if (this.audioPlayer.listeners('stateChange').length === 0) {
+      this.audioPlayer.on('stateChange', this.onAudioPlayerStateChange.bind(this));
+    }
   }
 
   private onVoiceConnectionDisconnect(): void {
