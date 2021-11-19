@@ -28,6 +28,7 @@ import Shuffle from './commands/shuffle.js';
 import Skip from './commands/skip.js';
 import Unskip from './commands/unskip.js';
 import ThirdParty from './services/third-party.js';
+import FileCacheProvider from './services/file-cache.js';
 import KeyValueCacheProvider from './services/key-value-cache.js';
 
 const container = new Container();
@@ -76,6 +77,7 @@ container.bind(TYPES.Config).toConstantValue(new ConfigProvider());
 // Static libraries
 container.bind(TYPES.ThirdParty).to(ThirdParty);
 
+container.bind(TYPES.FileCache).to(FileCacheProvider);
 container.bind(TYPES.KeyValueCache).to(KeyValueCacheProvider);
 
 export default container;

@@ -2,25 +2,25 @@ import {inject, injectable} from 'inversify';
 import {Client} from 'discord.js';
 import {TYPES} from '../types.js';
 import Player from '../services/player.js';
-import Config from '../services/config.js';
+import FileCacheProvider from '../services/file-cache.js';
 
 @injectable()
 export default class {
   private readonly guildPlayers: Map<string, Player>;
-  private readonly cacheDir: string;
   private readonly discordClient: Client;
+  private readonly fileCache: FileCacheProvider;
 
-  constructor(@inject(TYPES.Config) config: Config, @inject(TYPES.Client) client: Client) {
+  constructor(@inject(TYPES.FileCache) fileCache: FileCacheProvider, @inject(TYPES.Client) client: Client) {
     this.guildPlayers = new Map();
-    this.cacheDir = config.CACHE_DIR;
     this.discordClient = client;
+    this.fileCache = fileCache;
   }
 
   get(guildId: string): Player {
     let player = this.guildPlayers.get(guildId);
 
     if (!player) {
-      player = new Player(this.cacheDir, this.discordClient);
+      player = new Player(this.discordClient, this.fileCache);
 
       this.guildPlayers.set(guildId, player);
     }

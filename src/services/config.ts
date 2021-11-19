@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 import {injectable} from 'inversify';
 import path from 'path';
+import xbytes from 'xbytes';
+import {ConditionalKeys} from 'type-fest';
 dotenv.config();
 
 export const DATA_DIR = path.resolve(process.env.DATA_DIR ? process.env.DATA_DIR : './data');
@@ -12,6 +14,7 @@ const CONFIG_MAP = {
   SPOTIFY_CLIENT_SECRET: process.env.SPOTIFY_CLIENT_SECRET,
   DATA_DIR,
   CACHE_DIR: path.join(DATA_DIR, 'cache'),
+  CACHE_LIMIT_IN_BYTES: xbytes.parseSize(process.env.CACHE_LIMIT ?? '2GB'),
 } as const;
 
 @injectable()
@@ -22,6 +25,7 @@ export default class Config {
   readonly SPOTIFY_CLIENT_SECRET!: string;
   readonly DATA_DIR!: string;
   readonly CACHE_DIR!: string;
+  readonly CACHE_LIMIT_IN_BYTES!: number;
 
   constructor() {
     for (const [key, value] of Object.entries(CONFIG_MAP)) {
@@ -30,7 +34,13 @@ export default class Config {
         process.exit(1);
       }
 
-      this[key as keyof typeof CONFIG_MAP] = value;
+      if (typeof value === 'number') {
+        this[key as ConditionalKeys<typeof CONFIG_MAP, number>] = value;
+      } else if (typeof value === 'string') {
+        this[key as ConditionalKeys<typeof CONFIG_MAP, string>] = value;
+      } else {
+        throw new Error(`Unsupported type for ${key}`);
+      }
     }
   }
 }
