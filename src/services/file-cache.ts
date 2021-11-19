@@ -1,10 +1,10 @@
+import {promises as fs, createWriteStream} from 'fs';
+import path from 'path';
 import {inject, injectable} from 'inversify';
 import sequelize from 'sequelize';
 import {FileCache} from '../models/index.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
-import {promises as fs, createWriteStream} from 'fs';
-import path from 'path';
 
 @injectable()
 export default class FileCacheProvider {
@@ -104,6 +104,14 @@ export default class FileCacheProvider {
   }
 
   private async removeOrphans() {
-    // TODO
+    for await (const dirent of await fs.opendir(this.config.CACHE_DIR)) {
+      if (dirent.isFile()) {
+        const model = await FileCache.findByPk(dirent.name);
+
+        if (!model) {
+          await fs.unlink(path.join(this.config.CACHE_DIR, dirent.name));
+        }
+      }
+    }
   }
 }
