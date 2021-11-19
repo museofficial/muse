@@ -12,7 +12,7 @@ type Options = {
 const futureTimeToDate = (time: Seconds) => new Date(new Date().getTime() + (time * 1000));
 
 @injectable()
-export default class CacheProvider {
+export default class KeyValueCacheProvider {
   async wrap<T extends [...any[], Options], F>(func: (...options: any) => Promise<F>, ...options: T): Promise<F> {
     if (options.length === 0) {
       throw new Error('Missing cache options');

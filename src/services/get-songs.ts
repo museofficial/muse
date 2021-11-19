@@ -14,7 +14,7 @@ import {TYPES} from '../types.js';
 import {cleanUrl} from '../utils/url.js';
 import ThirdParty from './third-party.js';
 import Config from './config.js';
-import CacheProvider from './cache.js';
+import KeyValueCacheProvider from './key-value-cache.js';
 
 type QueuedSongWithoutChannel = Except<QueuedSong, 'addedInChannelId'>;
 
@@ -26,14 +26,14 @@ export default class {
   private readonly youtube: YouTube;
   private readonly youtubeKey: string;
   private readonly spotify: Spotify;
-  private readonly cache: CacheProvider;
+  private readonly cache: KeyValueCacheProvider;
 
   private readonly ytsrQueue: PQueue;
 
   constructor(
   @inject(TYPES.ThirdParty) thirdParty: ThirdParty,
     @inject(TYPES.Config) config: Config,
-    @inject(TYPES.Cache) cache: CacheProvider) {
+    @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
     this.youtube = thirdParty.youtube;
     this.youtubeKey = config.YOUTUBE_API_KEY;
     this.spotify = thirdParty.spotify;
