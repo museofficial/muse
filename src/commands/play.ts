@@ -131,7 +131,6 @@ export default class implements Command {
       if (song) {
         newSongs.push(song);
       } else {
-        console.log(_);
         await res.stop(errorMsg('that doesn\'t exist'));
         return;
       }

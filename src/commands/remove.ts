@@ -10,8 +10,8 @@ export default class implements Command {
   public name = 'remove';
   public aliases = ['rm'];
   public examples = [
-    ['remove 1', 'removes the first song in the queue (not the one thats playing, just skip it dummy)'],
-    ['rm 6-9', 'removes the every song in range [6-9] from the queue'],
+    ['remove 1', 'removes the next song in the queue'],
+    ['rm 5-7', 'remove every song in range 5 - 7 (inclusive) from the queue'],
   ];
 
   private readonly playerManager: PlayerManager;
@@ -24,7 +24,7 @@ export default class implements Command {
     const player = this.playerManager.get(msg.guild!.id);
 
     if (args.length === 0) {
-      await msg.channel.send('atleast give me a clue for which song you want to remove');
+      await msg.channel.send(errorMsg('missing song position or range'));
       return;
     }
 
@@ -32,7 +32,7 @@ export default class implements Command {
     const match = reg.exec(args[0]);
 
     if (match === null) {
-      await msg.channel.send(errorMsg('incorrect format, just an index or start-end format'));
+      await msg.channel.send(errorMsg('incorrect format'));
       return;
     }
 
@@ -40,39 +40,37 @@ export default class implements Command {
       const range = [parseInt(match[1], 10), parseInt(match[2], 10)];
 
       if (range[0] < 1) {
-        await msg.channel.send(errorMsg('you start counting with 1'));
+        await msg.channel.send(errorMsg('position must be greater than 0'));
         return;
       }
 
       if (range[1] > player.queueSize()) {
-        await msg.channel.send(errorMsg('queue isn\'t THAT big'));
+        await msg.channel.send(errorMsg('position is outside of the queue\'s range'));
         return;
       }
 
       if (range[0] < range[1]) {
         player.removeFromQueue(range[0], range[1] - range[0] + 1);
       } else {
-        await msg.channel.send(errorMsg('range is backwards, just like you'));
+        await msg.channel.send(errorMsg('range is backwards'));
         return;
       }
-
-      console.log(range);
     } else { // 3rd group exists -> just one song
       const index = parseInt(match[3], 10);
 
       if (index < 1) {
-        await msg.channel.send(errorMsg('it\'s got be bigger than 0, chief'));
+        await msg.channel.send(errorMsg('position must be greater than 0'));
         return;
       }
 
       if (index > player.queueSize()) {
-        await msg.channel.send(errorMsg('queue isn\'t THAT big'));
+        await msg.channel.send(errorMsg('position is outside of the queue\'s range'));
         return;
       }
 
       player.removeFromQueue(index, 1);
     }
 
-    await msg.channel.send('to the trash it goes :wastebasket:');
+    await msg.channel.send(':wastebasket: removed');
   }
 }
