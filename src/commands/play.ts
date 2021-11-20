@@ -37,6 +37,7 @@ export default class implements Command {
     this.getSongs = getSongs;
   }
 
+  // eslint-disable-next-line complexity
   public async execute(msg: Message, args: string[]): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(msg.member!) ?? getMostPopularVoiceChannel(msg.guild!);
 
