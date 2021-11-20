@@ -153,10 +153,7 @@ export default class implements Command {
 
     if (queueOldSize === 0 && !wasPlayingSong) {
       // Only auto-play if queue was empty before and nothing was playing
-      if (player.voiceConnection === null) {
-        await player.connect(targetVoiceChannel);
-      }
-
+      await player.connect(targetVoiceChannel);
       await player.play();
     }
   }
