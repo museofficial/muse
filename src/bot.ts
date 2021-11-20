@@ -85,7 +85,7 @@ export default class {
 
       try {
         if (handler.requiresVC && !isUserInVoice(msg.guild, msg.author)) {
-          await msg.channel.send(errorMsg('gotta be in a voice channel'));
+          await msg.channel.send(errorMsg('You must be in a voice channel to issue this command.'));
           return;
         }
 

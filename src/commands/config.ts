@@ -32,12 +32,12 @@ export default class implements Command {
     const setting = args[0];
 
     if (args.length !== 2) {
-      await msg.channel.send(errorMsg('incorrect number of arguments'));
+      await msg.channel.send(errorMsg('This command requires two arguments.'));
       return;
     }
 
     if (msg.author.id !== msg.guild!.ownerId) {
-      await msg.channel.send(errorMsg('not authorized'));
+      await msg.channel.send(errorMsg('You are not authorized to issue this command.'));
       return;
     }
 
@@ -47,7 +47,7 @@ export default class implements Command {
 
         await Settings.update({prefix: newPrefix}, {where: {guildId: msg.guild!.id}});
 
-        await msg.channel.send(`👍 prefix updated to \`${newPrefix}\``);
+        await msg.channel.send(`Prefix updated to \`${newPrefix}\``);
         break;
       }
 
@@ -64,18 +64,17 @@ export default class implements Command {
           await Settings.update({channel: channel.id}, {where: {guildId: msg.guild!.id}});
 
           await Promise.all([
-            (channel as TextChannel).send('hey apparently I\'m bound to this channel now'),
-            msg.react('👍'),
+            (channel as TextChannel).send('I\'m now bound and listening to this channel.'),
           ]);
         } else {
-          await msg.channel.send(errorMsg('either that channel doesn\'t exist or you want me to become sentient and listen to a voice channel'));
+          await msg.channel.send(errorMsg('I\'m not able to bind or listen to this channel.'));
         }
 
         break;
       }
 
       default:
-        await msg.channel.send(errorMsg('I\'ve never met this setting in my life'));
+        await msg.channel.send(errorMsg('I don\'t recognize this setting.'));
     }
   }
 }

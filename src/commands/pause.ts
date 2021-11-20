@@ -26,11 +26,10 @@ export default class implements Command {
     const player = this.playerManager.get(msg.guild!.id);
 
     if (player.status !== STATUS.PLAYING) {
-      await msg.channel.send(errorMsg('not currently playing'));
+      await msg.channel.send(errorMsg('I\'m not playing anything at the moment.'));
       return;
     }
 
     player.pause();
-    await msg.channel.send('the stop-and-go light is now red');
   }
 }

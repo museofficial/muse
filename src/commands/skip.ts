@@ -40,9 +40,9 @@ export default class implements Command {
       await loader.start();
       await player.forward(numToSkip);
 
-      await loader.stop('keep \'er movin\'');
+      await loader.stop('');
     } catch (_: unknown) {
-      await loader.stop(errorMsg('no song to skip to'));
+      await loader.stop(errorMsg('There are no song to skip forward to.'));
     }
   }
 }

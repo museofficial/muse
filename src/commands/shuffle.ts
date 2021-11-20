@@ -25,12 +25,12 @@ export default class implements Command {
     const player = this.playerManager.get(msg.guild!.id);
 
     if (player.isQueueEmpty()) {
-      await msg.channel.send(errorMsg('not enough songs to shuffle'));
+      await msg.channel.send(errorMsg('I can\'t shuffle an empty song queue.'));
       return;
     }
 
     player.shuffle();
 
-    await msg.channel.send('shuffled');
+    await msg.channel.send('I\'ve shuffled the song queue.');
   }
 }

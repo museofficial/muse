@@ -21,7 +21,7 @@ export default class implements Command {
       const shortcuts = await Shortcut.findAll({where: {guildId: msg.guild!.id}});
 
       if (shortcuts.length === 0) {
-        await msg.channel.send('no shortcuts exist');
+        await msg.channel.send('No shortcuts exist.');
         return;
       }
 
@@ -56,15 +56,15 @@ export default class implements Command {
 
           if (shortcut) {
             if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.ownerId) {
-              await msg.channel.send(errorMsg('you do\'nt have permission to do that'));
+              await msg.channel.send(errorMsg('You do\'nt have the permissions required to perform that action.'));
               return;
             }
 
             await shortcut.update(newShortcut);
-            await msg.channel.send('shortcut updated');
+            await msg.channel.send('Shortcut updated.');
           } else {
             await Shortcut.create(newShortcut);
-            await msg.channel.send('shortcut created');
+            await msg.channel.send('Shortcut created');
           }
 
           break;
@@ -75,25 +75,25 @@ export default class implements Command {
           const shortcut = await Shortcut.findOne({where: {guildId: msg.guild!.id, shortcut: shortcutName}});
 
           if (!shortcut) {
-            await msg.channel.send(errorMsg('shortcut doesn\'t exist'));
+            await msg.channel.send(errorMsg('That shortcut doesn\'t exist.'));
             return;
           }
 
           // Check permissions
           if (shortcut.authorId !== msg.author.id && msg.author.id !== msg.guild!.ownerId) {
-            await msg.channel.send(errorMsg('you don\'t have permission to do that'));
+            await msg.channel.send(errorMsg('You do\'nt have the permissions required to perform that action.'));
             return;
           }
 
           await shortcut.destroy();
 
-          await msg.channel.send('shortcut deleted');
+          await msg.channel.send('Shortcut removed.');
 
           break;
         }
 
         default: {
-          await msg.channel.send(errorMsg('unknown command'));
+          await msg.channel.send(errorMsg('I don\'t recognize that command.'));
         }
       }
     }

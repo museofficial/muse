@@ -50,20 +50,18 @@ export default class implements Command {
 
     if (args.length === 0) {
       if (player.status === STATUS.PLAYING) {
-        await res.stop(errorMsg('already playing, give me a song name'));
+        await res.stop(errorMsg('I\'m already playing something. Please provide a link or a song name to add to the play queue.'));
         return;
       }
 
       // Must be resuming play
       if (!wasPlayingSong) {
-        await res.stop(errorMsg('nothing to play'));
+        await res.stop(errorMsg('Please provide a link or a song name to play.'));
         return;
       }
 
       await player.connect(targetVoiceChannel);
       await player.play();
-
-      await res.stop('the stop-and-go light is now green');
       return;
     }
 
@@ -96,7 +94,7 @@ export default class implements Command {
           if (song) {
             newSongs.push(song);
           } else {
-            await res.stop(errorMsg('that doesn\'t exist'));
+            await res.stop(errorMsg('I wasn\'t able to locate a song to play.'));
             return;
           }
         }
@@ -131,13 +129,13 @@ export default class implements Command {
         newSongs.push(song);
       } else {
         console.log(_);
-        await res.stop(errorMsg('that doesn\'t exist'));
+        await res.stop(errorMsg('I wasn\'t able to locate a song to play.'));
         return;
       }
     }
 
     if (newSongs.length === 0) {
-      await res.stop(errorMsg('no songs found'));
+      await res.stop(errorMsg('I wasn\'t able to locate a song to play.'));
       return;
     }
 
@@ -152,9 +150,9 @@ export default class implements Command {
     }
 
     if (newSongs.length === 1) {
-      await res.stop(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
+      await res.stop(`**${firstSong.title}** has been added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
     } else {
-      await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
+      await res.stop(`**${firstSong.title}** and ${newSongs.length - 1} other songs have been added to the queue${extraMsg}`);
     }
 
     if (queueOldSize === 0 && !wasPlayingSong) {
