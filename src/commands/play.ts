@@ -6,7 +6,6 @@ import {inject, injectable} from 'inversify';
 import {QueuedSong, STATUS} from '../services/player.js';
 import PlayerManager from '../managers/player.js';
 import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels.js';
-import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import GetSongs from '../services/get-songs.js';
@@ -41,9 +40,6 @@ export default class implements Command {
   public async execute(msg: Message, args: string[]): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(msg.member!) ?? getMostPopularVoiceChannel(msg.guild!);
 
-    const res = new LoadingMessage(msg.channel as TextChannel);
-    await res.start();
-
     const player = this.playerManager.get(msg.guild!.id);
 
     const queueOldSize = player.queueSize();
@@ -51,13 +47,13 @@ export default class implements Command {
 
     if (args.length === 0) {
       if (player.status === STATUS.PLAYING) {
-        await res.stop(errorMsg('I\'m already playing something. Please provide a link or a song name to add to the play queue.'));
+        await msg.channel.send(errorMsg('I\'m already playing something. Please provide a link or a song name to add to the play queue.'));
         return;
       }
 
       // Must be resuming play
       if (!wasPlayingSong) {
-        await res.stop(errorMsg('Please provide a link or a song name to play.'));
+        await msg.channel.send(errorMsg('Please provide a link or a song name to play.'));
         return;
       }
 
@@ -95,7 +91,7 @@ export default class implements Command {
           if (song) {
             newSongs.push(song);
           } else {
-            await res.stop(errorMsg('I wasn\'t able to locate a song to play.'));
+            await msg.channel.send(errorMsg('I wasn\'t able to locate a song to play.'));
             return;
           }
         }
@@ -129,13 +125,13 @@ export default class implements Command {
       if (song) {
         newSongs.push(song);
       } else {
-        await res.stop(errorMsg('I wasn\'t able to locate a song to play.'));
+        await msg.channel.send(errorMsg('I wasn\'t able to locate a song to play.'));
         return;
       }
     }
 
     if (newSongs.length === 0) {
-      await res.stop(errorMsg('I wasn\'t able to locate a song to play.'));
+      await msg.channel.send(errorMsg('I wasn\'t able to locate a song to play.'));
       return;
     }
 
@@ -150,9 +146,9 @@ export default class implements Command {
     }
 
     if (newSongs.length === 1) {
-      await res.stop(`**${firstSong.title}** has been added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
+      await msg.channel.send(`**${firstSong.title}** has been added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
     } else {
-      await res.stop(`**${firstSong.title}** and ${newSongs.length - 1} other songs have been added to the queue${extraMsg}`);
+      await msg.channel.send(`**${firstSong.title}** and ${newSongs.length - 1} other songs have been added to the queue${extraMsg}`);
     }
 
     if (queueOldSize === 0 && !wasPlayingSong) {
