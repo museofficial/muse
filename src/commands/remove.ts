@@ -48,8 +48,13 @@ export default class implements Command {
         return;
       }
 
+      if (range[1] > player.queueSize()) {
+        await res.stop(errorMsg('queue isn\'t THAT big'));
+        return;
+      }
+
       if (range[0] < range[1]) {
-        player.removeFromQueue(range[0], range[0] - range[1]);
+        player.removeFromQueue(range[0], range[1] - range[0] + 1);
       } else {
         await res.stop(errorMsg('range is backwards, just like you'));
         return;
