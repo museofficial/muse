@@ -2,7 +2,6 @@ import {Message, TextChannel} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
-import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 
@@ -44,16 +43,10 @@ export default class implements Command {
       return;
     }
 
-    const loading = new LoadingMessage(msg.channel as TextChannel);
-
-    await loading.start();
-
     try {
       await player.forwardSeek(seekTime);
-
-      await loading.stop();
     } catch (error: unknown) {
-      await loading.stop(errorMsg(error as Error));
+      await msg.channel.send(errorMsg(error as Error));
     }
   }
 }

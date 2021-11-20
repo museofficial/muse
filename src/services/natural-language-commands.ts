@@ -59,6 +59,8 @@ export default class {
             if (isPlaying) {
               await player.back();
               await player.seek(oldPosition);
+            } else {
+              player.disconnect();
             }
           }
 

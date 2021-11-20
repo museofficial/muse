@@ -3,7 +3,6 @@ import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from '.';
-import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
 
 @injectable()
@@ -34,15 +33,10 @@ export default class implements Command {
 
     const player = this.playerManager.get(msg.guild!.id);
 
-    const loader = new LoadingMessage(msg.channel as TextChannel);
-
     try {
-      await loader.start();
       await player.forward(numToSkip);
-
-      await loader.stop('');
     } catch (_: unknown) {
-      await loader.stop(errorMsg('There are no song to skip forward to.'));
+      await msg.channel.send(errorMsg('There are no song to skip forward to.'));
     }
   }
 }
