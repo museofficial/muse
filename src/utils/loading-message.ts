@@ -10,56 +10,17 @@ export default class {
   private readonly text: string;
   private msg!: Message;
 
-  constructor(channel: TextChannel, text = 'cows! count \'em') {
+  constructor(channel: TextChannel, text = 'Starting...') {
     this.channel = channel;
     this.text = text;
   }
 
   async start(): Promise<void> {
     this.msg = await this.channel.send(this.text);
-
-    const icons = ['🐮', '🐴', '🐄'];
-
-    const reactions: MessageReaction[] = [];
-
-    let i = 0;
-    let isRemoving = false;
-
     this.isStopped = false;
-
-    (async () => {
-      await delay(INITAL_DELAY);
-
-      while (!this.isStopped) {
-        if (reactions.length === icons.length) {
-          isRemoving = true;
-        }
-
-        // eslint-disable-next-line no-await-in-loop
-        await delay(PERIOD);
-
-        if (isRemoving) {
-          const reactionToRemove = reactions.shift();
-
-          if (reactionToRemove) {
-            // eslint-disable-next-line no-await-in-loop
-            await reactionToRemove.users.remove(this.msg.client.user!.id);
-          } else {
-            isRemoving = false;
-          }
-        } else {
-          if (!this.isStopped) {
-            // eslint-disable-next-line no-await-in-loop
-            reactions.push(await this.msg.react(icons[i % icons.length]));
-          }
-
-          i++;
-        }
-      }
-    })();
   }
 
-  async stop(str = 'u betcha'): Promise<Message> {
+  async stop(str = 'Stopping...'): Promise<Message> {
     const wasAlreadyStopped = this.isStopped;
 
     this.isStopped = true;

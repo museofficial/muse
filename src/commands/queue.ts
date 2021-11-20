@@ -38,7 +38,7 @@ export default class implements Command {
       const maxQueuePage = Math.ceil((queueSize + 1) / PAGE_SIZE);
 
       if (queuePage > maxQueuePage) {
-        await msg.channel.send(errorMsg('the queue isn\'t that big'));
+        await msg.channel.send(errorMsg('The song queue isn\'t that large.'));
         return;
       }
 
@@ -76,7 +76,7 @@ export default class implements Command {
 
       await msg.channel.send({embeds: [embed]});
     } else {
-      await msg.channel.send('queue empty');
+      await msg.channel.send('The song queue is empty.');
     }
   }
 }

@@ -28,19 +28,19 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      await msg.channel.send(errorMsg('nothing is playing'));
+      await msg.channel.send(errorMsg('I\'m not playing anything at the moment.'));
       return;
     }
 
     if (currentSong.isLive) {
-      await msg.channel.send(errorMsg('can\'t seek in a livestream'));
+      await msg.channel.send(errorMsg('I can\'t seek forward in a livestream.'));
       return;
     }
 
     const seekTime = parseInt(args[0], 10);
 
     if (seekTime + player.getPosition() > currentSong.length) {
-      await msg.channel.send(errorMsg('can\'t seek past the end of the song'));
+      await msg.channel.send(errorMsg('I can\'t seek forward past the end of the song.'));
       return;
     }
 
