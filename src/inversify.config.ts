@@ -21,7 +21,8 @@ import ForwardSeek from './commands/fseek.js';
 import Help from './commands/help.js';
 import Pause from './commands/pause.js';
 import Play from './commands/play.js';
-import QueueCommad from './commands/queue.js';
+import QueueCommand from './commands/queue.js';
+import Remove from './commands/remove.js';
 import Seek from './commands/seek.js';
 import Shortcuts from './commands/shortcuts.js';
 import Shuffle from './commands/shuffle.js';
@@ -60,7 +61,8 @@ container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLangua
   Help,
   Pause,
   Play,
-  QueueCommad,
+  QueueCommand,
+  Remove,
   Seek,
   Shortcuts,
   Shuffle,
