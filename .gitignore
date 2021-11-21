@@ -107,11 +107,3 @@ dist
 
 # TernJS port file
 .tern-port
-
-# Docker
-docker-compose.yml
-
-# Database
-muse/db.sqlite
-
-cache
