@@ -252,14 +252,7 @@ export default class {
       }
     }
 
-    // Get 50 random songs if many
     const originalNSongs = tracks.length;
-
-    if (tracks.length > 50) {
-      const shuffled = shuffle(tracks);
-
-      tracks = shuffled.slice(0, 50);
-    }
 
     let songs = await Promise.all(tracks.map(async track => this.spotifyToYouTube(track, playlist)));
 

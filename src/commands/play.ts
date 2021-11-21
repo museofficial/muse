@@ -98,15 +98,8 @@ export default class implements Command {
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
         const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(args[0]);
 
-        if (totalSongs > 50) {
-          extraMsg = 'a random sample of 50 songs was taken';
-        }
-
-        if (totalSongs > 50 && nSongsNotFound !== 0) {
-          extraMsg += ' and ';
-        }
-
         if (nSongsNotFound !== 0) {
+          extraMsg += ' and ';
           if (nSongsNotFound === 1) {
             extraMsg += '1 song was not found';
           } else {
