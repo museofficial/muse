@@ -44,7 +44,7 @@ export default class FileCacheProvider {
   /**
    * Returns a write stream for the given hash key.
    * The stream handles saving a new file and will
-   * update the database after the stream is finished.
+   * update the database after the stream is closed.
    * @param hash lookup key
    */
   createWriteStream(hash: string) {
@@ -53,7 +53,7 @@ export default class FileCacheProvider {
 
     const stream = createWriteStream(tmpPath);
 
-    stream.on('finish', async () => {
+    stream.on('close', async () => {
       // Only move if size is non-zero (may have errored out)
       const stats = await fs.stat(tmpPath);
 
