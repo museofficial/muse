@@ -270,6 +270,10 @@ export default class {
     this.queue = newQueue;
   }
 
+  removeFromQueue(index: number, amount = 1): void {
+    this.queue.splice(this.queuePosition + index, amount);
+  }
+
   removeCurrent(): void {
     this.queue = [...this.queue.slice(0, this.queuePosition), ...this.queue.slice(this.queuePosition + 1)];
   }
