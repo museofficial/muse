@@ -364,6 +364,17 @@ export default class {
 
     // Create stream and pipe to capacitor
     return new Promise((resolve, reject) => {
+      const capacitor = new WriteStream();
+
+      // Cache video if necessary
+      if (shouldCacheVideo) {
+        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(url));
+
+        capacitor.createReadStream().pipe(cacheStream);
+      } else {
+        ffmpegInputOptions.push('-re');
+      }
+
       const youtubeStream = ffmpeg(ffmpegInput)
         .inputOptions(ffmpegInputOptions)
         .noVideo()
@@ -374,16 +385,7 @@ export default class {
           reject(error);
         });
 
-      const capacitor = new WriteStream();
-
       youtubeStream.pipe(capacitor);
-
-      // Cache video if necessary
-      if (shouldCacheVideo) {
-        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(url));
-
-        capacitor.createReadStream().pipe(cacheStream);
-      }
 
       resolve(capacitor.createReadStream());
     });
