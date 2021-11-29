@@ -1,7 +1,7 @@
 import {Table, Column, PrimaryKey, Model, AutoIncrement, Index} from 'sequelize-typescript';
 
 @Table
-export default class Shortcut extends Model<Shortcut> {
+export default class Shortcut extends Model {
   @PrimaryKey
   @AutoIncrement
   @Column

@@ -1,7 +1,7 @@
 import {Table, Column, PrimaryKey, Model, Default} from 'sequelize-typescript';
 
 @Table
-export default class Settings extends Model<Settings> {
+export default class Settings extends Model {
   @PrimaryKey
   @Column
   guildId!: string;

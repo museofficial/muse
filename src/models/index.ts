@@ -1,9 +1,11 @@
-import Cache from './cache.js';
+import FileCache from './file-cache.js';
+import KeyValueCache from './key-value-cache.js';
 import Settings from './settings.js';
 import Shortcut from './shortcut.js';
 
 export {
-  Cache,
+  FileCache,
+  KeyValueCache,
   Settings,
   Shortcut,
 };
