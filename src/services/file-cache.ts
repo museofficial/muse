@@ -58,10 +58,14 @@ export default class FileCacheProvider {
       const stats = await fs.stat(tmpPath);
 
       if (stats.size !== 0) {
-        await fs.rename(tmpPath, finalPath);
-      }
+        try {
+          await fs.rename(tmpPath, finalPath);
 
-      await FileCache.create({hash, bytes: stats.size, accessedAt: new Date()});
+          await FileCache.create({hash, bytes: stats.size, accessedAt: new Date()});
+        } catch (e: unknown) {
+          console.error(e);
+        }
+      }
 
       await this.evictOldestIfNecessary();
     });
