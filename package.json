@@ -63,7 +63,8 @@
       "new-cap": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars-experimental": "error",
-      "@typescript-eslint/prefer-readonly-parameter-types": "off"
+      "@typescript-eslint/prefer-readonly-parameter-types": "off",
+      "@typescript-eslint/no-implicit-any-catch": "off"
     }
   },
   "husky": {

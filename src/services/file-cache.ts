@@ -65,8 +65,8 @@ export default class FileCacheProvider {
           await fs.rename(tmpPath, finalPath);
 
           await FileCache.create({hash, bytes: stats.size, accessedAt: new Date()});
-        } catch (e: unknown) {
-          debug(`Caught error trying to move a finished cache file: ${String(e)}`);
+        } catch (error) {
+          debug('Errored when moving a finished cache file:', error);
         }
       }
 
