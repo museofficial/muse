@@ -10,7 +10,7 @@ import debug from '../utils/debug.js';
 
 @injectable()
 export default class FileCacheProvider {
-  private readonly evictionQueue = new PQueue({concurrency: 1});
+  private static readonly evictionQueue = new PQueue({concurrency: 1});
   private readonly config: Config;
 
   constructor(@inject(TYPES.Config) config: Config) {
@@ -87,9 +87,9 @@ export default class FileCacheProvider {
   }
 
   private async evictOldestIfNecessary() {
-    void this.evictionQueue.add(this.evictOldest.bind(this));
+    void FileCacheProvider.evictionQueue.add(this.evictOldest.bind(this));
 
-    return this.evictionQueue.onEmpty();
+    return FileCacheProvider.evictionQueue.onEmpty();
   }
 
   private async evictOldest() {
