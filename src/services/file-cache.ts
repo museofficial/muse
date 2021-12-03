@@ -87,16 +87,13 @@ export default class FileCacheProvider {
   }
 
   private async evictOldestIfNecessary() {
-    if (this.evictionQueue.size === 0 && this.evictionQueue.pending === 0) {
-      debug('Adding evictOldest task to queue');
-      void this.evictionQueue.add(this.evictOldest.bind(this));
-    }
+    void this.evictionQueue.add(this.evictOldest.bind(this));
 
     return this.evictionQueue.onEmpty();
   }
 
   private async evictOldest() {
-    debug('Evicting oldest (if found)');
+    debug('Evicting oldest files...');
     const [{dataValues: {totalSizeBytes}}] = await FileCache.findAll({
       attributes: [
         [sequelize.fn('sum', sequelize.col('bytes')), 'totalSizeBytes'],
@@ -113,14 +110,14 @@ export default class FileCacheProvider {
       if (oldest) {
         await oldest.destroy();
         await fs.unlink(path.join(this.config.CACHE_DIR, oldest.hash));
+        debug(`${oldest.hash} has been evicted`);
       }
 
       // Continue to evict until we're under the limit
-      debug('Scheduling another eviction');
       void this.evictionQueue.add(this.evictOldest.bind(this));
+    } else {
+      debug(`No files needed to be evicted. Total size of the cache is currently ${totalSizeBytes} bytes, and the cache limit is ${this.config.CACHE_LIMIT_IN_BYTES} bytes.`);
     }
-
-    debug('Finished evictOldest');
   }
 
   private async removeOrphans() {
