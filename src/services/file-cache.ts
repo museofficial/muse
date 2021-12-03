@@ -6,6 +6,7 @@ import {FileCache} from '../models/index.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
 import PQueue from 'p-queue';
+import debug from '../utils/debug.js';
 
 @injectable()
 export default class FileCacheProvider {
@@ -65,7 +66,7 @@ export default class FileCacheProvider {
 
           await FileCache.create({hash, bytes: stats.size, accessedAt: new Date()});
         } catch (e: unknown) {
-          console.error(e);
+          debug(`Caught error trying to move a finished cache file: ${String(e)}`);
         }
       }
 
@@ -87,11 +88,13 @@ export default class FileCacheProvider {
 
   private evictOldestIfNecessary() {
     if (FileCacheProvider.evictionQueue.size === 0 && FileCacheProvider.evictionQueue.pending === 0) {
+      debug('Adding evictOldest task to queue');
       void FileCacheProvider.evictionQueue.add(this.evictOldest.bind(this));
     }
   }
 
   private async evictOldest() {
+    debug('Evicting oldest (if found)');
     const [{dataValues: {totalSizeBytes}}] = await FileCache.findAll({
       attributes: [
         [sequelize.fn('sum', sequelize.col('bytes')), 'totalSizeBytes'],
@@ -111,8 +114,11 @@ export default class FileCacheProvider {
       }
 
       // Continue to evict until we're under the limit
+      debug('Scheduling another eviction');
       void FileCacheProvider.evictionQueue.add(this.evictOldest.bind(this));
     }
+
+    debug('Finished evictOldest');
   }
 
   private async removeOrphans() {
