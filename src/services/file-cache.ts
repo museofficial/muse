@@ -10,7 +10,7 @@ import debug from '../utils/debug.js';
 
 @injectable()
 export default class FileCacheProvider {
-  private static readonly evictionQueue = new PQueue({concurrency: 1});
+  private readonly evictionQueue = new PQueue({concurrency: 1});
   private readonly config: Config;
 
   constructor(@inject(TYPES.Config) config: Config) {
@@ -70,7 +70,7 @@ export default class FileCacheProvider {
         }
       }
 
-      this.evictOldestIfNecessary();
+      await this.evictOldestIfNecessary();
     });
 
     return stream;
@@ -83,14 +83,16 @@ export default class FileCacheProvider {
    */
   async cleanup() {
     await this.removeOrphans();
-    this.evictOldestIfNecessary();
+    await this.evictOldestIfNecessary();
   }
 
-  private evictOldestIfNecessary() {
-    if (FileCacheProvider.evictionQueue.size === 0 && FileCacheProvider.evictionQueue.pending === 0) {
+  private async evictOldestIfNecessary() {
+    if (this.evictionQueue.size === 0 && this.evictionQueue.pending === 0) {
       debug('Adding evictOldest task to queue');
-      void FileCacheProvider.evictionQueue.add(this.evictOldest.bind(this));
+      void this.evictionQueue.add(this.evictOldest.bind(this));
     }
+
+    return this.evictionQueue.onEmpty();
   }
 
   private async evictOldest() {
@@ -115,7 +117,7 @@ export default class FileCacheProvider {
 
       // Continue to evict until we're under the limit
       debug('Scheduling another eviction');
-      void FileCacheProvider.evictionQueue.add(this.evictOldest.bind(this));
+      void this.evictionQueue.add(this.evictOldest.bind(this));
     }
 
     debug('Finished evictOldest');
