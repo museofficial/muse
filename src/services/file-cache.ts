@@ -5,9 +5,11 @@ import sequelize from 'sequelize';
 import {FileCache} from '../models/index.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
+import PQueue from 'p-queue';
 
 @injectable()
 export default class FileCacheProvider {
+  private static readonly evictionQueue = new PQueue({concurrency: 1});
   private readonly config: Config;
 
   constructor(@inject(TYPES.Config) config: Config) {
@@ -67,7 +69,7 @@ export default class FileCacheProvider {
         }
       }
 
-      await this.evictOldestIfNecessary();
+      this.evictOldestIfNecessary();
     });
 
     return stream;
@@ -80,10 +82,16 @@ export default class FileCacheProvider {
    */
   async cleanup() {
     await this.removeOrphans();
-    await this.evictOldestIfNecessary();
+    this.evictOldestIfNecessary();
   }
 
-  private async evictOldestIfNecessary() {
+  private evictOldestIfNecessary() {
+    if (FileCacheProvider.evictionQueue.size === 0 && FileCacheProvider.evictionQueue.pending === 0) {
+      void FileCacheProvider.evictionQueue.add(this.evictOldest.bind(this));
+    }
+  }
+
+  private async evictOldest() {
     const [{dataValues: {totalSizeBytes}}] = await FileCache.findAll({
       attributes: [
         [sequelize.fn('sum', sequelize.col('bytes')), 'totalSizeBytes'],
@@ -103,7 +111,7 @@ export default class FileCacheProvider {
       }
 
       // Continue to evict until we're under the limit
-      await this.evictOldestIfNecessary();
+      void FileCacheProvider.evictionQueue.add(this.evictOldest.bind(this));
     }
   }
 
