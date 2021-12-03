@@ -94,13 +94,12 @@ export default class FileCacheProvider {
 
   private async evictOldest() {
     debug('Evicting oldest files...');
-    const [{dataValues: {totalSizeBytes}}] = await FileCache.findAll({
-      attributes: [
-        [sequelize.fn('sum', sequelize.col('bytes')), 'totalSizeBytes'],
-      ],
-    }) as unknown as [{dataValues: {totalSizeBytes: number}}];
 
-    if (totalSizeBytes > this.config.CACHE_LIMIT_IN_BYTES) {
+    let totalSizeBytes = await this.getDiskUsageInBytes();
+    let numOfEvictedFiles = 0;
+    // Continue to evict until we're under the limit
+    /* eslint-disable no-await-in-loop */
+    while (totalSizeBytes > this.config.CACHE_LIMIT_IN_BYTES) {
       const oldest = await FileCache.findOne({
         order: [
           ['accessedAt', 'ASC'],
@@ -111,10 +110,15 @@ export default class FileCacheProvider {
         await oldest.destroy();
         await fs.unlink(path.join(this.config.CACHE_DIR, oldest.hash));
         debug(`${oldest.hash} has been evicted`);
+        numOfEvictedFiles++;
       }
 
-      // Continue to evict until we're under the limit
-      void this.evictionQueue.add(this.evictOldest.bind(this));
+      totalSizeBytes = await this.getDiskUsageInBytes();
+    }
+    /* eslint-enable no-await-in-loop */
+
+    if (numOfEvictedFiles > 0) {
+      debug(`${numOfEvictedFiles} files have been evicted`);
     } else {
       debug(`No files needed to be evicted. Total size of the cache is currently ${totalSizeBytes} bytes, and the cache limit is ${this.config.CACHE_LIMIT_IN_BYTES} bytes.`);
     }
@@ -130,5 +134,20 @@ export default class FileCacheProvider {
         }
       }
     }
+  }
+
+  /**
+   * Pulls from the database rather than the filesystem,
+   * so may be slightly inaccurate.
+   * @returns the total size of the cache in bytes
+   */
+  private async getDiskUsageInBytes() {
+    const [{dataValues: {totalSizeBytes}}] = await FileCache.findAll({
+      attributes: [
+        [sequelize.fn('sum', sequelize.col('bytes')), 'totalSizeBytes'],
+      ],
+    }) as unknown as [{dataValues: {totalSizeBytes: number}}];
+
+    return totalSizeBytes;
   }
 }
