@@ -125,13 +125,27 @@ export default class FileCacheProvider {
   }
 
   private async removeOrphans() {
+    // Check filesystem direction (do files exist on the disk but not in the database?)
     for await (const dirent of await fs.opendir(this.config.CACHE_DIR)) {
       if (dirent.isFile()) {
         const model = await FileCache.findByPk(dirent.name);
 
         if (!model) {
+          debug(`${dirent.name} was present on disk but was not in the database. Removing from disk.`);
           await fs.unlink(path.join(this.config.CACHE_DIR, dirent.name));
         }
+      }
+    }
+
+    // Check database direction (do entries exist in the database but not on the disk?)
+    for await (const model of this.getFindAllIterable()) {
+      const filePath = path.join(this.config.CACHE_DIR, model.hash);
+
+      try {
+        await fs.access(filePath);
+      } catch {
+        debug(`${model.hash} was present in database but was not on disk. Removing from database.`);
+        await model.destroy();
       }
     }
   }
@@ -149,5 +163,57 @@ export default class FileCacheProvider {
     }) as unknown as [{dataValues: {totalSizeBytes: number}}];
 
     return totalSizeBytes;
+  }
+
+  /**
+   * An efficient way to iterate over all rows.
+   * @returns an iterable for the result of FileCache.findAll()
+   */
+  private getFindAllIterable() {
+    const limit = 50;
+    let previousCreatedAt: Date | null = null;
+
+    let models: FileCache[] = [];
+
+    const fetchNextBatch = async () => {
+      let where = {};
+
+      if (previousCreatedAt) {
+        where = {
+          createdAt: {
+            [sequelize.Op.gt]: previousCreatedAt,
+          },
+        };
+      }
+
+      models = await FileCache.findAll({
+        where,
+        limit,
+        order: ['createdAt'],
+      });
+
+      if (models.length > 0) {
+        previousCreatedAt = models[models.length - 1].createdAt as Date;
+      }
+    };
+
+    return {
+      [Symbol.asyncIterator]() {
+        return {
+          async next() {
+            if (models.length === 0) {
+              await fetchNextBatch();
+            }
+
+            if (models.length === 0) {
+              // Must return value here for types to be inferred correctly
+              return {done: true, value: null as unknown as FileCache};
+            }
+
+            return {value: models.shift()!, done: false};
+          },
+        };
+      },
+    };
   }
 }
