@@ -1,4 +1,4 @@
-import {TextChannel, Message, GuildChannel} from 'discord.js';
+import {TextChannel, Message, GuildChannel, ThreadChannel} from 'discord.js';
 import {injectable} from 'inversify';
 import {Settings} from '../models/index.js';
 import errorMsg from '../utils/error-msg.js';
@@ -21,6 +21,7 @@ export default class implements Command {
 
       if (settings) {
         let response = `prefix: \`${settings.prefix}\`\n`;
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
         response += `channel: ${msg.guild!.channels.cache.get(settings.channel)!.toString()}\n`;
         response += `playlist-limit: ${settings.playlistLimit}`;
 
@@ -37,7 +38,7 @@ export default class implements Command {
       return;
     }
 
-    if (msg.author.id !== msg.guild!.owner!.id) {
+    if (msg.author.id !== msg.guild!.ownerId) {
       await msg.channel.send(errorMsg('not authorized'));
       return;
     }
@@ -53,7 +54,7 @@ export default class implements Command {
       }
 
       case 'channel': {
-        let channel: GuildChannel | undefined;
+        let channel: GuildChannel | ThreadChannel | undefined;
 
         if (args[1].includes('<#') && args[1].includes('>')) {
           channel = msg.guild!.channels.cache.find(c => c.id === args[1].slice(2, args[1].indexOf('>')));
@@ -61,7 +62,7 @@ export default class implements Command {
           channel = msg.guild!.channels.cache.find(c => c.name === args[1]);
         }
 
-        if (channel && channel.type === 'text') {
+        if (channel && channel.type === 'GUILD_TEXT') {
           await Settings.update({channel: channel.id}, {where: {guildId: msg.guild!.id}});
 
           await Promise.all([

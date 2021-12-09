@@ -1,5 +1,5 @@
 import {injectable} from 'inversify';
-import {Cache} from '../models/index.js';
+import {KeyValueCache} from '../models/index.js';
 import debug from '../utils/debug.js';
 
 type Seconds = number;
@@ -12,7 +12,7 @@ type Options = {
 const futureTimeToDate = (time: Seconds) => new Date(new Date().getTime() + (time * 1000));
 
 @injectable()
-export default class CacheProvider {
+export default class KeyValueCacheProvider {
   async wrap<T extends [...any[], Options], F>(func: (...options: any) => Promise<F>, ...options: T): Promise<F> {
     if (options.length === 0) {
       throw new Error('Missing cache options');
@@ -29,7 +29,7 @@ export default class CacheProvider {
       throw new Error(`Cache key ${key} is too short.`);
     }
 
-    const cachedResult = await Cache.findByPk(key);
+    const cachedResult = await KeyValueCache.findByPk(key);
 
     if (cachedResult) {
       if (new Date() < cachedResult.expiresAt) {
@@ -45,7 +45,7 @@ export default class CacheProvider {
     const result = await func(...options as any[]);
 
     // Save result
-    await Cache.upsert({
+    await KeyValueCache.upsert({
       key,
       value: JSON.stringify(result),
       expiresAt: futureTimeToDate(expiresIn),

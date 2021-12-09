@@ -2,7 +2,7 @@ import {Table, Column, PrimaryKey, Model} from 'sequelize-typescript';
 import sequelize from 'sequelize';
 
 @Table
-export default class Cache extends Model<Cache> {
+export default class KeyValueCache extends Model {
   @PrimaryKey
   @Column
   key!: string;

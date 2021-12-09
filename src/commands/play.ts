@@ -38,6 +38,7 @@ export default class implements Command {
     this.getSongs = getSongs;
   }
 
+  // eslint-disable-next-line complexity
   public async execute(msg: Message, args: string[]): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(msg.member!) ?? getMostPopularVoiceChannel(msg.guild!);
     const settings = await Settings.findByPk(msg.guild!.id);
@@ -134,7 +135,6 @@ export default class implements Command {
       if (song) {
         newSongs.push(song);
       } else {
-        console.log(_);
         await res.stop(errorMsg('that doesn\'t exist'));
         return;
       }
