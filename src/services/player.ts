@@ -1,7 +1,5 @@
 import {VoiceChannel, Snowflake, Client, TextChannel} from 'discord.js';
-import {promises as fs, createWriteStream} from 'fs';
-import {Readable, PassThrough} from 'stream';
-import path from 'path';
+import {Readable} from 'stream';
 import hasha from 'hasha';
 import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
@@ -9,6 +7,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
 import errorMsg from '../utils/error-msg.js';
 import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
+import FileCacheProvider from './file-cache.js';
 
 export interface QueuedPlaylist {
   title: string;
@@ -35,7 +34,6 @@ export default class {
   public voiceConnection: VoiceConnection | null = null;
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
-  private readonly cacheDir: string;
   private audioPlayer: AudioPlayer | null = null;
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
@@ -44,10 +42,11 @@ export default class {
   private positionInSeconds = 0;
 
   private readonly discordClient: Client;
+  private readonly fileCache: FileCacheProvider;
 
-  constructor(cacheDir: string, client: Client) {
-    this.cacheDir = cacheDir;
+  constructor(client: Client, fileCache: FileCacheProvider) {
     this.discordClient = client;
+    this.fileCache = fileCache;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -287,40 +286,24 @@ export default class {
     return this.queueSize() === 0;
   }
 
-  private getCachedPath(url: string): string {
-    return path.join(this.cacheDir, hasha(url));
-  }
-
-  private getCachedPathTemp(url: string): string {
-    return path.join(this.cacheDir, 'tmp', hasha(url));
-  }
-
-  private async isCached(url: string): Promise<boolean> {
-    try {
-      await fs.access(this.getCachedPath(url));
-
-      return true;
-    } catch (_: unknown) {
-      return false;
-    }
+  private getHashForCache(url: string): string {
+    return hasha(url);
   }
 
   private async getStream(url: string, options: {seek?: number} = {}): Promise<Readable> {
-    const cachedPath = this.getCachedPath(url);
-
     let ffmpegInput = '';
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
     let format: ytdl.videoFormat | undefined;
 
-    if (await this.isCached(url)) {
-      ffmpegInput = cachedPath;
+    try {
+      ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(url));
 
       if (options.seek) {
         ffmpegInputOptions.push('-ss', options.seek.toString());
       }
-    } else {
+    } catch {
       // Not yet cached, must download
       const info = await ytdl.getInfo(url);
 
@@ -371,7 +354,6 @@ export default class {
         '1',
         '-reconnect_delay_max',
         '5',
-        '-re',
       ]);
 
       if (options.seek) {
@@ -382,6 +364,17 @@ export default class {
 
     // Create stream and pipe to capacitor
     return new Promise((resolve, reject) => {
+      const capacitor = new WriteStream();
+
+      // Cache video if necessary
+      if (shouldCacheVideo) {
+        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(url));
+
+        capacitor.createReadStream().pipe(cacheStream);
+      } else {
+        ffmpegInputOptions.push('-re');
+      }
+
       const youtubeStream = ffmpeg(ffmpegInput)
         .inputOptions(ffmpegInputOptions)
         .noVideo()
@@ -390,29 +383,9 @@ export default class {
         .on('error', error => {
           console.error(error);
           reject(error);
-        })
-        .pipe() as PassThrough;
-
-      const capacitor = new WriteStream();
-
-      youtubeStream.pipe(capacitor);
-
-      // Cache video if necessary
-      if (shouldCacheVideo) {
-        const cacheTempPath = this.getCachedPathTemp(url);
-        const cacheStream = createWriteStream(cacheTempPath);
-
-        cacheStream.on('finish', async () => {
-          // Only move if size is non-zero (may have errored out)
-          const stats = await fs.stat(cacheTempPath);
-
-          if (stats.size !== 0) {
-            await fs.rename(cacheTempPath, cachedPath);
-          }
         });
 
-        capacitor.createReadStream().pipe(cacheStream);
-      }
+      youtubeStream.pipe(capacitor);
 
       resolve(capacitor.createReadStream());
     });

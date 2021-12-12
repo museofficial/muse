@@ -25,7 +25,7 @@
     "watch": "tsc --watch",
     "prepack": "npm run clean && npm run build",
     "start": "node dist/index.js",
-    "dev": "nodemon",
+    "dev": "concurrently nodemon 'tsc --watch'",
     "docker-publish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t codetheweb/muse:latest --push ."
   },
   "devDependencies": {
@@ -40,12 +40,14 @@
     "@types/ws": "^8.2.0",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
+    "concurrently": "^6.4.0",
     "eslint": "^7.32.0",
     "eslint-config-xo": "^0.38.0",
     "eslint-config-xo-typescript": "^0.44.0",
     "husky": "^4.3.8",
     "nodemon": "^2.0.7",
     "ts-node": "^10.4.0",
+    "type-fest": "^2.5.4",
     "typescript": "^4.4.3"
   },
   "eslintConfig": {
@@ -79,7 +81,7 @@
     "discord.js": "^13.3.0",
     "dotenv": "^8.5.1",
     "fluent-ffmpeg": "^2.1.2",
-    "fs-capacitor": "^6.2.0",
+    "fs-capacitor": "^7.0.1",
     "get-youtube-id": "^1.0.1",
     "got": "^11.8.2",
     "hasha": "^5.2.2",
@@ -92,11 +94,12 @@
     "p-limit": "^3.1.0",
     "p-queue": "^7.1.0",
     "reflect-metadata": "^0.1.13",
-    "sequelize": "^5.22.4",
-    "sequelize-typescript": "^1.1.0",
+    "sequelize": "^6.11.0",
+    "sequelize-typescript": "^2.1.1",
     "spotify-uri": "^2.2.0",
     "spotify-web-api-node": "^5.0.2",
     "sqlite3": "^5.0.2",
+    "xbytes": "^1.7.0",
     "youtube.ts": "^0.2.2",
     "ytdl-core": "^4.9.1",
     "ytsr": "^3.5.3"
