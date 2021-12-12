@@ -74,7 +74,7 @@ export default class implements Command {
 
       embed.addField('Page', `${queuePage} out of ${maxQueuePage}`, false);
 
-      await msg.channel.send(embed);
+      await msg.channel.send({embeds: [embed]});
     } else {
       await msg.channel.send('queue empty');
     }

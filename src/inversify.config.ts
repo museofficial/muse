@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import {Container} from 'inversify';
 import {TYPES} from './types.js';
 import Bot from './bot.js';
-import {Client} from 'discord.js';
+import {Client, Intents} from 'discord.js';
 import ConfigProvider from './services/config.js';
 
 // Managers
@@ -21,7 +21,8 @@ import ForwardSeek from './commands/fseek.js';
 import Help from './commands/help.js';
 import Pause from './commands/pause.js';
 import Play from './commands/play.js';
-import QueueCommad from './commands/queue.js';
+import QueueCommand from './commands/queue.js';
+import Remove from './commands/remove.js';
 import Seek from './commands/seek.js';
 import Shortcuts from './commands/shortcuts.js';
 import Shuffle from './commands/shuffle.js';
@@ -32,9 +33,17 @@ import CacheProvider from './services/cache.js';
 
 const container = new Container();
 
+// Intents
+const intents = new Intents();
+intents.add(Intents.FLAGS.GUILDS); // To listen for guildCreate event
+intents.add(Intents.FLAGS.GUILD_MESSAGES); // To listen for messages (messageCreate event)
+intents.add(Intents.FLAGS.DIRECT_MESSAGE_REACTIONS); // To listen for message reactions (messageReactionAdd event)
+intents.add(Intents.FLAGS.DIRECT_MESSAGES); // To receive the prefix message
+intents.add(Intents.FLAGS.GUILD_VOICE_STATES); // To listen for voice state changes (voiceStateUpdate event)
+
 // Bot
 container.bind<Bot>(TYPES.Bot).to(Bot).inSingletonScope();
-container.bind<Client>(TYPES.Client).toConstantValue(new Client());
+container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
 
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
@@ -52,7 +61,8 @@ container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLangua
   Help,
   Pause,
   Play,
-  QueueCommad,
+  QueueCommand,
+  Remove,
   Seek,
   Shortcuts,
   Shuffle,
