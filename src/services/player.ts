@@ -235,6 +235,10 @@ export default class {
     return null;
   }
 
+  /**
+   * Returns queue, not including the current song.
+   * @returns {QueuedSong[]}
+   */
   getQueue(): QueuedSong[] {
     return this.queue.slice(this.queuePosition + 1);
   }
