@@ -1,113 +1,91 @@
-import {Client, Message, Collection} from 'discord.js';
+import {Client, Collection, User} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import {TYPES} from './types.js';
-import {Settings, Shortcut} from './models/index.js';
 import container from './inversify.config.js';
 import Command from './commands/index.js';
 import debug from './utils/debug.js';
-import NaturalLanguage from './services/natural-language-commands.js';
 import handleGuildCreate from './events/guild-create.js';
 import handleVoiceStateUpdate from './events/voice-state-update.js';
 import errorMsg from './utils/error-msg.js';
 import {isUserInVoice} from './utils/channels.js';
 import Config from './services/config.js';
 import {generateDependencyReport} from '@discordjs/voice';
+import {REST} from '@discordjs/rest';
+import {Routes} from 'discord-api-types/v9';
 
 @injectable()
 export default class {
   private readonly client: Client;
-  private readonly naturalLanguage: NaturalLanguage;
   private readonly token: string;
   private readonly commands!: Collection<string, Command>;
 
-  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Services.NaturalLanguage) naturalLanguage: NaturalLanguage, @inject(TYPES.Config) config: Config) {
+  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config) config: Config) {
     this.client = client;
-    this.naturalLanguage = naturalLanguage;
     this.token = config.DISCORD_TOKEN;
     this.commands = new Collection();
   }
 
-  public async listen(): Promise<string> {
+  public async listen(): Promise<void> {
     // Load in commands
     container.getAll<Command>(TYPES.Command).forEach(command => {
-      const commandNames = [command.name, ...command.aliases];
-
-      commandNames.forEach(commandName => this.commands.set(commandName, command));
+      // TODO: remove !
+      if (command.slashCommand?.name) {
+        this.commands.set(command.slashCommand.name, command);
+      }
     });
 
-    this.client.on('messageCreate', async (msg: Message) => {
-      // Get guild settings
-      if (!msg.guild) {
+    // Register event handlers
+    this.client.on('interactionCreate', async interaction => {
+      if (!interaction.isCommand()) {
         return;
       }
 
-      const settings = await Settings.findByPk(msg.guild.id);
+      const command = this.commands.get(interaction.commandName);
 
-      if (!settings) {
-        // Got into a bad state, send owner welcome message
-        this.client.emit('guildCreate', msg.guild);
+      if (!command) {
         return;
       }
 
-      const {prefix, channel} = settings;
-
-      if (!msg.content.startsWith(prefix) && !msg.author.bot && msg.channel.id === channel && await this.naturalLanguage.execute(msg)) {
-        // Natural language command handled message
-        return;
-      }
-
-      if (!msg.content.startsWith(prefix) || msg.author.bot || msg.channel.id !== channel) {
-        return;
-      }
-
-      let args = msg.content.slice(prefix.length).split(/ +/);
-      const command = args.shift()!.toLowerCase();
-
-      // Get possible shortcut
-      const shortcut = await Shortcut.findOne({where: {guildId: msg.guild.id, shortcut: command}});
-
-      let handler: Command;
-
-      if (this.commands.has(command)) {
-        handler = this.commands.get(command)!;
-      } else if (shortcut) {
-        const possibleHandler = this.commands.get(shortcut.command.split(' ')[0]);
-
-        if (possibleHandler) {
-          handler = possibleHandler;
-          args = shortcut.command.split(/ +/).slice(1);
-        } else {
-          return;
-        }
-      } else {
+      if (!interaction.guild) {
+        await interaction.reply(errorMsg('you can\'t use this bot in a DM'));
         return;
       }
 
       try {
-        if (handler.requiresVC && !isUserInVoice(msg.guild, msg.author)) {
-          await msg.channel.send(errorMsg('gotta be in a voice channel'));
+        if (command.requiresVC && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
+          await interaction.reply({content: errorMsg('gotta be in a voice channel'), ephemeral: true});
           return;
         }
 
-        await handler.execute(msg, args);
+        if (command.executeFromInteraction) {
+          await command.executeFromInteraction(interaction);
+        }
       } catch (error: unknown) {
         debug(error);
-        await msg.channel.send(errorMsg((error as Error).message.toLowerCase()));
+        await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
       }
     });
 
-    this.client.on('ready', async () => {
+    this.client.once('ready', async () => {
       debug(generateDependencyReport());
-      console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot&permissions=36752448`);
+      console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot&permissions=2184236096`);
     });
 
     this.client.on('error', console.error);
     this.client.on('debug', debug);
 
-    // Register event handlers
     this.client.on('guildCreate', handleGuildCreate);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
 
-    return this.client.login(this.token);
+    // Update commands
+    await this.client.login(this.token);
+
+    const rest = new REST({version: '9'}).setToken(this.token);
+
+    await rest.put(
+      Routes.applicationGuildCommands(this.client.user!.id, this.client.guilds.cache.first()!.id),
+      // TODO: remove
+      {body: this.commands.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
+    );
   }
 }

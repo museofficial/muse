@@ -1,9 +1,12 @@
-import {Message} from 'discord.js';
+import {SlashCommandBuilder} from '@discordjs/builders';
+import {CommandInteraction} from 'discord.js';
 
 export default interface Command {
-  name: string;
-  aliases: string[];
-  examples: string[][];
+  // TODO: remove
+  name?: string;
+  aliases?: string[];
+  examples?: string[][];
+  slashCommand?: Partial<SlashCommandBuilder> & Pick<SlashCommandBuilder, 'toJSON'>;
   requiresVC?: boolean;
-  execute: (msg: Message, args: string[]) => Promise<void>;
+  executeFromInteraction?: (interaction: CommandInteraction) => Promise<void>;
 }

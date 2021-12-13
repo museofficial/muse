@@ -1,31 +1,27 @@
-import {TextChannel, Message} from 'discord.js';
+import {CommandInteraction, GuildMember} from 'discord.js';
 import {URL} from 'url';
 import {Except} from 'type-fest';
-import {TYPES} from '../types.js';
+import {SlashCommandBuilder} from '@discordjs/builders';
 import {inject, injectable} from 'inversify';
+import Command from '.';
+import {TYPES} from '../types.js';
 import {QueuedSong, STATUS} from '../services/player.js';
 import PlayerManager from '../managers/player.js';
 import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels.js';
-import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
-import Command from '.';
 import GetSongs from '../services/get-songs.js';
 
 @injectable()
 export default class implements Command {
-  public name = 'play';
-  public aliases = ['p'];
-  public examples = [
-    ['play', 'resume paused playback'],
-    ['play https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'plays a YouTube video'],
-    ['play cool music', 'plays the first search result for "cool music" from YouTube'],
-    ['play https://www.youtube.com/watch?list=PLi9drqWffJ9FWBo7ZVOiaVy0UQQEm4IbP', 'adds the playlist to the queue'],
-    ['play https://open.spotify.com/track/3ebXMykcMXOcLeJ9xZ17XH?si=tioqSuyMRBWxhThhAW51Ig', 'plays a song from Spotify'],
-    ['play https://open.spotify.com/album/5dv1oLETxdsYOkS2Sic00z?si=bDa7PaloRx6bMIfKdnvYQw', 'adds all songs from album to the queue'],
-    ['play https://open.spotify.com/playlist/37i9dQZF1DX94qaYRnkufr?si=r2fOVL_QQjGxFM5MWb84Xw', 'adds all songs from playlist to the queue'],
-    ['play cool music immediate', 'adds the first search result for "cool music" to the front of the queue'],
-    ['play cool music i', 'adds the first search result for "cool music" to the front of the queue'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('play')
+    .setDescription('Play a song')
+    .addStringOption(option => option
+      .setName('query')
+      .setDescription('YouTube URL, Spotify URL, or search query'))
+    .addBooleanOption(option => option
+      .setName('immediate')
+      .setDescription('adds track to the front of the queue'));
 
   public requiresVC = true;
 
@@ -38,43 +34,43 @@ export default class implements Command {
   }
 
   // eslint-disable-next-line complexity
-  public async execute(msg: Message, args: string[]): Promise<void> {
-    const [targetVoiceChannel] = getMemberVoiceChannel(msg.member!) ?? getMostPopularVoiceChannel(msg.guild!);
+  public async executeFromInteraction(interaction: CommandInteraction): Promise<void> {
+    const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
 
-    const res = new LoadingMessage(msg.channel as TextChannel);
-    await res.start();
-
-    const player = this.playerManager.get(msg.guild!.id);
-
+    const player = this.playerManager.get(interaction.guild!.id);
     const wasPlayingSong = player.getCurrent() !== null;
 
-    if (args.length === 0) {
+    const query = interaction.options.getString('query');
+
+    if (!query) {
       if (player.status === STATUS.PLAYING) {
-        await res.stop(errorMsg('already playing, give me a song name'));
+        await interaction.reply({content: errorMsg('already playing, give me a song name'), ephemeral: true});
         return;
       }
 
       // Must be resuming play
       if (!wasPlayingSong) {
-        await res.stop(errorMsg('nothing to play'));
+        await interaction.reply({content: errorMsg('nothing to play'), ephemeral: true});
         return;
       }
 
       await player.connect(targetVoiceChannel);
       await player.play();
 
-      await res.stop('the stop-and-go light is now green');
+      await interaction.reply('the stop-and-go light is now green');
       return;
     }
 
-    const addToFrontOfQueue = args[args.length - 1] === 'i' || args[args.length - 1] === 'immediate';
+    const addToFrontOfQueue = interaction.options.getBoolean('immediate');
 
     const newSongs: Array<Except<QueuedSong, 'addedInChannelId'>> = [];
     let extraMsg = '';
 
+    await interaction.deferReply();
+
     // Test if it's a complete URL
     try {
-      const url = new URL(args[0]);
+      const url = new URL(query);
 
       const YOUTUBE_HOSTS = [
         'www.youtube.com',
@@ -96,12 +92,12 @@ export default class implements Command {
           if (song) {
             newSongs.push(song);
           } else {
-            await res.stop(errorMsg('that doesn\'t exist'));
+            await interaction.editReply(errorMsg('that doesn\'t exist'));
             return;
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(args[0]);
+        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(query);
 
         if (totalSongs > 50) {
           extraMsg = 'a random sample of 50 songs was taken';
@@ -123,25 +119,23 @@ export default class implements Command {
       }
     } catch (_: unknown) {
       // Not a URL, must search YouTube
-      const query = addToFrontOfQueue ? args.slice(0, args.length - 1).join(' ') : args.join(' ');
-
       const song = await this.getSongs.youtubeVideoSearch(query);
 
       if (song) {
         newSongs.push(song);
       } else {
-        await res.stop(errorMsg('that doesn\'t exist'));
+        await interaction.editReply(errorMsg('that doesn\'t exist'));
         return;
       }
     }
 
     if (newSongs.length === 0) {
-      await res.stop(errorMsg('no songs found'));
+      await interaction.editReply(errorMsg('no songs found'));
       return;
     }
 
     newSongs.forEach(song => {
-      player.add({...song, addedInChannelId: msg.channel.id}, {immediate: addToFrontOfQueue});
+      player.add({...song, addedInChannelId: interaction.channel?.id}, {immediate: addToFrontOfQueue ?? false});
     });
 
     const firstSong = newSongs[0];
@@ -173,9 +167,9 @@ export default class implements Command {
     }
 
     if (newSongs.length === 1) {
-      await res.stop(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
+      await interaction.editReply(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
     } else {
-      await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
+      await interaction.editReply(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
     }
   }
 }

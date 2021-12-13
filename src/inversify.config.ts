@@ -18,7 +18,6 @@ import Clear from './commands/clear.js';
 import Config from './commands/config.js';
 import Disconnect from './commands/disconnect.js';
 import ForwardSeek from './commands/fseek.js';
-import Help from './commands/help.js';
 import Pause from './commands/pause.js';
 import Play from './commands/play.js';
 import QueueCommand from './commands/queue.js';
@@ -59,7 +58,6 @@ container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLangua
   Config,
   Disconnect,
   ForwardSeek,
-  Help,
   Pause,
   Play,
   QueueCommand,
