@@ -62,7 +62,12 @@ export default class {
         }
       } catch (error: unknown) {
         debug(error);
-        await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
+
+        if (interaction.replied || interaction.deferred) {
+          await interaction.editReply(errorMsg('something went wrong'));
+        } else {
+          await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
+        }
       }
     });
 

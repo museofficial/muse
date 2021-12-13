@@ -15,7 +15,7 @@ import GetSongs from '../services/get-songs.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('play')
-    .setDescription('Play a song')
+    .setDescription('Play a song or resume playback')
     .addStringOption(option => option
       .setName('query')
       .setDescription('YouTube URL, Spotify URL, or search query'))
