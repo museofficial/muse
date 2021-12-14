@@ -15,7 +15,6 @@ import NaturalLanguage from './services/natural-language-commands.js';
 // Comands
 import Command from './commands';
 import Clear from './commands/clear.js';
-import Config from './commands/config.js';
 import Disconnect from './commands/disconnect.js';
 import ForwardSeek from './commands/fseek.js';
 import Pause from './commands/pause.js';
@@ -55,7 +54,6 @@ container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLangua
 // Commands
 [
   Clear,
-  Config,
   Disconnect,
   ForwardSeek,
   Pause,

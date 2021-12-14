@@ -6,7 +6,7 @@ export default interface Command {
   name?: string;
   aliases?: string[];
   examples?: string[][];
-  slashCommand?: Partial<SlashCommandBuilder> & Pick<SlashCommandBuilder, 'toJSON'>;
+  readonly slashCommand?: Partial<SlashCommandBuilder> & Pick<SlashCommandBuilder, 'toJSON'>;
   requiresVC?: boolean;
   executeFromInteraction?: (interaction: CommandInteraction) => Promise<void>;
 }
