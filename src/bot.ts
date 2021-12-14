@@ -1,5 +1,6 @@
 import {Client, Collection, User} from 'discord.js';
 import {inject, injectable} from 'inversify';
+import ora from 'ora';
 import {TYPES} from './types.js';
 import container from './inversify.config.js';
 import Command from './commands/index.js';
@@ -71,9 +72,12 @@ export default class {
       }
     });
 
-    this.client.once('ready', async () => {
+    const spinner = ora('📡 connecting to Discord...').start();
+
+    this.client.once('ready', () => {
       debug(generateDependencyReport());
-      console.log(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot&permissions=2184236096`);
+
+      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot&permissions=2184236096`);
     });
 
     this.client.on('error', console.error);
