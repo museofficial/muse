@@ -1,16 +1,15 @@
 import {inject, injectable} from 'inversify';
-import {Message} from 'discord.js';
+import {CommandInteraction} from 'discord.js';
+import {SlashCommandBuilder} from '@discordjs/builders';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from '.';
 
 @injectable()
 export default class implements Command {
-  public name = 'clear';
-  public aliases = ['c'];
-  public examples = [
-    ['clear', 'clears all songs in queue except currently playing'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('clear')
+    .setDescription('clears all songs in queue except currently playing song');
 
   public requiresVC = true;
 
@@ -20,9 +19,9 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async execute(msg: Message, _: string []): Promise<void> {
-    this.playerManager.get(msg.guild!.id).clear();
+  public async executeFromInteraction(interaction: CommandInteraction) {
+    this.playerManager.get(interaction.guild!.id).clear();
 
-    await msg.channel.send('clearer than a field after a fresh harvest');
+    await interaction.reply('clearer than a field after a fresh harvest');
   }
 }
