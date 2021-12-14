@@ -1,6 +1,9 @@
 name: Lint & build
 
-on: [pull_request]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
     build:
