@@ -18,12 +18,14 @@ import {Routes} from 'discord-api-types/v9';
 export default class {
   private readonly client: Client;
   private readonly token: string;
-  private readonly commands!: Collection<string, Command>;
+  private readonly commandsByName!: Collection<string, Command>;
+  private readonly commandsByButtonId!: Collection<string, Command>;
 
   constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config) config: Config) {
     this.client = client;
     this.token = config.DISCORD_TOKEN;
-    this.commands = new Collection();
+    this.commandsByName = new Collection();
+    this.commandsByButtonId = new Collection();
   }
 
   public async listen(): Promise<void> {
@@ -31,7 +33,11 @@ export default class {
     container.getAll<Command>(TYPES.Command).forEach(command => {
       // TODO: remove !
       if (command.slashCommand?.name) {
-        this.commands.set(command.slashCommand.name, command);
+        this.commandsByName.set(command.slashCommand.name, command);
+      }
+
+      if (command.handledButtonIds) {
+        command.handledButtonIds.forEach(id => this.commandsByButtonId.set(id, command));
       }
     });
 
@@ -41,7 +47,7 @@ export default class {
         return;
       }
 
-      const command = this.commands.get(interaction.commandName);
+      const command = this.commandsByName.get(interaction.commandName);
 
       if (!command) {
         return;
@@ -60,6 +66,32 @@ export default class {
 
         if (command.executeFromInteraction) {
           await command.executeFromInteraction(interaction);
+        }
+      } catch (error: unknown) {
+        debug(error);
+
+        if (interaction.replied || interaction.deferred) {
+          await interaction.editReply(errorMsg('something went wrong'));
+        } else {
+          await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
+        }
+      }
+    });
+
+    this.client.on('interactionCreate', async interaction => {
+      if (!interaction.isButton()) {
+        return;
+      }
+
+      const command = this.commandsByButtonId.get(interaction.customId);
+
+      if (!command) {
+        return;
+      }
+
+      try {
+        if (command.handleButtonInteraction) {
+          await command.handleButtonInteraction(interaction);
         }
       } catch (error: unknown) {
         debug(error);
@@ -94,7 +126,7 @@ export default class {
     await rest.put(
       Routes.applicationGuildCommands(this.client.user!.id, this.client.guilds.cache.first()!.id),
       // TODO: remove
-      {body: this.commands.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
+      {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
     );
   }
 }

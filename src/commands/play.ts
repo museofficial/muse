@@ -15,6 +15,7 @@ import GetSongs from '../services/get-songs.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('play')
+    // TODO: make sure verb tense is consistent between all command descriptions
     .setDescription('play a song or resume playback')
     .addStringOption(option => option
       .setName('query')

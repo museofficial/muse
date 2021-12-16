@@ -1,82 +1,80 @@
-import {Message, MessageEmbed} from 'discord.js';
-import getYouTubeID from 'get-youtube-id';
+import {ButtonInteraction, CommandInteraction} from 'discord.js';
+import {SlashCommandBuilder} from '@discordjs/builders';
 import {inject, injectable} from 'inversify';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
-import {STATUS} from '../services/player.js';
+import UpdatingQueueEmbedManager from '../managers/updating-queue-embed.js';
+import {BUTTON_IDS} from '../services/updating-queue-embed.js';
 import Command from '.';
-import getProgressBar from '../utils/get-progress-bar.js';
-import errorMsg from '../utils/error-msg.js';
-import {prettyTime} from '../utils/time.js';
-
-const PAGE_SIZE = 10;
 
 @injectable()
 export default class implements Command {
-  public name = 'queue';
-  public aliases = ['q'];
-  public examples = [
-    ['queue', 'shows current queue'],
-    ['queue 2', 'shows second page of queue'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('queue')
+    .setDescription('show the current queue');
+
+  public readonly handledButtonIds = Object.values(BUTTON_IDS);
 
   private readonly playerManager: PlayerManager;
+  private readonly updatingQueueEmbedManager: UpdatingQueueEmbedManager;
 
-  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Managers.UpdatingQueueEmbed) updatingQueueEmbedManager: UpdatingQueueEmbedManager) {
     this.playerManager = playerManager;
+    this.updatingQueueEmbedManager = updatingQueueEmbedManager;
   }
 
-  public async execute(msg: Message, args: string []): Promise<void> {
-    const player = this.playerManager.get(msg.guild!.id);
+  public async executeFromInteraction(interaction: CommandInteraction) {
+    const embed = this.updatingQueueEmbedManager.get(interaction.guild!.id);
 
-    const currentlyPlaying = player.getCurrent();
+    await embed.createFromInteraction(interaction);
+  }
 
-    if (currentlyPlaying) {
-      const queueSize = player.queueSize();
-      const queuePage = args[0] ? parseInt(args[0], 10) : 1;
+  public async handleButtonInteraction(interaction: ButtonInteraction) {
+    const player = this.playerManager.get(interaction.guild!.id);
+    const embed = this.updatingQueueEmbedManager.get(interaction.guild!.id);
 
-      const maxQueuePage = Math.ceil((queueSize + 1) / PAGE_SIZE);
+    const buttonId = interaction.customId as keyof typeof this.handledButtonIds;
 
-      if (queuePage > maxQueuePage) {
-        await msg.channel.send(errorMsg('the queue isn\'t that big'));
-        return;
+    // Not entirely sure why this is necessary.
+    // We don't wait for the Promise to resolve here to avoid blocking the
+    // main logic. However, we need to wait for the Promise to be resolved before
+    // throwing as otherwise a race condition pops up when bot.ts tries updating
+    // the interaction.
+    const deferedUpdatePromise = interaction.deferUpdate();
+
+    try {
+      switch (buttonId) {
+        case BUTTON_IDS.TRACK_BACK:
+          await player.back();
+          break;
+
+        case BUTTON_IDS.TRACK_FORWARD:
+          await player.forward(1);
+          break;
+
+        case BUTTON_IDS.PAUSE:
+          player.pause();
+          break;
+
+        case BUTTON_IDS.PLAY:
+          await player.play();
+          break;
+
+        case BUTTON_IDS.PAGE_BACK:
+          await embed.pageBack();
+          break;
+
+        case BUTTON_IDS.PAGE_FORWARD:
+          await embed.pageForward();
+          break;
+
+        default:
+          throw new Error('unknown customId');
       }
+    } catch (error: unknown) {
+      await deferedUpdatePromise;
 
-      const embed = new MessageEmbed();
-
-      embed.setTitle(currentlyPlaying.title);
-      embed.setURL(`https://www.youtube.com/watch?v=${currentlyPlaying.url.length === 11 ? currentlyPlaying.url : getYouTubeID(currentlyPlaying.url) ?? ''}`);
-
-      let description = player.status === STATUS.PLAYING ? '⏹️' : '▶️';
-      description += ' ';
-      description += getProgressBar(20, player.getPosition() / currentlyPlaying.length);
-      description += ' ';
-      description += `\`[${prettyTime(player.getPosition())}/${currentlyPlaying.isLive ? 'live' : prettyTime(currentlyPlaying.length)}]\``;
-      description += ' 🔉';
-      description += player.isQueueEmpty() ? '' : '\n\n**Next up:**';
-
-      embed.setDescription(description);
-
-      let footer = `Source: ${currentlyPlaying.artist}`;
-
-      if (currentlyPlaying.playlist) {
-        footer += ` (${currentlyPlaying.playlist.title})`;
-      }
-
-      embed.setFooter(footer);
-
-      const queuePageBegin = (queuePage - 1) * PAGE_SIZE;
-      const queuePageEnd = queuePageBegin + PAGE_SIZE;
-
-      player.getQueue().slice(queuePageBegin, queuePageEnd).forEach((song, i) => {
-        embed.addField(`${(i + 1 + queuePageBegin).toString()}/${queueSize.toString()}`, song.title, false);
-      });
-
-      embed.addField('Page', `${queuePage} out of ${maxQueuePage}`, false);
-
-      await msg.channel.send({embeds: [embed]});
-    } else {
-      await msg.channel.send('queue empty');
+      throw error;
     }
   }
 }

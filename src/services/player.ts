@@ -1,5 +1,7 @@
 import {VoiceChannel, Snowflake, Client, TextChannel} from 'discord.js';
 import {Readable} from 'stream';
+import EventEmitter from 'events';
+import TypedEmitter from 'typed-emitter';
 import hasha from 'hasha';
 import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
@@ -29,8 +31,11 @@ export enum STATUS {
   PAUSED,
 }
 
-export default class {
-  public status = STATUS.PAUSED;
+export interface PlayerEvents {
+  statusChange: (oldStatus: STATUS, newStatus: STATUS) => void;
+}
+
+export default class extends (EventEmitter as new () => TypedEmitter<PlayerEvents>) {
   public voiceConnection: VoiceConnection | null = null;
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
@@ -40,11 +45,14 @@ export default class {
   private lastSongURL = '';
 
   private positionInSeconds = 0;
+  private internalStatus = STATUS.PAUSED;
 
   private readonly discordClient: Client;
   private readonly fileCache: FileCacheProvider;
 
   constructor(client: Client, fileCache: FileCacheProvider) {
+    // eslint-disable-next-line constructor-super
+    super();
     this.discordClient = client;
     this.fileCache = fileCache;
   }
@@ -203,8 +211,12 @@ export default class {
     }
   }
 
+  canGoForward(skip: number) {
+    return (this.queuePosition + skip - 1) < this.queue.length;
+  }
+
   manualForward(skip: number): void {
-    if ((this.queuePosition + skip - 1) < this.queue.length) {
+    if (this.canGoForward(skip)) {
       this.queuePosition += skip;
       this.positionInSeconds = 0;
       this.stopTrackingPosition();
@@ -213,8 +225,12 @@ export default class {
     }
   }
 
+  canGoBack() {
+    return this.queuePosition - 1 >= 0;
+  }
+
   async back(): Promise<void> {
-    if (this.queuePosition - 1 >= 0) {
+    if (this.canGoBack()) {
       this.queuePosition--;
       this.positionInSeconds = 0;
       this.stopTrackingPosition();
@@ -288,6 +304,17 @@ export default class {
 
   isQueueEmpty(): boolean {
     return this.queueSize() === 0;
+  }
+
+  get status() {
+    return this.internalStatus;
+  }
+
+  set status(newStatus: STATUS) {
+    const previousStatus = this.internalStatus;
+    this.internalStatus = newStatus;
+
+    this.emit('statusChange', previousStatus, newStatus);
   }
 
   private getHashForCache(url: string): string {
