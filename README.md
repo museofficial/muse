@@ -30,12 +30,25 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 
+#### Versioning
+
+The `master` branch acts as the developing / bleeding edge branch and is not guaranteed to be stable.
+
+When running a production instance, I recommend that you use the [latest release](https://github.com/codetheweb/muse/releases/).
+
+
 #### Docker
+
+There are a variety of image tags available:
+- `:2`: versions >= 2.0.0
+- `:2.1`: versions >= 2.1.0 and < 2.2.0
+- `:2.1.1`: an exact version specifier
+- `:latest`: whatever the latest version is
 
 (Replace empty config strings with correct values.)
 
 ```bash
-docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' codetheweb/muse
+docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' codetheweb/muse:latest
 ```
 
 This starts Muse and creates a data directory in your current directory.
@@ -47,7 +60,7 @@ version: '3.4'
 
 services:
   muse:
-    image: codetheweb/muse
+    image: codetheweb/muse:latest
     restart: always
     volumes:
       - ./muse:/data
@@ -64,9 +77,10 @@ services:
 
 1. `git clone https://github.com/codetheweb/muse.git && cd muse`
 2. Copy `.env.example` to `.env` and populate with values
-3. `yarn install` (or `npm i`)
-4. `yarn build` (or `npm run build`)
-5. `yarn start` (or `npm run start`)
+3. I recommend checking out a tagged release with `git checkout v[latest release]`
+4. `yarn install` (or `npm i`)
+5. `yarn build` (or `npm run build`)
+6. `yarn start` (or `npm run start`)
 
 **Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/codetheweb/muse/issues/345) for details.
 
