@@ -70,11 +70,14 @@ export default class {
       } catch (error: unknown) {
         debug(error);
 
-        if (interaction.replied || interaction.deferred) {
-          await interaction.editReply(errorMsg('something went wrong'));
-        } else {
-          await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
-        }
+        // This can fail if the message was deleted, and we don't want to crash the whole bot
+        try {
+          if (interaction.replied || interaction.deferred) {
+            await interaction.editReply(errorMsg('something went wrong'));
+          } else {
+            await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
+          }
+        } catch {}
       }
     });
 

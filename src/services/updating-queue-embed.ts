@@ -1,4 +1,4 @@
-import {CommandInteraction, MessageActionRow, MessageButton, MessageEmbed} from 'discord.js';
+import {CommandInteraction, MessageActionRow, MessageButton, MessageEmbed, DiscordAPIError} from 'discord.js';
 import getYouTubeID from 'get-youtube-id';
 import getProgressBar from '../utils/get-progress-bar.js';
 import {prettyTime} from '../utils/time.js';
@@ -40,13 +40,23 @@ export default class {
    * @param interaction
    */
   async createFromInteraction(interaction: CommandInteraction) {
-    this.interaction = interaction;
-    this.currentPage = 1;
+    const oldInteraction = this.interaction;
 
-    await interaction.reply({
-      embeds: [this.buildEmbed()],
-      components: this.buildButtons(this.player),
-    });
+    this.resetState();
+
+    this.interaction = interaction;
+
+    await Promise.all([
+      interaction.reply({
+        embeds: [this.buildEmbed()],
+        components: this.buildButtons(this.player),
+      }),
+      (async () => {
+        if (oldInteraction) {
+          await oldInteraction.deleteReply();
+        }
+      })(),
+    ]);
 
     if (!this.refreshTimeout) {
       this.refreshTimeout = setInterval(async () => this.update(), REFRESH_INTERVAL_MS);
@@ -58,10 +68,23 @@ export default class {
       this.currentPage = 1;
     }
 
-    await this.interaction?.editReply({
-      embeds: [this.buildEmbed()],
-      components: this.buildButtons(this.player),
-    });
+    try {
+      await this.interaction?.editReply({
+        embeds: [this.buildEmbed()],
+        components: this.buildButtons(this.player),
+      });
+    } catch (error: unknown) {
+      if (error instanceof DiscordAPIError) {
+        // Interaction / message was deleted
+        if (error.code === 10008) {
+          this.resetState();
+
+          return;
+        }
+      }
+
+      throw error;
+    }
   }
 
   async pageBack() {
@@ -78,6 +101,16 @@ export default class {
     }
 
     await this.update();
+  }
+
+  private resetState() {
+    if (this.refreshTimeout) {
+      clearInterval(this.refreshTimeout);
+      this.refreshTimeout = undefined;
+    }
+
+    this.currentPage = 1;
+    this.interaction = undefined;
   }
 
   private buildButtons(player: Player): MessageActionRow[] {
