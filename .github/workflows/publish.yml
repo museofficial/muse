@@ -1,4 +1,4 @@
-name: Publish Docker image
+name: Make release & publish Docker image
 
 on:
   push:
@@ -21,7 +21,6 @@ jobs:
         id: changelog_reader
         uses: mindsers/changelog-reader-action@v2
         with:
-          validation_depth: 10
           version: ${{ steps.tag_name.outputs.current_version }}
           path: ./CHANGELOG.md
 
