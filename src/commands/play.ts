@@ -92,8 +92,7 @@ export default class implements Command {
         // YouTube source
         if (url.searchParams.get('list')) {
           // YouTube playlist
-          const playlist = await this.getSongs.youtubePlaylist(url.searchParams.get('list')!, playlistLimit);
-          newSongs.push(...playlist);
+          newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!));
         } else {
           // Single video
           const song = await this.getSongs.youtubeVideo(url.href);
