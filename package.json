@@ -79,7 +79,7 @@
     "@discordjs/voice": "^0.7.5",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
-    "debug": "^4.3.1",
+    "debug": "^4.3.3",
     "delay": "^5.0.0",
     "discord.js": "^13.3.0",
     "dotenv": "^8.5.1",
