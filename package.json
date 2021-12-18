@@ -26,9 +26,10 @@
     "prepack": "npm run clean && npm run build",
     "start": "node --experimental-json-modules dist/src/index.js",
     "dev": "concurrently nodemon 'tsc --watch'",
-    "docker-publish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t codetheweb/muse:latest --push ."
+    "release": "release-it"
   },
   "devDependencies": {
+    "@release-it/keep-a-changelog": "^2.3.0",
     "@types/bluebird": "^3.5.35",
     "@types/debug": "^4.1.5",
     "@types/fluent-ffmpeg": "^2.1.17",
@@ -46,6 +47,7 @@
     "eslint-config-xo-typescript": "^0.44.0",
     "husky": "^4.3.8",
     "nodemon": "^2.0.7",
+    "release-it": "^14.11.8",
     "ts-node": "^10.4.0",
     "type-fest": "^2.5.4",
     "typescript": "^4.5.3"
