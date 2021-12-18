@@ -188,7 +188,7 @@ export default class {
     return songsToReturn;
   }
 
-  async spotifySource(url: string): Promise<[QueuedSongWithoutChannel[], number, number]> {
+  async spotifySource(url: string, playlistLimit: number): Promise<[QueuedSongWithoutChannel[], number, number]> {
     const parsed = spotifyURI.parse(url);
 
     let tracks: SpotifyApi.TrackObjectSimplified[] = [];
@@ -252,13 +252,13 @@ export default class {
       }
     }
 
-    // Get 50 random songs if many
+    // Get random songs if the playlist is larger than limit
     const originalNSongs = tracks.length;
 
-    if (tracks.length > 50) {
+    if (tracks.length > playlistLimit) {
       const shuffled = shuffle(tracks);
 
-      tracks = shuffled.slice(0, 50);
+      tracks = shuffled.slice(0, playlistLimit);
     }
 
     let songs = await Promise.all(tracks.map(async track => this.spotifyToYouTube(track, playlist)));
