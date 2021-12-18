@@ -46,7 +46,6 @@ export default class implements Command {
 
     const player = this.playerManager.get(msg.guild!.id);
 
-    const queueOldSize = player.queueSize();
     const wasPlayingSong = player.getCurrent() !== null;
 
     if (args.length === 0) {
@@ -147,6 +146,28 @@ export default class implements Command {
 
     const firstSong = newSongs[0];
 
+    let statusMsg = '';
+
+    if (player.voiceConnection === null) {
+      await player.connect(targetVoiceChannel);
+
+      // Resume / start playback
+      await player.play();
+
+      if (wasPlayingSong) {
+        statusMsg = 'resuming playback';
+      }
+    }
+
+    // Build response message
+    if (statusMsg !== '') {
+      if (extraMsg === '') {
+        extraMsg = statusMsg;
+      } else {
+        extraMsg = `${statusMsg}, ${extraMsg}`;
+      }
+    }
+
     if (extraMsg !== '') {
       extraMsg = ` (${extraMsg})`;
     }
@@ -155,15 +176,6 @@ export default class implements Command {
       await res.stop(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
     } else {
       await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
-    }
-
-    if (queueOldSize === 0 && !wasPlayingSong) {
-      // Only auto-play if queue was empty before and nothing was playing
-      if (player.voiceConnection === null) {
-        await player.connect(targetVoiceChannel);
-      }
-
-      await player.play();
     }
   }
 }
