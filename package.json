@@ -99,7 +99,7 @@
     "p-limit": "^4.0.0",
     "p-queue": "^7.1.0",
     "reflect-metadata": "^0.1.13",
-    "sequelize": "^6.11.0",
+    "sequelize": "^6.12.0",
     "sequelize-typescript": "^2.1.1",
     "spotify-uri": "^2.2.0",
     "spotify-web-api-node": "^5.0.2",
