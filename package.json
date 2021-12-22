@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "exports": "./dist/src/index.js",
   "repository": "git@github.com:codetheweb/muse.git",
@@ -26,18 +26,19 @@
     "prepack": "npm run clean && npm run build",
     "start": "node --experimental-json-modules dist/src/index.js",
     "dev": "concurrently nodemon 'tsc --watch'",
-    "docker-publish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t codetheweb/muse:latest --push ."
+    "release": "release-it"
   },
   "devDependencies": {
+    "@release-it/keep-a-changelog": "^2.3.0",
     "@types/bluebird": "^3.5.35",
     "@types/debug": "^4.1.5",
     "@types/fluent-ffmpeg": "^2.1.17",
     "@types/fs-capacitor": "^2.0.0",
-    "@types/node": "^16.11.6",
+    "@types/node": "^17.0.0",
     "@types/node-emoji": "^1.8.1",
     "@types/spotify-web-api-node": "^5.0.2",
     "@types/validator": "^13.1.4",
-    "@types/ws": "^8.2.0",
+    "@types/ws": "^8.2.2",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
     "concurrently": "^6.4.0",
@@ -46,10 +47,11 @@
     "eslint-config-xo-typescript": "^0.44.0",
     "husky": "^4.3.8",
     "nodemon": "^2.0.7",
+    "release-it": "^14.11.8",
     "ts-node": "^10.4.0",
-    "type-fest": "^2.5.4",
+    "type-fest": "^2.8.0",
     "typed-emitter": "^1.4.0",
-    "typescript": "^4.5.3"
+    "typescript": "^4.5.4"
   },
   "eslintConfig": {
     "extends": [
@@ -64,7 +66,8 @@
       "new-cap": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars-experimental": "error",
-      "@typescript-eslint/prefer-readonly-parameter-types": "off"
+      "@typescript-eslint/prefer-readonly-parameter-types": "off",
+      "@typescript-eslint/no-implicit-any-catch": "off"
     }
   },
   "husky": {
@@ -79,7 +82,7 @@
     "@discordjs/voice": "^0.7.5",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
-    "debug": "^4.3.1",
+    "debug": "^4.3.3",
     "delay": "^5.0.0",
     "discord-api-types": "^0.25.2",
     "discord.js": "^13.3.0",
@@ -100,7 +103,7 @@
     "p-limit": "^4.0.0",
     "p-queue": "^7.1.0",
     "reflect-metadata": "^0.1.13",
-    "sequelize": "^6.11.0",
+    "sequelize": "6.11.0",
     "sequelize-typescript": "^2.1.1",
     "spotify-uri": "^2.2.0",
     "spotify-web-api-node": "^5.0.2",

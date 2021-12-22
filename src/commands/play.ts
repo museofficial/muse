@@ -10,6 +10,7 @@ import PlayerManager from '../managers/player.js';
 import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels.js';
 import errorMsg from '../utils/error-msg.js';
 import GetSongs from '../services/get-songs.js';
+import Settings from '../models/settings.js';
 
 @injectable()
 export default class implements Command {
@@ -37,6 +38,9 @@ export default class implements Command {
   // eslint-disable-next-line complexity
   public async executeFromInteraction(interaction: CommandInteraction): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
+
+    const settings = await Settings.findByPk(interaction.guild!.id);
+    const {playlistLimit} = settings!;
 
     const player = this.playerManager.get(interaction.guild!.id);
     const wasPlayingSong = player.getCurrent() !== null;
@@ -98,13 +102,13 @@ export default class implements Command {
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(query);
+        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(query, playlistLimit);
 
-        if (totalSongs > 50) {
-          extraMsg = 'a random sample of 50 songs was taken';
+        if (totalSongs > playlistLimit) {
+          extraMsg = `a random sample of ${playlistLimit} songs was taken`;
         }
 
-        if (totalSongs > 50 && nSongsNotFound !== 0) {
+        if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
           extraMsg += ' and ';
         }
 
