@@ -4365,10 +4365,10 @@ yocto-queue@^1.0.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-1.0.0.tgz#7f816433fb2cbc511ec8bf7d263c3b58a1a3c251"
   integrity sha512-9bnSc/HEW2uRy67wc+T8UwauLuPJVn28jb+GtJY16iiKWyvmYJRXVT4UamsAEGQfPohgr2q4Tq0sQbQlxTfi1g==
 
-youtube.ts@^0.2.2:
-  version "0.2.2"
-  resolved "https://registry.yarnpkg.com/youtube.ts/-/youtube.ts-0.2.2.tgz#d068bd13da7d2a98743d78682d54535d9c1a2833"
-  integrity sha512-2p5RGp66h77XlLlc2YyxSDU1Gql9cWDhq35TS1kAr5wSU/yIWxeXeuqKyKaFBW8uNqWUkQCiyUbn5tfqPgyzeQ==
+youtube.ts@^0.2.3:
+  version "0.2.3"
+  resolved "https://registry.yarnpkg.com/youtube.ts/-/youtube.ts-0.2.3.tgz#5bfb618df4f3f31c2720eb667980e9152aae370d"
+  integrity sha512-KUowS4ixsIciDKo7qWAjqb+cTV37wCDQFd4YQ7Wk5nw6ZTcihCiqVfW24LKaX4kp7lH6Xj93fxVcaj78zJ/oow==
   dependencies:
     axios "^0.19.0"
     ytdl-core "^4.9.1"
