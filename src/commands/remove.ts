@@ -1,23 +1,50 @@
-import {Message} from 'discord.js';
+import {CommandInteraction, Message} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from '.';
 import errorMsg from '../utils/error-msg.js';
+import {SlashCommandBuilder} from '@discordjs/builders';
 
 @injectable()
 export default class implements Command {
-  public name = 'remove';
-  public aliases = ['rm'];
-  public examples = [
-    ['remove 1', 'removes the next song in the queue'],
-    ['rm 5-7', 'remove every song in range 5 - 7 (inclusive) from the queue'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('remove')
+  // TODO: make sure verb tense is consistent between all command descriptions
+    .setDescription('remove songs from the queue')
+    .addIntegerOption(option =>
+      option.setName('position')
+        .setDescription('position of the song to remove [default: 1]')
+        .setRequired(false),
+    )
+    .addIntegerOption(option =>
+      option.setName('range')
+        .setDescription('number of songs to remove [default: 1]')
+        .setRequired(false));
 
   private readonly playerManager: PlayerManager;
 
   constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
     this.playerManager = playerManager;
+  }
+
+  public async executeFromInteraction(interaction: CommandInteraction): Promise<void> {
+    const player = this.playerManager.get(interaction.guild!.id);
+
+    const position = interaction.options.getInteger('position') ?? 1;
+    const range = interaction.options.getInteger('range') ?? 1;
+
+    if (position < 1) {
+      await interaction.reply('position must be greater than 0');
+    }
+
+    if (range < 1) {
+      await interaction.reply('range must be greater than 0');
+    }
+
+    player.removeFromQueue(position, range);
+
+    await interaction.reply(':wastebasket: removed');
   }
 
   public async execute(msg: Message, args: string []): Promise<void> {
