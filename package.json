@@ -81,7 +81,7 @@
     "array-shuffle": "^3.0.0",
     "debug": "^4.3.3",
     "delay": "^5.0.0",
-    "discord.js": "^13.3.0",
+    "discord.js": "^13.4.0",
     "dotenv": "^8.5.1",
     "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^7.0.1",
@@ -105,7 +105,7 @@
     "spotify-web-api-node": "^5.0.2",
     "sqlite3": "^5.0.2",
     "xbytes": "^1.7.0",
-    "youtube.ts": "^0.2.2",
+    "youtube.ts": "^0.2.3",
     "ytdl-core": "^4.9.2",
     "ytsr": "^3.5.3"
   }
