@@ -2,7 +2,7 @@
   "compilerOptions": {
     "lib": ["ES2019", "DOM"],
     "target": "es2018",
-    "module": "esnext",
+    "module": "es2022",
     "moduleResolution": "node",
     "declaration": true,
     "outDir": "dist",
