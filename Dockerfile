@@ -1,4 +1,4 @@
-FROM node:16.13.0-alpine AS base
+FROM node:17-alpine AS base
 
 # Install ffmpeg and build dependencies
 RUN apk add --no-cache ffmpeg python2 make g++
