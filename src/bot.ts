@@ -109,10 +109,22 @@ export default class {
 
     const spinner = ora('📡 connecting to Discord...').start();
 
-    this.client.once('ready', () => {
+    this.client.once('ready', async () => {
       debug(generateDependencyReport());
 
-      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot&permissions=2184236096`);
+      spinner.text = '📡 Updating commands in all guilds...';
+
+      // Update commands
+      const rest = new REST({version: '9'}).setToken(this.token);
+
+      this.client.guilds.cache.each(async guild => {
+        await rest.put(
+          Routes.applicationGuildCommands(this.client.user!.id, guild.id),
+          {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
+        );
+      });
+
+      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=applications.commands%20bot&permissions=2184236096`);
     });
 
     this.client.on('error', console.error);
@@ -121,15 +133,6 @@ export default class {
     this.client.on('guildCreate', handleGuildCreate);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
 
-    // Update commands
     await this.client.login(this.token);
-
-    const rest = new REST({version: '9'}).setToken(this.token);
-
-    await rest.put(
-      Routes.applicationGuildCommands(this.client.user!.id, this.client.guilds.cache.first()!.id),
-      // TODO: remove
-      {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
-    );
   }
 }

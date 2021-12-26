@@ -1,13 +1,30 @@
-import {Guild, TextChannel, Message, MessageReaction, User} from 'discord.js';
+import {
+  Guild,
+  TextChannel,
+  Message,
+  MessageReaction,
+  User,
+  ApplicationCommandData,
+} from 'discord.js';
 import emoji from 'node-emoji';
 import pEvent from 'p-event';
 import {Settings} from '../models/index.js';
 import {chunk} from '../utils/arrays.js';
+import container from '../inversify.config.js';
+import Command from '../commands';
+import {TYPES} from '../types.js';
 
 const DEFAULT_PREFIX = '!';
 
 export default async (guild: Guild): Promise<void> => {
   await Settings.upsert({guildId: guild.id, prefix: DEFAULT_PREFIX});
+
+  // Setup slash commands
+  const commands: ApplicationCommandData[] = container.getAll<Command>(TYPES.Command)
+    .filter(command => command.slashCommand?.name)
+    .map(command => command.slashCommand as ApplicationCommandData);
+
+  await guild.commands.set(commands);
 
   const owner = await guild.client.users.fetch(guild.ownerId);
 

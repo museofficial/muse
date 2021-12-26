@@ -7,7 +7,7 @@ import Bot from './bot.js';
 import {sequelize} from './utils/db.js';
 import Config from './services/config.js';
 import FileCacheProvider from './services/file-cache.js';
-import metadata from '../package.json';
+import metadata from '../package.json' assert {type: "json"};
 
 const bot = container.get<Bot>(TYPES.Bot);
 
