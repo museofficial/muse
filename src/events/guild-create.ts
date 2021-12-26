@@ -1,10 +1,4 @@
-import {
-  Guild,
-  TextChannel,
-  Message,
-  MessageReaction,
-  User,
-  ApplicationCommandData,
+import {Guild, TextChannel, Message, MessageReaction, User, ApplicationCommandData,
 } from 'discord.js';
 import emoji from 'node-emoji';
 import pEvent from 'p-event';
