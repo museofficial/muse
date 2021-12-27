@@ -1,17 +1,16 @@
-import {Message} from 'discord.js';
+import {CommandInteraction} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
+import {SlashCommandBuilder} from '@discordjs/builders';
 
 @injectable()
 export default class implements Command {
-  public name = 'shuffle';
-  public aliases = [];
-  public examples = [
-    ['shuffle', 'shuffles the current queue'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('shuffle')
+    .setDescription('shuffles the current queue');
 
   public requiresVC = true;
 
@@ -21,16 +20,19 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async execute(msg: Message, _: string []): Promise<void> {
-    const player = this.playerManager.get(msg.guild!.id);
+  public async executeFromInteraction(interaction: CommandInteraction): Promise<void> {
+    const player = this.playerManager.get(interaction.guild!.id);
 
     if (player.isQueueEmpty()) {
-      await msg.channel.send(errorMsg('not enough songs to shuffle'));
+      await interaction.reply({
+        content: errorMsg('not enough songs to shuffle'),
+        ephemeral: true,
+      });
       return;
     }
 
     player.shuffle();
 
-    await msg.channel.send('shuffled');
+    await interaction.reply('shuffled');
   }
 }
