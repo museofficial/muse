@@ -1,4 +1,4 @@
-import {CommandInteraction, Message} from 'discord.js';
+import {CommandInteraction} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
@@ -11,12 +11,6 @@ export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('unskip')
     .setDescription('goes back in the queue by one song');
-
-  public name = 'unskip';
-  public aliases = ['back'];
-  public examples = [
-    ['unskip', 'goes back in the queue by one song'],
-  ];
 
   public requiresVC = true;
 
@@ -38,18 +32,6 @@ export default class implements Command {
         content: errorMsg('no song to go back to'),
         ephemeral: true,
       });
-    }
-  }
-
-  public async execute(msg: Message, _: string []): Promise<void> {
-    const player = this.playerManager.get(msg.guild!.id);
-
-    try {
-      await player.back();
-
-      await msg.channel.send('back \'er up\'');
-    } catch (_: unknown) {
-      await msg.channel.send(errorMsg('no song to go back to'));
     }
   }
 }

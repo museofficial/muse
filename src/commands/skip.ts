@@ -18,8 +18,7 @@ export default class implements Command {
 
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('skip')
-  // TODO: make sure verb tense is consistent between all command descriptions
-    .setDescription('skips  the next songs')
+    .setDescription('skips the next songs')
     .addIntegerOption(option => option
       .setName('number')
       .setDescription('number of songs to skip [default: 1]')
