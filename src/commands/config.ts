@@ -12,6 +12,7 @@ export default class implements Command {
     ['config prefix !', 'set the prefix to !'],
     ['config channel music-commands', 'bind the bot to the music-commands channel'],
     ['config playlist-limit 30', 'set the playlist song limit to 30'],
+    ['config announce-songs no', 'disable announcement when playing songs'],
   ];
 
   public async execute(msg: Message, args: string []): Promise<void> {
@@ -23,7 +24,8 @@ export default class implements Command {
         let response = `prefix: \`${settings.prefix}\`\n`;
         // eslint-disable-next-line @typescript-eslint/no-base-to-string
         response += `channel: ${msg.guild!.channels.cache.get(settings.channel)!.toString()}\n`;
-        response += `playlist-limit: ${settings.playlistLimit}`;
+        response += `playlist-limit: ${settings.playlistLimit}\n`;
+        response += `announce-songs: ${settings.announceSongs ? 'yes' : 'no'}`;
 
         await msg.channel.send(response);
       }
@@ -85,6 +87,20 @@ export default class implements Command {
 
         await Settings.update({playlistLimit}, {where: {guildId: msg.guild!.id}});
         await msg.channel.send(`👍 playlist-limit updated to ${playlistLimit}`);
+        break;
+      }
+
+      case 'announce-songs': {
+        const choice = args[1];
+        if (choice !== 'yes' && choice !== 'no') {
+          await msg.channel.send('Invalid value. please use yes / no');
+          return;
+        }
+
+        const announceSongs = choice === 'yes';
+
+        await Settings.update({announceSongs}, {where: {guildId: msg.guild!.id}});
+        await msg.channel.send(announceSongs ? 'Songs will be now be announced' : 'Song will no longer be announced');
         break;
       }
 

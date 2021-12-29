@@ -20,7 +20,7 @@ export default class {
     let player = this.guildPlayers.get(guildId);
 
     if (!player) {
-      player = new Player(this.discordClient, this.fileCache);
+      player = new Player(this.discordClient, this.fileCache, guildId);
 
       this.guildPlayers.set(guildId, player);
     }

@@ -19,4 +19,8 @@ export default class Settings extends Model {
   @Default(50)
   @Column
   playlistLimit!: number;
+
+  @Default(true)
+  @Column
+  announceSongs!: boolean;
 }

@@ -9,6 +9,7 @@ import errorMsg from '../utils/error-msg.js';
 import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
 import {prettyTime} from '../utils/time.js';
+import Settings from '../models/settings.js';
 
 export interface QueuedPlaylist {
   title: string;
@@ -46,10 +47,12 @@ export default class {
 
   private readonly discordClient: Client;
   private readonly fileCache: FileCacheProvider;
+  private readonly guildId: string;
 
-  constructor(client: Client, fileCache: FileCacheProvider) {
+  constructor(client: Client, fileCache: FileCacheProvider, guildId: string) {
     this.discordClient = client;
     this.fileCache = fileCache;
+    this.guildId = guildId;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -129,6 +132,7 @@ export default class {
       if (this.audioPlayer) {
         this.audioPlayer.unpause();
         this.status = STATUS.PLAYING;
+        void this.announceCurrentSong();
         this.startTrackingPosition();
         return;
       }
@@ -151,7 +155,7 @@ export default class {
 
       this.status = STATUS.PLAYING;
       this.nowPlaying = currentSong;
-      this.announceCurrentSong();
+      void this.announceCurrentSong();
 
       if (currentSong.url === this.lastSongURL) {
         this.startTrackingPosition();
@@ -448,7 +452,12 @@ export default class {
     }
   }
 
-  private announceCurrentSong(): void {
+  private async announceCurrentSong(): Promise<void> {
+    const setting = await Settings.findByPk(this.guildId);
+    if (!setting?.announceSongs) {
+      return;
+    }
+
     const song = this.getCurrent();
     if (!song) {
       throw new Error('Queue empty.');
