@@ -16,7 +16,7 @@ import ThirdParty from './third-party.js';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
 
-type QueuedSongWithoutChannel = Except<QueuedSong, 'addedInChannelId'>;
+type QueuedSongWithoutChannel = Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>;
 
 const ONE_HOUR_IN_SECONDS = 60 * 60;
 const ONE_MINUTE_IN_SECONDS = 1 * 60;
@@ -91,6 +91,7 @@ export default class {
         url: videoDetails.id,
         playlist: null,
         isLive: videoDetails.snippet.liveBroadcastContent === 'live',
+        thumbnailUrl: videoDetails.snippet.thumbnails.medium.url,
       };
     } catch (_: unknown) {
       return null;
@@ -179,6 +180,7 @@ export default class {
           url: video.contentDetails.videoId,
           playlist: queuedPlaylist,
           isLive: false,
+          thumbnailUrl: video.snippet.thumbnails.medium.url,
         });
       } catch (_: unknown) {
         // Private and deleted videos are sometimes in playlists, duration of these is not returned and they should not be added to the queue.

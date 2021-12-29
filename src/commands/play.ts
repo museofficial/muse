@@ -72,7 +72,7 @@ export default class implements Command {
 
     const addToFrontOfQueue = args[args.length - 1] === 'i' || args[args.length - 1] === 'immediate';
 
-    const newSongs: Array<Except<QueuedSong, 'addedInChannelId'>> = [];
+    const newSongs: Array<Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>> = [];
     let extraMsg = '';
 
     // Test if it's a complete URL
@@ -144,7 +144,7 @@ export default class implements Command {
     }
 
     newSongs.forEach(song => {
-      player.add({...song, addedInChannelId: msg.channel.id}, {immediate: addToFrontOfQueue});
+      player.add({...song, addedInChannelId: msg.channel.id, requestedBy: msg.author.id}, {immediate: addToFrontOfQueue});
     });
 
     const firstSong = newSongs[0];

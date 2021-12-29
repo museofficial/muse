@@ -8,6 +8,7 @@ import shuffle from 'array-shuffle';
 import errorMsg from '../utils/error-msg.js';
 import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
+import {prettyTime} from '../utils/time.js';
 
 export interface QueuedPlaylist {
   title: string;
@@ -22,6 +23,8 @@ export interface QueuedSong {
   playlist: QueuedPlaylist | null;
   isLive: boolean;
   addedInChannelId: Snowflake;
+  thumbnailUrl: string | null;
+  requestedBy: string;
 }
 
 export enum STATUS {
@@ -148,6 +151,7 @@ export default class {
 
       this.status = STATUS.PLAYING;
       this.nowPlaying = currentSong;
+      this.announceCurrentSong();
 
       if (currentSong.url === this.lastSongURL) {
         this.startTrackingPosition();
@@ -442,5 +446,38 @@ export default class {
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
     }
+  }
+
+  private announceCurrentSong(): void {
+    const song = this.getCurrent();
+    if (!song) {
+      throw new Error('Queue empty.');
+    }
+
+    const channel = this.discordClient.channels.cache.get(song.addedInChannelId);
+    if (!channel) {
+      throw new Error('Unable to find channel to announce song.');
+    }
+
+    const thumbnail = song.thumbnailUrl ? {thumbnail: {url: song.thumbnailUrl}} : {};
+
+    void (channel as TextChannel).send({embeds: [{
+      ...thumbnail,
+      color: 0x0099ff,
+      title: 'Now Playing',
+      description: `[${song.title}](https://www.youtube.com/watch?v=${song.url})`,
+      fields: [
+        {
+          name: 'Song Duration',
+          value: prettyTime(song.length),
+          inline: true,
+        },
+        {
+          name: 'Requested by',
+          value: `<@${song.requestedBy}>`,
+          inline: true,
+        },
+      ],
+    }]});
   }
 }
