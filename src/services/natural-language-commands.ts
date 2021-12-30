@@ -33,7 +33,7 @@ export default class {
           isLive: false,
           addedInChannelId: msg.channel.id,
           thumbnailUrl: null,
-          requestedBy: msg.author.username,
+          requestedBy: msg.author.id,
         }, 8, 10),
       ]);
 
