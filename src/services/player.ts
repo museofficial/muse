@@ -1,5 +1,7 @@
 import {VoiceChannel, Snowflake, Client, TextChannel} from 'discord.js';
 import {Readable} from 'stream';
+import EventEmitter from 'events';
+import TypedEmitter from 'typed-emitter';
 import hasha from 'hasha';
 import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
@@ -8,8 +10,6 @@ import shuffle from 'array-shuffle';
 import errorMsg from '../utils/error-msg.js';
 import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
-import {prettyTime} from '../utils/time.js';
-import Settings from '../models/settings.js';
 
 export interface QueuedPlaylist {
   title: string;
@@ -33,13 +33,17 @@ export enum STATUS {
   PAUSED,
 }
 
-export default class {
-  public status = STATUS.PAUSED;
+export interface PlayerEvents {
+  startPlaying: (song: QueuedSong) => void;
+}
+
+export default class extends (EventEmitter as new () => TypedEmitter<PlayerEvents>) {
   public voiceConnection: VoiceConnection | null = null;
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
   private audioPlayer: AudioPlayer | null = null;
   private nowPlaying: QueuedSong | null = null;
+  private internalStatus = STATUS.PAUSED;
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
 
@@ -47,12 +51,12 @@ export default class {
 
   private readonly discordClient: Client;
   private readonly fileCache: FileCacheProvider;
-  private readonly guildId: string;
 
-  constructor(client: Client, fileCache: FileCacheProvider, guildId: string) {
+  constructor(client: Client, fileCache: FileCacheProvider) {
+    // eslint-disable-next-line constructor-super
+    super();
     this.discordClient = client;
     this.fileCache = fileCache;
-    this.guildId = guildId;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -132,7 +136,6 @@ export default class {
       if (this.audioPlayer) {
         this.audioPlayer.unpause();
         this.status = STATUS.PLAYING;
-        void this.announceCurrentSong();
         this.startTrackingPosition();
         return;
       }
@@ -155,7 +158,6 @@ export default class {
 
       this.status = STATUS.PLAYING;
       this.nowPlaying = currentSong;
-      void this.announceCurrentSong();
 
       if (currentSong.url === this.lastSongURL) {
         this.startTrackingPosition();
@@ -296,6 +298,21 @@ export default class {
 
   isQueueEmpty(): boolean {
     return this.queueSize() === 0;
+  }
+
+  get status() {
+    return this.internalStatus;
+  }
+
+  set status(newStatus: STATUS) {
+    this.internalStatus = newStatus;
+
+    if (newStatus === STATUS.PLAYING) {
+      const currentSong = this.getCurrent();
+      if (currentSong) {
+        this.emit('startPlaying', currentSong);
+      }
+    }
   }
 
   private getHashForCache(url: string): string {
@@ -450,43 +467,5 @@ export default class {
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
     }
-  }
-
-  private async announceCurrentSong(): Promise<void> {
-    const setting = await Settings.findByPk(this.guildId);
-    if (!setting?.announceSongs) {
-      return;
-    }
-
-    const song = this.getCurrent();
-    if (!song) {
-      throw new Error('Queue empty.');
-    }
-
-    const channel = this.discordClient.channels.cache.get(song.addedInChannelId);
-    if (!channel) {
-      throw new Error('Unable to find channel to announce song.');
-    }
-
-    const thumbnail = song.thumbnailUrl ? {thumbnail: {url: song.thumbnailUrl}} : {};
-
-    void (channel as TextChannel).send({embeds: [{
-      ...thumbnail,
-      color: 0x0099ff,
-      title: 'Now Playing',
-      description: `[${song.title}](https://www.youtube.com/watch?v=${song.url})`,
-      fields: [
-        {
-          name: 'Song Duration',
-          value: prettyTime(song.length),
-          inline: true,
-        },
-        {
-          name: 'Requested by',
-          value: `<@${song.requestedBy}>`,
-          inline: true,
-        },
-      ],
-    }]});
   }
 }

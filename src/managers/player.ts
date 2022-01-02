@@ -3,6 +3,7 @@ import {Client} from 'discord.js';
 import {TYPES} from '../types.js';
 import Player from '../services/player.js';
 import FileCacheProvider from '../services/file-cache.js';
+import {announceSong} from '../utils/announce-song.js';
 
 @injectable()
 export default class {
@@ -20,7 +21,8 @@ export default class {
     let player = this.guildPlayers.get(guildId);
 
     if (!player) {
-      player = new Player(this.discordClient, this.fileCache, guildId);
+      player = new Player(this.discordClient, this.fileCache);
+      player.on('startPlaying', announceSong(this.discordClient));
 
       this.guildPlayers.set(guildId, player);
     }
