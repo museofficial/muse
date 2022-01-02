@@ -2,8 +2,8 @@ import {Message, Util} from 'discord.js';
 import {injectable} from 'inversify';
 import Command from '.';
 import {TYPES} from '../types.js';
-import {Settings} from '../models/index.js';
 import container from '../inversify.config.js';
+import {prisma} from '../utils/db.js';
 
 @injectable()
 export default class implements Command {
@@ -21,7 +21,11 @@ export default class implements Command {
       this.commands = container.getAll<Command>(TYPES.Command);
     }
 
-    const settings = await Settings.findOne({where: {guildId: msg.guild!.id}});
+    const settings = await prisma.settings.findUnique({
+      where: {
+        guildId: msg.guild!.id,
+      },
+    });
 
     if (!settings) {
       return;

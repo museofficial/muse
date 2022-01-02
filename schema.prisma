@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model FileCaches {
+  hash       String   @id
+  bytes      Int
+  accessedAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model KeyValueCaches {
+  key       String   @id
+  value     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Settings {
+  guildId       String   @id
+  prefix        String
+  channel       String?
+  finishedSetup Boolean  @default(false)
+  playlistLimit Int      @default(50)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Shortcuts {
+  id        Int      @id @default(autoincrement())
+  guildId   String
+  authorId  String
+  shortcut  String
+  command   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
+  @@index([shortcut], map: "shortcuts_shortcut")
+  @@index([guildId], map: "shortcuts_guild_id")
+}

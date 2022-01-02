@@ -10,7 +10,7 @@ import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import GetSongs from '../services/get-songs.js';
-import Settings from '../models/settings.js';
+import {prisma} from '../utils/db.js';
 
 @injectable()
 export default class implements Command {
@@ -41,7 +41,10 @@ export default class implements Command {
   // eslint-disable-next-line complexity
   public async execute(msg: Message, args: string[]): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(msg.member!) ?? getMostPopularVoiceChannel(msg.guild!);
-    const settings = await Settings.findByPk(msg.guild!.id);
+    const settings = await prisma.settings.findUnique({
+      where: {
+        guildId: msg.guild!.id,
+      }});
     const {playlistLimit} = settings!;
 
     const res = new LoadingMessage(msg.channel as TextChannel);

@@ -1,8 +1,8 @@
 import {TextChannel, Message, GuildChannel, ThreadChannel} from 'discord.js';
 import {injectable} from 'inversify';
-import {Settings} from '../models/index.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
+import {prisma} from '../utils/db.js';
 
 @injectable()
 export default class implements Command {
@@ -17,9 +17,13 @@ export default class implements Command {
   public async execute(msg: Message, args: string []): Promise<void> {
     if (args.length === 0) {
       // Show current settings
-      const settings = await Settings.findByPk(msg.guild!.id);
+      const settings = await prisma.settings.findUnique({
+        where: {
+          guildId: msg.guild!.id,
+        },
+      });
 
-      if (settings) {
+      if (settings?.channel) {
         let response = `prefix: \`${settings.prefix}\`\n`;
         // eslint-disable-next-line @typescript-eslint/no-base-to-string
         response += `channel: ${msg.guild!.channels.cache.get(settings.channel)!.toString()}\n`;
@@ -47,7 +51,14 @@ export default class implements Command {
       case 'prefix': {
         const newPrefix = args[1];
 
-        await Settings.update({prefix: newPrefix}, {where: {guildId: msg.guild!.id}});
+        await prisma.settings.update({
+          where: {
+            guildId: msg.guild!.id,
+          },
+          data: {
+            prefix: newPrefix,
+          },
+        });
 
         await msg.channel.send(`👍 prefix updated to \`${newPrefix}\``);
         break;
@@ -63,7 +74,14 @@ export default class implements Command {
         }
 
         if (channel && channel.type === 'GUILD_TEXT') {
-          await Settings.update({channel: channel.id}, {where: {guildId: msg.guild!.id}});
+          await prisma.settings.update({
+            where: {
+              guildId: msg.guild!.id,
+            },
+            data: {
+              channel: channel.id,
+            },
+          });
 
           await Promise.all([
             (channel as TextChannel).send('hey apparently I\'m bound to this channel now'),
@@ -83,7 +101,15 @@ export default class implements Command {
           return;
         }
 
-        await Settings.update({playlistLimit}, {where: {guildId: msg.guild!.id}});
+        await prisma.settings.update({
+          where: {
+            guildId: msg.guild!.id,
+          },
+          data: {
+            playlistLimit,
+          },
+        });
+
         await msg.channel.send(`👍 playlist-limit updated to ${playlistLimit}`);
         break;
       }

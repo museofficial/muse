@@ -4,7 +4,6 @@ import {makeLines} from 'nodesplash';
 import container from './inversify.config.js';
 import {TYPES} from './types.js';
 import Bot from './bot.js';
-import {sequelize} from './utils/db.js';
 import Config from './services/config.js';
 import FileCacheProvider from './services/file-cache.js';
 import metadata from '../package.json';
@@ -29,8 +28,6 @@ const bot = container.get<Bot>(TYPES.Bot);
   await makeDir(config.DATA_DIR);
   await makeDir(config.CACHE_DIR);
   await makeDir(path.join(config.CACHE_DIR, 'tmp'));
-
-  await sequelize.sync({alter: true});
 
   await container.get<FileCacheProvider>(TYPES.FileCache).cleanup();
 

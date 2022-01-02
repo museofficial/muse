@@ -1,5 +1,5 @@
 import {injectable} from 'inversify';
-import {KeyValueCache} from '../models/index.js';
+import {prisma} from '../utils/db.js';
 import debug from '../utils/debug.js';
 
 type Seconds = number;
@@ -29,7 +29,11 @@ export default class KeyValueCacheProvider {
       throw new Error(`Cache key ${key} is too short.`);
     }
 
-    const cachedResult = await KeyValueCache.findByPk(key);
+    const cachedResult = await prisma.keyValueCaches.findUnique({
+      where: {
+        key,
+      },
+    });
 
     if (cachedResult) {
       if (new Date() < cachedResult.expiresAt) {
@@ -37,7 +41,11 @@ export default class KeyValueCacheProvider {
         return JSON.parse(cachedResult.value) as F;
       }
 
-      await cachedResult.destroy();
+      await prisma.keyValueCaches.delete({
+        where: {
+          key,
+        },
+      });
     }
 
     debug(`Cache miss: ${key}`);
@@ -45,10 +53,21 @@ export default class KeyValueCacheProvider {
     const result = await func(...options as any[]);
 
     // Save result
-    await KeyValueCache.upsert({
-      key,
-      value: JSON.stringify(result),
-      expiresAt: futureTimeToDate(expiresIn),
+    const value = JSON.stringify(result);
+    const expiresAt = futureTimeToDate(expiresIn);
+    await prisma.keyValueCaches.upsert({
+      where: {
+        key,
+      },
+      update: {
+        value,
+        expiresAt,
+      },
+      create: {
+        key,
+        value,
+        expiresAt,
+      },
     });
 
     return result;
