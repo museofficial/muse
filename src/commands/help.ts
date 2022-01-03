@@ -21,7 +21,7 @@ export default class implements Command {
       this.commands = container.getAll<Command>(TYPES.Command);
     }
 
-    const settings = await prisma.settings.findUnique({
+    const settings = await prisma.setting.findUnique({
       where: {
         guildId: msg.guild!.id,
       },

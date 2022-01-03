@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model FileCaches {
+model FileCache {
   hash       String   @id
   bytes      Int
   accessedAt DateTime
@@ -15,7 +15,7 @@ model FileCaches {
   updatedAt  DateTime @updatedAt
 }
 
-model KeyValueCaches {
+model KeyValueCache {
   key       String   @id
   value     String
   expiresAt DateTime
@@ -23,7 +23,7 @@ model KeyValueCaches {
   updatedAt DateTime @updatedAt
 }
 
-model Settings {
+model Setting {
   guildId       String   @id
   prefix        String
   channel       String?
@@ -33,7 +33,7 @@ model Settings {
   updatedAt     DateTime @updatedAt
 }
 
-model Shortcuts {
+model Shortcut {
   id        Int      @id @default(autoincrement())
   guildId   String
   authorId  String
@@ -45,4 +45,5 @@ model Shortcuts {
 
   @@index([shortcut], map: "shortcuts_shortcut")
   @@index([guildId], map: "shortcuts_guild_id")
+  @@index([guildId, shortcut])
 }

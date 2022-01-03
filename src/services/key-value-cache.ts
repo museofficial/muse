@@ -29,7 +29,7 @@ export default class KeyValueCacheProvider {
       throw new Error(`Cache key ${key} is too short.`);
     }
 
-    const cachedResult = await prisma.keyValueCaches.findUnique({
+    const cachedResult = await prisma.keyValueCache.findUnique({
       where: {
         key,
       },
@@ -41,7 +41,7 @@ export default class KeyValueCacheProvider {
         return JSON.parse(cachedResult.value) as F;
       }
 
-      await prisma.keyValueCaches.delete({
+      await prisma.keyValueCache.delete({
         where: {
           key,
         },
@@ -55,7 +55,7 @@ export default class KeyValueCacheProvider {
     // Save result
     const value = JSON.stringify(result);
     const expiresAt = futureTimeToDate(expiresIn);
-    await prisma.keyValueCaches.upsert({
+    await prisma.keyValueCache.upsert({
       where: {
         key,
       },

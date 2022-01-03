@@ -41,11 +41,15 @@ export default class implements Command {
   // eslint-disable-next-line complexity
   public async execute(msg: Message, args: string[]): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(msg.member!) ?? getMostPopularVoiceChannel(msg.guild!);
-    const settings = await prisma.settings.findUnique({
+    const setting = await prisma.setting.findUnique({
       where: {
         guildId: msg.guild!.id,
       }});
-    const {playlistLimit} = settings!;
+    if (!setting) {
+      throw new Error(`Couldn't find settings for guild ${msg.guild!.id}`);
+    }
+
+    const {playlistLimit} = setting;
 
     const res = new LoadingMessage(msg.channel as TextChannel);
     await res.start();

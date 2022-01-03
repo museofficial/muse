@@ -18,7 +18,7 @@ export default class implements Command {
   public async execute(msg: Message, args: string []): Promise<void> {
     if (args.length === 0) {
       // Get shortcuts for guild
-      const shortcuts = await prisma.shortcuts.findMany({
+      const shortcuts = await prisma.shortcut.findMany({
         where: {
           guildId: msg.guild!.id,
         },
@@ -30,7 +30,7 @@ export default class implements Command {
       }
 
       // Get prefix for guild
-      const settings = await prisma.settings.findUnique({
+      const settings = await prisma.setting.findUnique({
         where: {
           guildId: msg.guild!.id,
         },
@@ -56,7 +56,7 @@ export default class implements Command {
 
       switch (action) {
         case 'set': {
-          const shortcut = await prisma.shortcuts.findFirst({
+          const shortcut = await prisma.shortcut.findFirst({
             where: {
               guildId: msg.guild!.id,
               shortcut: shortcutName,
@@ -73,7 +73,7 @@ export default class implements Command {
               return;
             }
 
-            await prisma.shortcuts.update({
+            await prisma.shortcut.update({
               where: {
                 id: shortcut.id,
               },
@@ -81,7 +81,7 @@ export default class implements Command {
             });
             await msg.channel.send('shortcut updated');
           } else {
-            await prisma.shortcuts.create({data: newShortcut});
+            await prisma.shortcut.create({data: newShortcut});
             await msg.channel.send('shortcut created');
           }
 
@@ -90,7 +90,7 @@ export default class implements Command {
 
         case 'delete': {
           // Check if shortcut exists
-          const shortcut = await prisma.shortcuts.findFirst({
+          const shortcut = await prisma.shortcut.findFirst({
             where: {
               guildId: msg.guild!.id,
               shortcut: shortcutName,
@@ -108,7 +108,7 @@ export default class implements Command {
             return;
           }
 
-          await prisma.shortcuts.delete({
+          await prisma.shortcut.delete({
             where: {
               id: shortcut.id,
             },

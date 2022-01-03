@@ -7,7 +7,7 @@ import {prisma} from '../utils/db.js';
 const DEFAULT_PREFIX = '!';
 
 export default async (guild: Guild): Promise<void> => {
-  await prisma.settings.upsert({
+  await prisma.setting.upsert({
     where: {
       guildId: guild.id,
     },
@@ -81,7 +81,7 @@ export default async (guild: Guild): Promise<void> => {
   const prefixCharacter = prefixResponses.first()!.content;
 
   // Save settings
-  await prisma.settings.update({
+  await prisma.setting.update({
     where: {
       guildId: guild.id,
     },

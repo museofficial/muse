@@ -6,7 +6,7 @@ import Config from './config.js';
 import PQueue from 'p-queue';
 import debug from '../utils/debug.js';
 import {prisma} from '../utils/db.js';
-import {FileCaches} from '@prisma/client';
+import {FileCache} from '@prisma/client';
 
 @injectable()
 export default class FileCacheProvider {
@@ -23,7 +23,7 @@ export default class FileCacheProvider {
    * @param hash lookup key
    */
   async getPathFor(hash: string): Promise<string> {
-    const model = await prisma.fileCaches.findUnique({
+    const model = await prisma.fileCache.findUnique({
       where: {
         hash,
       },
@@ -38,7 +38,7 @@ export default class FileCacheProvider {
     try {
       await fs.access(resolvedPath);
     } catch (_: unknown) {
-      await prisma.fileCaches.delete({
+      await prisma.fileCache.delete({
         where: {
           hash,
         },
@@ -47,7 +47,7 @@ export default class FileCacheProvider {
       throw new Error('File is not cached');
     }
 
-    await prisma.fileCaches.update({
+    await prisma.fileCache.update({
       where: {
         hash,
       },
@@ -79,7 +79,7 @@ export default class FileCacheProvider {
         try {
           await fs.rename(tmpPath, finalPath);
 
-          await prisma.fileCaches.create({
+          await prisma.fileCache.create({
             data: {
               hash,
               accessedAt: new Date(),
@@ -121,7 +121,7 @@ export default class FileCacheProvider {
     // Continue to evict until we're under the limit
     /* eslint-disable no-await-in-loop */
     while (totalSizeBytes > this.config.CACHE_LIMIT_IN_BYTES) {
-      const oldest = await prisma.fileCaches.findFirst({
+      const oldest = await prisma.fileCache.findFirst({
         orderBy: {
           accessedAt: 'asc',
         },
@@ -129,7 +129,7 @@ export default class FileCacheProvider {
       });
 
       if (oldest) {
-        await prisma.fileCaches.delete({
+        await prisma.fileCache.delete({
           where: {
             hash: oldest.hash,
           },
@@ -154,7 +154,7 @@ export default class FileCacheProvider {
     // Check filesystem direction (do files exist on the disk but not in the database?)
     for await (const dirent of await fs.opendir(this.config.CACHE_DIR)) {
       if (dirent.isFile()) {
-        const model = await prisma.fileCaches.findUnique({
+        const model = await prisma.fileCache.findUnique({
           where: {
             hash: dirent.name,
           },
@@ -175,7 +175,7 @@ export default class FileCacheProvider {
         await fs.access(filePath);
       } catch {
         debug(`${model.hash} was present in database but was not on disk. Removing from database.`);
-        await prisma.fileCaches.delete({
+        await prisma.fileCache.delete({
           where: {
             hash: model.hash,
           },
@@ -190,7 +190,7 @@ export default class FileCacheProvider {
    * @returns the total size of the cache in bytes
    */
   private async getDiskUsageInBytes() {
-    const data = await prisma.fileCaches.aggregate({
+    const data = await prisma.fileCache.aggregate({
       _sum: {
         bytes: true,
       },
@@ -208,7 +208,7 @@ export default class FileCacheProvider {
     const limit = 50;
     let previousCreatedAt: Date | null = null;
 
-    let models: FileCaches[] = [];
+    let models: FileCache[] = [];
 
     const fetchNextBatch = async () => {
       let where;
@@ -221,7 +221,7 @@ export default class FileCacheProvider {
         };
       }
 
-      models = await prisma.fileCaches.findMany({
+      models = await prisma.fileCache.findMany({
         where,
         orderBy: {
           createdAt: 'asc',
@@ -244,7 +244,7 @@ export default class FileCacheProvider {
 
             if (models.length === 0) {
               // Must return value here for types to be inferred correctly
-              return {done: true, value: null as unknown as FileCaches};
+              return {done: true, value: null as unknown as FileCache};
             }
 
             return {value: models.shift()!, done: false};

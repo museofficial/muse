@@ -17,7 +17,7 @@ export default class implements Command {
   public async execute(msg: Message, args: string []): Promise<void> {
     if (args.length === 0) {
       // Show current settings
-      const settings = await prisma.settings.findUnique({
+      const settings = await prisma.setting.findUnique({
         where: {
           guildId: msg.guild!.id,
         },
@@ -51,7 +51,7 @@ export default class implements Command {
       case 'prefix': {
         const newPrefix = args[1];
 
-        await prisma.settings.update({
+        await prisma.setting.update({
           where: {
             guildId: msg.guild!.id,
           },
@@ -74,7 +74,7 @@ export default class implements Command {
         }
 
         if (channel && channel.type === 'GUILD_TEXT') {
-          await prisma.settings.update({
+          await prisma.setting.update({
             where: {
               guildId: msg.guild!.id,
             },
@@ -101,7 +101,7 @@ export default class implements Command {
           return;
         }
 
-        await prisma.settings.update({
+        await prisma.setting.update({
           where: {
             guildId: msg.guild!.id,
           },

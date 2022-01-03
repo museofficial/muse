@@ -48,7 +48,7 @@ export default class {
         return;
       }
 
-      const settings = await prisma.settings.findUnique({
+      const settings = await prisma.setting.findUnique({
         where: {
           guildId: msg.guild.id,
         },
@@ -83,8 +83,7 @@ export default class {
       let args = msg.content.slice(prefix.length).split(/ +/);
       const command = args.shift()!.toLowerCase();
 
-      // TODO: add composite index [guildId, shortcut]
-      const shortcut = await prisma.shortcuts.findFirst({
+      const shortcut = await prisma.shortcut.findFirst({
         where: {
           guildId: msg.guild.id,
           shortcut: command,
