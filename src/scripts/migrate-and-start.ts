@@ -1,17 +1,13 @@
 // This script applies Prisma migrations
-// and then calls the entry point in src/index.ts.
+// and then starts Muse.
 import dotenv from 'dotenv';
 dotenv.config();
 
 import {execa, ExecaError} from 'execa';
 import Prisma from '@prisma/client';
 import ora from 'ora';
-import {startBot} from './start.js';
-import {DATA_DIR} from '../services/config.js';
-import createDatabaseUrl from '../utils/create-database-url.js';
+import {startBot} from '../index.js';
 import logBanner from '../utils/log-banner.js';
-
-process.env.DATABASE_URL = createDatabaseUrl(DATA_DIR);
 
 const migrateFromSequelizeToPrisma = async () => {
   await execa('prisma', ['migrate', 'resolve', '--applied', '20220101155430_migrate_from_sequelize'], {preferLocal: true});
