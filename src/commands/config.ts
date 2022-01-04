@@ -100,7 +100,7 @@ export default class implements Command {
         const announceSongs = choice === 'yes';
 
         await Settings.update({announceSongs}, {where: {guildId: msg.guild!.id}});
-        await msg.channel.send(announceSongs ? 'Songs will be now be announced' : 'Song will no longer be announced');
+        await msg.channel.send(announceSongs ? '👍 Song will be now be announced' : '👍 Song will no longer be announced');
         break;
       }
 
