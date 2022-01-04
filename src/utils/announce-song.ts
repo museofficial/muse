@@ -20,7 +20,7 @@ const buildMessage = (song: QueuedSong): MessageEmbed => {
   }
 
   message
-    .setColor('GREEN')
+    .setColor('DARK_GREEN')
     .setTitle('Now Playing')
     .setDescription(`[${song.title}](https://www.youtube.com/watch?v=${song.url})`)
     .addFields([
