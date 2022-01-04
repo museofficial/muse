@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import 'reflect-metadata';
 import {injectable} from 'inversify';
 import path from 'path';
 import xbytes from 'xbytes';

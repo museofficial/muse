@@ -24,10 +24,10 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "prepack": "npm run clean && npm run build",
-    "db:migration": "node scrips/generateDbMigraion.js",
-    "prestart": "node scripts/prestart.js",
-    "start": "node --experimental-json-modules dist/src/index.js",
+    "start": "node --experimental-json-modules dist/src/scripts/prestart.js",
     "dev": "concurrently nodemon 'tsc --watch'",
+    "migrations:generate": "prisma migrate dev",
+    "migrations:run": "prisma migrate deploy",
     "release": "release-it"
   },
   "devDependencies": {
@@ -87,6 +87,7 @@
     "delay": "^5.0.0",
     "discord.js": "^13.3.0",
     "dotenv": "^8.5.1",
+    "execa": "^6.0.0",
     "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^7.0.1",
     "get-youtube-id": "^1.0.1",

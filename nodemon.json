@@ -1,6 +1,6 @@
 {
     "ignore": ["**/*.test.ts", "**/*.spec.ts", ".git", "node_modules"],
     "watch": ["dist"],
-    "exec": "npm start",
+    "exec": "node --experimental-json-modules dist/src/index.js",
     "ext": "js"
 }
