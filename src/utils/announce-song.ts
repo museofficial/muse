@@ -1,10 +1,15 @@
 import {Client, MessageEmbed, TextChannel} from 'discord.js';
+import Settings from '../models/settings.js';
 import {QueuedSong} from '../services/player.js';
 import {prettyTime} from './time.js';
 
-export const announceSong = (discordClient: Client) => (song: QueuedSong): void => {
-  const channel = discordClient.channels.cache.get(song.addedInChannelId) as TextChannel | null;
-  void channel?.send({embeds: [buildMessage(song)]});
+export const announceSong = (discordClient: Client, guildId: string) => async (song: QueuedSong) => {
+  const settings = await Settings.findByPk(guildId);
+
+  if (settings?.announceSongs) {
+    const channel = discordClient.channels.cache.get(song.addedInChannelId) as TextChannel | null;
+    await channel?.send({embeds: [buildMessage(song)]});
+  }
 };
 
 const buildMessage = (song: QueuedSong): MessageEmbed => {
@@ -15,7 +20,7 @@ const buildMessage = (song: QueuedSong): MessageEmbed => {
   }
 
   message
-    .setColor(0x0099ff)
+    .setColor('GREEN')
     .setTitle('Now Playing')
     .setDescription(`[${song.title}](https://www.youtube.com/watch?v=${song.url})`)
     .addFields([

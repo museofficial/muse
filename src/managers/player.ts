@@ -22,7 +22,7 @@ export default class {
 
     if (!player) {
       player = new Player(this.discordClient, this.fileCache);
-      player.on('startPlaying', announceSong(this.discordClient));
+      player.on('startPlaying', announceSong(this.discordClient, guildId));
 
       this.guildPlayers.set(guildId, player);
     }
