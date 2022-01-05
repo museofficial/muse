@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Migrated from Sequelize to Prisma. (#456)
+- Bumped dependencies
 
 ## [0.2.1] - 2021-12-18
 ### Added
