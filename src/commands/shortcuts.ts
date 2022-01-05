@@ -1,8 +1,8 @@
 import {Message} from 'discord.js';
 import {injectable} from 'inversify';
-import {Shortcut, Settings} from '../models/index.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
+import {prisma} from '../utils/db.js';
 
 @injectable()
 export default class implements Command {
@@ -18,7 +18,11 @@ export default class implements Command {
   public async execute(msg: Message, args: string []): Promise<void> {
     if (args.length === 0) {
       // Get shortcuts for guild
-      const shortcuts = await Shortcut.findAll({where: {guildId: msg.guild!.id}});
+      const shortcuts = await prisma.shortcut.findMany({
+        where: {
+          guildId: msg.guild!.id,
+        },
+      });
 
       if (shortcuts.length === 0) {
         await msg.channel.send('no shortcuts exist');
@@ -26,7 +30,11 @@ export default class implements Command {
       }
 
       // Get prefix for guild
-      const settings = await Settings.findOne({where: {guildId: msg.guild!.id}});
+      const settings = await prisma.setting.findUnique({
+        where: {
+          guildId: msg.guild!.id,
+        },
+      });
 
       if (!settings) {
         return;
@@ -48,7 +56,12 @@ export default class implements Command {
 
       switch (action) {
         case 'set': {
-          const shortcut = await Shortcut.findOne({where: {guildId: msg.guild!.id, shortcut: shortcutName}});
+          const shortcut = await prisma.shortcut.findFirst({
+            where: {
+              guildId: msg.guild!.id,
+              shortcut: shortcutName,
+            },
+          });
 
           const command = args.slice(2).join(' ');
 
@@ -60,10 +73,15 @@ export default class implements Command {
               return;
             }
 
-            await shortcut.update(newShortcut);
+            await prisma.shortcut.update({
+              where: {
+                id: shortcut.id,
+              },
+              data: newShortcut,
+            });
             await msg.channel.send('shortcut updated');
           } else {
-            await Shortcut.create(newShortcut);
+            await prisma.shortcut.create({data: newShortcut});
             await msg.channel.send('shortcut created');
           }
 
@@ -72,7 +90,12 @@ export default class implements Command {
 
         case 'delete': {
           // Check if shortcut exists
-          const shortcut = await Shortcut.findOne({where: {guildId: msg.guild!.id, shortcut: shortcutName}});
+          const shortcut = await prisma.shortcut.findFirst({
+            where: {
+              guildId: msg.guild!.id,
+              shortcut: shortcutName,
+            },
+          });
 
           if (!shortcut) {
             await msg.channel.send(errorMsg('shortcut doesn\'t exist'));
@@ -85,7 +108,11 @@ export default class implements Command {
             return;
           }
 
-          await shortcut.destroy();
+          await prisma.shortcut.delete({
+            where: {
+              id: shortcut.id,
+            },
+          });
 
           await msg.channel.send('shortcut deleted');
 
