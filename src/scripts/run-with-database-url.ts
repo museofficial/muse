@@ -5,7 +5,6 @@ import {execa} from 'execa';
 process.env.DATABASE_URL = createDatabaseUrl(DATA_DIR);
 
 (async () => {
-  // Console.log(process.argv)
   await execa(process.argv[2], process.argv.slice(3), {
     preferLocal: true,
     stderr: process.stderr,
