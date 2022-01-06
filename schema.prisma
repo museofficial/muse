@@ -29,6 +29,7 @@ model Setting {
   channel       String?
   finishedSetup Boolean  @default(false)
   playlistLimit Int      @default(50)
+  announceSongs Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
