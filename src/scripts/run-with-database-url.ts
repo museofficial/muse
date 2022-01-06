@@ -9,5 +9,6 @@ process.env.DATABASE_URL = createDatabaseUrl(DATA_DIR);
     preferLocal: true,
     stderr: process.stderr,
     stdout: process.stdout,
+    stdin: process.stdin,
   });
 })();
