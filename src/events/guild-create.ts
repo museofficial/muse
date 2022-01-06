@@ -1,13 +1,24 @@
 import {Guild, TextChannel, Message, MessageReaction, User} from 'discord.js';
 import emoji from 'node-emoji';
 import pEvent from 'p-event';
-import {Settings} from '../models/index.js';
 import {chunk} from '../utils/arrays.js';
+import {prisma} from '../utils/db.js';
 
 const DEFAULT_PREFIX = '!';
 
 export default async (guild: Guild): Promise<void> => {
-  await Settings.upsert({guildId: guild.id, prefix: DEFAULT_PREFIX});
+  await prisma.setting.upsert({
+    where: {
+      guildId: guild.id,
+    },
+    create: {
+      guildId: guild.id,
+      prefix: DEFAULT_PREFIX,
+    },
+    update: {
+      prefix: DEFAULT_PREFIX,
+    },
+  });
 
   const owner = await guild.client.users.fetch(guild.ownerId);
 
@@ -70,7 +81,15 @@ export default async (guild: Guild): Promise<void> => {
   const prefixCharacter = prefixResponses.first()!.content;
 
   // Save settings
-  await Settings.update({prefix: prefixCharacter, channel: chosenChannel.id}, {where: {guildId: guild.id}});
+  await prisma.setting.update({
+    where: {
+      guildId: guild.id,
+    },
+    data: {
+      channel: chosenChannel.id,
+      prefix: prefixCharacter,
+    },
+  });
 
   // Send welcome
   const boundChannel = guild.client.channels.cache.get(chosenChannel.id) as TextChannel;
