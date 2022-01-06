@@ -1,10 +1,14 @@
 import {Client, MessageEmbed, TextChannel} from 'discord.js';
-import Settings from '../models/settings.js';
+import {prisma} from '../utils/db.js';
 import {QueuedSong} from '../services/player.js';
 import {prettyTime} from './time.js';
 
 export const announceSong = (discordClient: Client, guildId: string) => async (song: QueuedSong) => {
-  const settings = await Settings.findByPk(guildId);
+  const settings = await prisma.setting.findUnique({
+    where: {
+      guildId,
+    },
+  });
 
   if (settings?.announceSongs) {
     const channel = discordClient.channels.cache.get(song.addedInChannelId) as TextChannel | null;

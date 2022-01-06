@@ -125,7 +125,14 @@ export default class implements Command {
 
         const announceSongs = choice === 'yes';
 
-        await Settings.update({announceSongs}, {where: {guildId: msg.guild!.id}});
+        await prisma.setting.update({
+          where: {
+            guildId: msg.guild!.id,
+          },
+          data: {
+            announceSongs,
+          },
+        });
         await msg.channel.send(announceSongs ? '👍 Song will be now be announced' : '👍 Song will no longer be announced');
         break;
       }
