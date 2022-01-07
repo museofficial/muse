@@ -42,7 +42,7 @@ export default class {
     this.ytsrQueue = new PQueue({concurrency: 4});
   }
 
-  async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel | null> {
+  async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel> {
     const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
       ytsr,
       query,
@@ -70,7 +70,7 @@ export default class {
     return this.youtubeVideo(firstVideo.id);
   }
 
-  async youtubeVideo(url: string): Promise<QueuedSongWithoutChannel | null> {
+  async youtubeVideo(url: string): Promise<QueuedSongWithoutChannel> {
     const videoDetails = await this.cache.wrap(
       this.youtube.videos.get,
       cleanUrl(url),
@@ -271,7 +271,7 @@ export default class {
     return [songs as QueuedSongWithoutChannel[], nSongsNotFound, originalNSongs];
   }
 
-  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSongWithoutChannel | null> {
+  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSongWithoutChannel> {
     return this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`);
   }
 }
