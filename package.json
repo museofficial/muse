@@ -110,7 +110,7 @@
     "spotify-uri": "^2.2.0",
     "spotify-web-api-node": "^5.0.2",
     "xbytes": "^1.7.0",
-    "youtube.ts": "^0.2.3",
+    "youtube.ts": "^0.2.5",
     "ytdl-core": "^4.9.2",
     "ytsr": "^3.5.3"
   }
