@@ -3554,10 +3554,10 @@ type-fest@^1.2.1:
   resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-1.4.0.tgz#e9fb813fe3bf1744ec359d55d1affefa76f14be1"
   integrity sha512-yGSza74xk0UG8k+pLh5oeoYirvIiWo5t0/o3zHHAO2tRDiZcxWP7fywNlXhqb6/r6sWvwi+RsyQMWhVLe4BVuA==
 
-type-fest@^2.8.0:
-  version "2.8.0"
-  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-2.8.0.tgz#39d7c9f9c508df8d6ce1cf5a966b0e6568dcc50d"
-  integrity sha512-O+V9pAshf9C6loGaH0idwsmugI2LxVNR7DtS40gVo2EXZVYFgz9OuNtOhgHLdHdapOEWNdvz9Ob/eeuaWwwlxA==
+type-fest@^2.9.0:
+  version "2.9.0"
+  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-2.9.0.tgz#7a2d430dd966f52b6bc723da2aaa2c9867530551"
+  integrity sha512-uC0hJKi7eAGXUJ/YKk53RhnKxMwzHWgzf4t92oz8Qez28EBgVTfpDTB59y9hMYLzc/Wl85cD7Tv1hLZZoEJtrg==
 
 typedarray-to-buffer@^3.1.5:
   version "3.1.5"
@@ -3799,10 +3799,10 @@ yocto-queue@^1.0.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-1.0.0.tgz#7f816433fb2cbc511ec8bf7d263c3b58a1a3c251"
   integrity sha512-9bnSc/HEW2uRy67wc+T8UwauLuPJVn28jb+GtJY16iiKWyvmYJRXVT4UamsAEGQfPohgr2q4Tq0sQbQlxTfi1g==
 
-youtube.ts@^0.2.3:
-  version "0.2.3"
-  resolved "https://registry.yarnpkg.com/youtube.ts/-/youtube.ts-0.2.3.tgz#5bfb618df4f3f31c2720eb667980e9152aae370d"
-  integrity sha512-KUowS4ixsIciDKo7qWAjqb+cTV37wCDQFd4YQ7Wk5nw6ZTcihCiqVfW24LKaX4kp7lH6Xj93fxVcaj78zJ/oow==
+youtube.ts@^0.2.5:
+  version "0.2.5"
+  resolved "https://registry.yarnpkg.com/youtube.ts/-/youtube.ts-0.2.5.tgz#392e8d037ade0287afd9373bb56cb6aa783ec5a3"
+  integrity sha512-C0UAVLk8NRJEw378sKkQPzjN2C3n/UpjXJbVQr498pLs2xv/yjPO/qzkHlApeR/B3rKZFgGxGBmRUsk/Ovbd4w==
   dependencies:
     axios "^0.19.0"
     ytdl-core "^4.9.1"
