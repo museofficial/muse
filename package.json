@@ -25,6 +25,7 @@
     "build:watch": "tsc --watch",
     "prepack": "npm run clean && npm run build",
     "start": "npm run env:set-database-url -- node --experimental-json-modules dist/src/scripts/migrate-and-start.js",
+    "cache:clear-key-value": "npm run env:set-database-url node dist/src/scripts/cache-clear-key-value.js",
     "dev": "concurrently nodemon 'tsc --watch'",
     "migrations:generate": "npm run prisma:with-env migrate dev",
     "migrations:run": "npm run prisma:with-env migrate deploy",
