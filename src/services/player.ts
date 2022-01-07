@@ -53,6 +53,7 @@ export default class {
     const conn = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
+      // @ts-expect-error (see https://github.com/discordjs/voice/issues/166)
       adapterCreator: channel.guild.voiceAdapterCreator,
     });
 

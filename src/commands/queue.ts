@@ -63,7 +63,7 @@ export default class implements Command {
         footer += ` (${currentlyPlaying.playlist.title})`;
       }
 
-      embed.setFooter(footer);
+      embed.setFooter({text: footer});
 
       const queuePageBegin = (queuePage - 1) * PAGE_SIZE;
       const queuePageEnd = queuePageBegin + PAGE_SIZE;
