@@ -6,7 +6,7 @@ CREATE TABLE "new_Setting" (
     "channel" TEXT,
     "finishedSetup" BOOLEAN NOT NULL DEFAULT false,
     "playlistLimit" INTEGER NOT NULL DEFAULT 50,
-    "announceSongs" BOOLEAN NOT NULL DEFAULT true,
+    "announceSongs" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
