@@ -108,7 +108,6 @@
     "reflect-metadata": "^0.1.13",
     "spotify-uri": "^2.2.0",
     "spotify-web-api-node": "^5.0.2",
-    "sqlite3": "^5.0.2",
     "xbytes": "^1.7.0",
     "youtube.ts": "^0.2.3",
     "ytdl-core": "^4.9.2",
