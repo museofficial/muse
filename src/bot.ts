@@ -18,17 +18,22 @@ import {Routes} from 'discord-api-types/v9';
 export default class {
   private readonly client: Client;
   private readonly token: string;
+  private readonly env: string;
   private readonly commandsByName!: Collection<string, Command>;
   private readonly commandsByButtonId!: Collection<string, Command>;
 
   constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config) config: Config) {
     this.client = client;
     this.token = config.DISCORD_TOKEN;
+    this.env = config.NODE_ENV;
     this.commandsByName = new Collection();
     this.commandsByButtonId = new Collection();
   }
 
   public async listen(): Promise<void> {
+    // Log environment
+    console.log(`Starting environment: ${this.env}\n`);
+
     // Load in commands
     container.getAll<Command>(TYPES.Command).forEach(command => {
       // TODO: remove !
@@ -117,12 +122,23 @@ export default class {
       // Update commands
       const rest = new REST({version: '9'}).setToken(this.token);
 
-      this.client.guilds.cache.each(async guild => {
-        await rest.put(
-          Routes.applicationGuildCommands(this.client.user!.id, guild.id),
-          {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
-        );
-      });
+      switch (this.env) {
+        case 'production':
+          // If production, set commands bot-wide
+          await rest.put(
+            Routes.applicationCommands(this.client.user!.id),
+            {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
+          );
+          break;
+        default:
+          // If development, set commands guild-wide
+          this.client.guilds.cache.each(async guild => {
+            await rest.put(
+              Routes.applicationGuildCommands(this.client.user!.id, guild.id),
+              {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
+            );
+          });
+      }
 
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=applications.commands%20bot&permissions=2184236096`);
     });
