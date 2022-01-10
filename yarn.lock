@@ -1769,10 +1769,10 @@ got@11.8.3:
     p-cancelable "^2.0.0"
     responselike "^2.0.0"
 
-got@^12.0.0:
-  version "12.0.0"
-  resolved "https://registry.yarnpkg.com/got/-/got-12.0.0.tgz#2ee3d5ff25eabc47dae975d376ddcee1d450bec1"
-  integrity sha512-gNNNghQ1yw0hyzie1FLK6gY90BQlXU9zSByyRygnbomHPruKQ6hAKKbpO1RfNZp8b+qNzNipGeRG3tUelKcVsA==
+got@^12.0.1:
+  version "12.0.1"
+  resolved "https://registry.yarnpkg.com/got/-/got-12.0.1.tgz#78747f1c5bc7069bbd739636ed8b70c7f2140a39"
+  integrity sha512-1Zhoh+lDej3t7Ks1BP/Jufn+rNqdiHQgUOcTxHzg2Dao1LQfp5S4Iq0T3iBxN4Zdo7QqCJL+WJUNzDX6rCP2Ew==
   dependencies:
     "@sindresorhus/is" "^4.2.0"
     "@szmarczak/http-timer" "^5.0.1"
