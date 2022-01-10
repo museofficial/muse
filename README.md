@@ -48,7 +48,7 @@ There are a variety of image tags available:
 (Replace empty config strings with correct values.)
 
 ```bash
-docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' codetheweb/muse:latest
+docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' -e NODE_ENV='development' codetheweb/muse:latest
 ```
 
 This starts Muse and creates a data directory in your current directory.
@@ -69,6 +69,7 @@ services:
       - YOUTUBE_API_KEY=
       - SPOTIFY_CLIENT_ID=
       - SPOTIFY_CLIENT_SECRET=
+      - NODE_ENV=development
 ```
 
 #### Node.js
