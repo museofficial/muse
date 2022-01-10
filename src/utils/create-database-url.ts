@@ -1,4 +1,6 @@
-export const createDatabasePath = (directory: string) => `${directory}/db.sqlite`;
+import {join} from 'path';
+
+export const createDatabasePath = (directory: string) => join(directory, 'db.sqlite');
 
 const createDatabaseUrl = (directory: string) => `file:${createDatabasePath(directory)}`;
 
