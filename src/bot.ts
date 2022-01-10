@@ -139,8 +139,8 @@ export default class {
             );
           });
       }
-
-      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=applications.commands%20bot&permissions=2184236096`);
+      
+      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=2184236096`);
     });
 
     this.client.on('error', console.error);
