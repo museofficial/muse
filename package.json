@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "lint:fix": "eslint '\"src/**/*.{ts,tsx}\" --fix",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "clean": "rm -rf dist dts",
     "test": "npm run lint",
     "build": "tsc",
