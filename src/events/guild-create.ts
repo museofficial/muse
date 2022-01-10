@@ -86,7 +86,7 @@ export default async (guild: Guild): Promise<void> => {
   // Send welcome
   const boundChannel = guild.client.channels.cache.get(chosenChannel.id) as TextChannel;
 
-  await boundChannel.send(`hey <@${owner.id}> try \`${prefixCharacter}play https://www.youtube.com/watch?v=dQw4w9WgXcQ\``);
+  await boundChannel.send(`hey <@${owner.id}> try \`\\play https://www.youtube.com/watch?v=dQw4w9WgXcQ\``);
 
   await firstStepMsg.channel.send(`Sounds good. Check out **#${chosenChannel.name}** to get started.`);
 };
