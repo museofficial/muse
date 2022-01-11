@@ -47,6 +47,10 @@ export default class implements Command {
       embed.setTitle(currentlyPlaying.title);
       embed.setURL(`https://www.youtube.com/watch?v=${currentlyPlaying.url.length === 11 ? currentlyPlaying.url : getYouTubeID(currentlyPlaying.url) ?? ''}`);
 
+      if (currentlyPlaying.thumbnailUrl) {
+        embed.setThumbnail(currentlyPlaying.thumbnailUrl);
+      }
+
       let description = player.status === STATUS.PLAYING ? '⏹️' : '▶️';
       description += ' ';
       description += getProgressBar(20, player.getPosition() / currentlyPlaying.length);
