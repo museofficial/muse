@@ -30,5 +30,6 @@ FROM base AS prod
 COPY --from=builder /usr/app/dist dist
 
 ENV DATA_DIR /data
+ENV NODE_ENV production
 
 CMD ["yarn", "start"]

@@ -69,7 +69,7 @@ services:
       - YOUTUBE_API_KEY=
       - SPOTIFY_CLIENT_ID=
       - SPOTIFY_CLIENT_SECRET=
-      - NODE_ENV=development
+    # - NODE_ENV=production
 ```
 
 #### Node.js
