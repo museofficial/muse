@@ -18,21 +18,25 @@ import {Routes} from 'discord-api-types/v9';
 export default class {
   private readonly client: Client;
   private readonly token: string;
-  private readonly env: string;
+  private readonly isProduction: boolean;
   private readonly commandsByName!: Collection<string, Command>;
   private readonly commandsByButtonId!: Collection<string, Command>;
 
   constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config) config: Config) {
     this.client = client;
     this.token = config.DISCORD_TOKEN;
-    this.env = config.NODE_ENV;
+    this.isProduction = config.IS_PRODUCTION;
     this.commandsByName = new Collection();
     this.commandsByButtonId = new Collection();
   }
 
   public async listen(): Promise<void> {
     // Log environment
-    console.log(`Starting environment: ${this.env}\n`);
+    if (this.isProduction) {
+      console.log('Production environment\n');
+    } else {
+      console.log('Development environment\n');
+    }
 
     // Load in commands
     container.getAll<Command>(TYPES.Command).forEach(command => {
@@ -122,22 +126,19 @@ export default class {
       // Update commands
       const rest = new REST({version: '9'}).setToken(this.token);
 
-      switch (this.env) {
-        case 'production':
-          // If production, set commands bot-wide
+      if (this.isProduction) {
+        await rest.put(
+          Routes.applicationCommands(this.client.user!.id),
+          {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
+        );
+      } else {
+        // If development, set commands guild-wide
+        this.client.guilds.cache.each(async guild => {
           await rest.put(
-            Routes.applicationCommands(this.client.user!.id),
+            Routes.applicationGuildCommands(this.client.user!.id, guild.id),
             {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
           );
-          break;
-        default:
-          // If development, set commands guild-wide
-          this.client.guilds.cache.each(async guild => {
-            await rest.put(
-              Routes.applicationGuildCommands(this.client.user!.id, guild.id),
-              {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
-            );
-          });
+        });
       }
 
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=2184236096`);

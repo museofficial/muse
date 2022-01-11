@@ -17,7 +17,7 @@ export default async (guild: Guild): Promise<void> => {
   const config = container.get<Config>(TYPES.Config);
 
   // Setup slash commands
-  if (config.NODE_ENV === 'production') {
+  if (config.IS_PRODUCTION) {
     const commands: ApplicationCommandData[] = container.getAll<Command>(TYPES.Command)
       .filter(command => command.slashCommand?.name)
       .map(command => command.slashCommand as ApplicationCommandData);
