@@ -4,6 +4,7 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
+import {announceCurrentSong} from '../utils/announce-song.js';
 
 @injectable()
 export default class implements Command {
@@ -28,6 +29,8 @@ export default class implements Command {
       await player.back();
 
       await msg.channel.send('back \'er up\'');
+
+      await announceCurrentSong(player, msg.channel);
     } catch (_: unknown) {
       await msg.channel.send(errorMsg('no song to go back to'));
     }

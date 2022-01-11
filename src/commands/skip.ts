@@ -5,6 +5,7 @@ import PlayerManager from '../managers/player.js';
 import Command from '.';
 import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
+import {announceCurrentSong} from '../utils/announce-song.js';
 
 @injectable()
 export default class implements Command {
@@ -41,6 +42,7 @@ export default class implements Command {
       await player.forward(numToSkip);
 
       await loader.stop('keep \'er movin\'');
+      await announceCurrentSong(player, msg.channel);
     } catch (_: unknown) {
       await loader.stop(errorMsg('no song to skip to'));
     }

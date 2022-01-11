@@ -11,6 +11,7 @@ import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import GetSongs from '../services/get-songs.js';
 import {prisma} from '../utils/db.js';
+import {announceCurrentSong} from '../utils/announce-song.js';
 
 @injectable()
 export default class implements Command {
@@ -74,12 +75,14 @@ export default class implements Command {
       await player.play();
 
       await res.stop('the stop-and-go light is now green');
+      await announceCurrentSong(player, msg.channel);
+
       return;
     }
 
     const addToFrontOfQueue = args[args.length - 1] === 'i' || args[args.length - 1] === 'immediate';
 
-    const newSongs: Array<Except<QueuedSong, 'addedInChannelId'>> = [];
+    const newSongs: Array<Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>> = [];
     let extraMsg = '';
 
     // Test if it's a complete URL
@@ -151,7 +154,7 @@ export default class implements Command {
     }
 
     newSongs.forEach(song => {
-      player.add({...song, addedInChannelId: msg.channel.id}, {immediate: addToFrontOfQueue});
+      player.add({...song, addedInChannelId: msg.channel.id, requestedBy: msg.author.id}, {immediate: addToFrontOfQueue});
     });
 
     const firstSong = newSongs[0];
@@ -167,6 +170,8 @@ export default class implements Command {
       if (wasPlayingSong) {
         statusMsg = 'resuming playback';
       }
+
+      await announceCurrentSong(player, msg.channel);
     }
 
     // Build response message

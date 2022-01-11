@@ -22,6 +22,8 @@ export interface QueuedSong {
   playlist: QueuedPlaylist | null;
   isLive: boolean;
   addedInChannelId: Snowflake;
+  thumbnailUrl: string | null;
+  requestedBy: string;
 }
 
 export enum STATUS {
