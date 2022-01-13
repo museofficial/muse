@@ -13,6 +13,7 @@ import Config from './services/config.js';
 import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v9';
+import {Promise} from 'bluebird';
 
 @injectable()
 export default class {
@@ -133,12 +134,14 @@ export default class {
         );
       } else {
         // If development, set commands guild-wide
-        this.client.guilds.cache.each(async guild => {
-          await rest.put(
-            Routes.applicationGuildCommands(this.client.user!.id, guild.id),
-            {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
-          );
-        });
+        await Promise.all(
+          this.client.guilds.cache.map(async guild => {
+            await rest.put(
+              Routes.applicationGuildCommands(this.client.user!.id, guild.id),
+              {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
+            );
+          }),
+        );
       }
 
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=2184236096`);
