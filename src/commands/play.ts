@@ -11,7 +11,7 @@ import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import GetSongs from '../services/get-songs.js';
 import {prisma} from '../utils/db.js';
-import {announceCurrentSong} from '../utils/announce-song.js';
+import buildQueueEmbed from '../utils/build-queue-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -55,142 +55,149 @@ export default class implements Command {
     const res = new LoadingMessage(msg.channel as TextChannel);
     await res.start();
 
-    const player = this.playerManager.get(msg.guild!.id);
-
-    const wasPlayingSong = player.getCurrent() !== null;
-
-    if (args.length === 0) {
-      if (player.status === STATUS.PLAYING) {
-        await res.stop(errorMsg('already playing, give me a song name'));
-        return;
-      }
-
-      // Must be resuming play
-      if (!wasPlayingSong) {
-        await res.stop(errorMsg('nothing to play'));
-        return;
-      }
-
-      await player.connect(targetVoiceChannel);
-      await player.play();
-
-      await res.stop('the stop-and-go light is now green');
-      await announceCurrentSong(player, msg.channel);
-
-      return;
-    }
-
-    const addToFrontOfQueue = args[args.length - 1] === 'i' || args[args.length - 1] === 'immediate';
-
-    const newSongs: Array<Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>> = [];
-    let extraMsg = '';
-
-    // Test if it's a complete URL
     try {
-      const url = new URL(args[0]);
+      const player = this.playerManager.get(msg.guild!.id);
 
-      const YOUTUBE_HOSTS = [
-        'www.youtube.com',
-        'youtu.be',
-        'youtube.com',
-        'music.youtube.com',
-        'www.music.youtube.com',
-      ];
+      const wasPlayingSong = player.getCurrent() !== null;
 
-      if (YOUTUBE_HOSTS.includes(url.host)) {
-        // YouTube source
-        if (url.searchParams.get('list')) {
-          // YouTube playlist
-          newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!));
-        } else {
-          // Single video
-          const song = await this.getSongs.youtubeVideo(url.href);
-
-          if (song) {
-            newSongs.push(song);
-          } else {
-            await res.stop(errorMsg('that doesn\'t exist'));
-            return;
-          }
-        }
-      } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(args[0], playlistLimit);
-
-        if (totalSongs > playlistLimit) {
-          extraMsg = `a random sample of ${playlistLimit} songs was taken`;
+      if (args.length === 0) {
+        if (player.status === STATUS.PLAYING) {
+          await res.stop(errorMsg('already playing, give me a song name'));
+          return;
         }
 
-        if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
-          extraMsg += ' and ';
+        // Must be resuming play
+        if (!wasPlayingSong) {
+          await res.stop(errorMsg('nothing to play'));
+          return;
         }
 
-        if (nSongsNotFound !== 0) {
-          if (nSongsNotFound === 1) {
-            extraMsg += '1 song was not found';
-          } else {
-            extraMsg += `${nSongsNotFound.toString()} songs were not found`;
-          }
-        }
+        await player.connect(targetVoiceChannel);
+        await player.play();
 
-        newSongs.push(...convertedSongs);
-      }
-    } catch (_: unknown) {
-      // Not a URL, must search YouTube
-      const query = addToFrontOfQueue ? args.slice(0, args.length - 1).join(' ') : args.join(' ');
+        await Promise.all([
+          res.stop('the stop-and-go light is now green'),
+          msg.channel.send({embeds: [buildQueueEmbed(player, 1, true)]}),
+        ]);
 
-      const song = await this.getSongs.youtubeVideoSearch(query);
-
-      if (song) {
-        newSongs.push(song);
-      } else {
-        await res.stop(errorMsg('that doesn\'t exist'));
         return;
       }
-    }
 
-    if (newSongs.length === 0) {
-      await res.stop(errorMsg('no songs found'));
-      return;
-    }
+      const addToFrontOfQueue = args[args.length - 1] === 'i' || args[args.length - 1] === 'immediate';
 
-    newSongs.forEach(song => {
-      player.add({...song, addedInChannelId: msg.channel.id, requestedBy: msg.author.id}, {immediate: addToFrontOfQueue});
-    });
+      const newSongs: Array<Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>> = [];
+      let extraMsg = '';
 
-    const firstSong = newSongs[0];
+      // Test if it's a complete URL
+      try {
+        const url = new URL(args[0]);
 
-    let statusMsg = '';
+        const YOUTUBE_HOSTS = [
+          'www.youtube.com',
+          'youtu.be',
+          'youtube.com',
+          'music.youtube.com',
+          'www.music.youtube.com',
+        ];
 
-    if (player.voiceConnection === null) {
-      await player.connect(targetVoiceChannel);
+        if (YOUTUBE_HOSTS.includes(url.host)) {
+        // YouTube source
+          if (url.searchParams.get('list')) {
+          // YouTube playlist
+            newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!));
+          } else {
+          // Single video
+            const song = await this.getSongs.youtubeVideo(url.href);
 
-      // Resume / start playback
-      await player.play();
+            if (song) {
+              newSongs.push(song);
+            } else {
+              await res.stop(errorMsg('that doesn\'t exist'));
+              return;
+            }
+          }
+        } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
+          const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(args[0], playlistLimit);
 
-      if (wasPlayingSong) {
-        statusMsg = 'resuming playback';
+          if (totalSongs > playlistLimit) {
+            extraMsg = `a random sample of ${playlistLimit} songs was taken`;
+          }
+
+          if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
+            extraMsg += ' and ';
+          }
+
+          if (nSongsNotFound !== 0) {
+            if (nSongsNotFound === 1) {
+              extraMsg += '1 song was not found';
+            } else {
+              extraMsg += `${nSongsNotFound.toString()} songs were not found`;
+            }
+          }
+
+          newSongs.push(...convertedSongs);
+        }
+      } catch (_: unknown) {
+      // Not a URL, must search YouTube
+        const query = addToFrontOfQueue ? args.slice(0, args.length - 1).join(' ') : args.join(' ');
+
+        const song = await this.getSongs.youtubeVideoSearch(query);
+
+        if (song) {
+          newSongs.push(song);
+        } else {
+          await res.stop(errorMsg('that doesn\'t exist'));
+          return;
+        }
       }
 
-      await announceCurrentSong(player, msg.channel);
-    }
+      if (newSongs.length === 0) {
+        await res.stop(errorMsg('no songs found'));
+        return;
+      }
 
-    // Build response message
-    if (statusMsg !== '') {
-      if (extraMsg === '') {
-        extraMsg = statusMsg;
+      newSongs.forEach(song => {
+        player.add({...song, addedInChannelId: msg.channel.id, requestedBy: msg.author.id}, {immediate: addToFrontOfQueue});
+      });
+
+      const firstSong = newSongs[0];
+
+      let statusMsg = '';
+
+      if (player.voiceConnection === null) {
+        await player.connect(targetVoiceChannel);
+
+        // Resume / start playback
+        await player.play();
+
+        if (wasPlayingSong) {
+          statusMsg = 'resuming playback';
+        }
+
+        await msg.channel.send({embeds: [buildQueueEmbed(player, 1, true)]});
+      }
+
+      // Build response message
+      if (statusMsg !== '') {
+        if (extraMsg === '') {
+          extraMsg = statusMsg;
+        } else {
+          extraMsg = `${statusMsg}, ${extraMsg}`;
+        }
+      }
+
+      if (extraMsg !== '') {
+        extraMsg = ` (${extraMsg})`;
+      }
+
+      if (newSongs.length === 1) {
+        await res.stop(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
       } else {
-        extraMsg = `${statusMsg}, ${extraMsg}`;
+        await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
       }
-    }
-
-    if (extraMsg !== '') {
-      extraMsg = ` (${extraMsg})`;
-    }
-
-    if (newSongs.length === 1) {
-      await res.stop(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
-    } else {
-      await res.stop(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
+    } catch (error) {
+      await res.stop();
+      throw error;
     }
   }
 }

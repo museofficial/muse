@@ -4,7 +4,7 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
-import {announceCurrentSong} from '../utils/announce-song.js';
+import buildQueueEmbed from '../utils/build-queue-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -27,12 +27,14 @@ export default class implements Command {
 
     try {
       await player.back();
-
-      await msg.channel.send('back \'er up\'');
-
-      await announceCurrentSong(player, msg.channel);
     } catch (_: unknown) {
       await msg.channel.send(errorMsg('no song to go back to'));
+      return;
     }
+
+    await msg.channel.send({
+      content: 'back \'er up\'',
+      embeds: [buildQueueEmbed(player, 1, true)],
+    });
   }
 }
