@@ -3,7 +3,7 @@ import {inject, injectable} from 'inversify';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from '.';
-import buildQueueEmbed from '../utils/build-queue-embed.js';
+import {buildQueueEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {

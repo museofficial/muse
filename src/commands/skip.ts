@@ -5,7 +5,7 @@ import PlayerManager from '../managers/player.js';
 import Command from '.';
 import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
-import buildQueueEmbed from '../utils/build-queue-embed.js';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -51,7 +51,7 @@ export default class implements Command {
 
     if (player.getCurrent()) {
       promises.push(msg.channel.send({
-        embeds: [buildQueueEmbed(player, 1, true)],
+        embeds: [buildPlayingMessageEmbed(player)],
       }));
     }
 

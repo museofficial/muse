@@ -4,7 +4,7 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
-import buildQueueEmbed from '../utils/build-queue-embed.js';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -34,7 +34,7 @@ export default class implements Command {
 
     await msg.channel.send({
       content: 'back \'er up\'',
-      embeds: [buildQueueEmbed(player, 1, true)],
+      embeds: [buildPlayingMessageEmbed(player)],
     });
   }
 }

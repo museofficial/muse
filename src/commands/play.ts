@@ -11,7 +11,7 @@ import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import GetSongs from '../services/get-songs.js';
 import {prisma} from '../utils/db.js';
-import buildQueueEmbed from '../utils/build-queue-embed.js';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -77,7 +77,7 @@ export default class implements Command {
 
         await Promise.all([
           res.stop('the stop-and-go light is now green'),
-          msg.channel.send({embeds: [buildQueueEmbed(player, 1, true)]}),
+          msg.channel.send({embeds: [buildPlayingMessageEmbed(player)]}),
         ]);
 
         return;
@@ -174,7 +174,7 @@ export default class implements Command {
           statusMsg = 'resuming playback';
         }
 
-        await msg.channel.send({embeds: [buildQueueEmbed(player, 1, true)]});
+        await msg.channel.send({embeds: [buildPlayingMessageEmbed(player)]});
       }
 
       // Build response message
