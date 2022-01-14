@@ -89,7 +89,7 @@
     "debug": "^4.3.3",
     "delay": "^5.0.0",
     "discord-api-types": "^0.26.1",
-    "discord.js": "^13.5.0",
+    "discord.js": "^13.6.0",
     "dotenv": "^8.5.1",
     "execa": "^6.0.0",
     "fluent-ffmpeg": "^2.1.2",
