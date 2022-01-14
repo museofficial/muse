@@ -17,9 +17,10 @@ const getPlayerUI = (player: Player) => {
     return '';
   }
 
+  const position = player.getPosition();
   const button = player.status === STATUS.PLAYING ? '⏹️' : '▶️';
-  const progressBar = getProgressBar(15, player.getPosition() / song.length);
-  const elapsedTime = `${prettyTime(player.getPosition())}/${song.isLive ? 'live' : prettyTime(song.length)}`;
+  const progressBar = getProgressBar(15, position / song.length);
+  const elapsedTime = `${prettyTime(position)}/${song.isLive ? 'live' : prettyTime(song.length)}`;
 
   return `${button} ${progressBar} \`[${elapsedTime}]\` 🔉`;
 };
@@ -31,7 +32,7 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
     throw new Error('No playing song found');
   }
 
-  const {artist, thumbnailUrl} = currentlyPlaying;
+  const {artist, thumbnailUrl, requestedBy} = currentlyPlaying;
   const message = new MessageEmbed();
 
   message
@@ -39,7 +40,7 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
     .setTitle('Now Playing')
     .setDescription(`
       **${getSongTitle(currentlyPlaying)}**
-      Requested by: <@${currentlyPlaying.requestedBy}>\n
+      Requested by: <@${requestedBy}>\n
       ${getPlayerUI(player)}
     `)
     .setFooter({text: `Source: ${artist}`});
