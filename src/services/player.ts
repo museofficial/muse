@@ -53,8 +53,8 @@ export default class {
     const conn = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
-      // cast InternalDiscordGatewayAdapterCreator as DiscordGatewayAdapterCreator instead of expecting errors
-      adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
+      // Casting InternalDiscordGatewayAdapterCreator as DiscordGatewayAdapterCreator instead of expecting errors
+      adapterCreator: channel.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
     });
 
     this.voiceConnection = conn;
