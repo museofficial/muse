@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Track lookups no longer fail silently (error is returned and logged)
+- Casting InternalDiscordGatewayAdapterCreator as DiscordGatewayAdapterCreator instead of expect error
 
 ## [0.3.1] - 2022-01-06
 ### Fixed
