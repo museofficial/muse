@@ -6,7 +6,7 @@ import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
 import errorMsg from '../utils/error-msg.js';
-import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
+import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus, DiscordGatewayAdapterCreator} from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
 
 export interface QueuedPlaylist {
