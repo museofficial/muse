@@ -54,6 +54,7 @@ export default class {
       channelId: channel.id,
       guildId: channel.guild.id,
       // Casting InternalDiscordGatewayAdapterCreator as DiscordGatewayAdapterCreator instead of expecting errors
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       adapterCreator: channel.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
     });
 
