@@ -1,6 +1,7 @@
 import {TextChannel, Message} from 'discord.js';
 import {URL} from 'url';
 import {Except} from 'type-fest';
+import shuffle from 'array-shuffle';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import {QueuedSong, STATUS} from '../services/player.js';
@@ -26,6 +27,8 @@ export default class implements Command {
     ['play https://open.spotify.com/playlist/37i9dQZF1DX94qaYRnkufr?si=r2fOVL_QQjGxFM5MWb84Xw', 'adds all songs from playlist to the queue'],
     ['play cool music immediate', 'adds the first search result for "cool music" to the front of the queue'],
     ['play cool music i', 'adds the first search result for "cool music" to the front of the queue'],
+    ['play https://www.youtube.com/watch?list=PLi9drqWffJ9FWBo7ZVOiaVy0UQQEm4IbP shuffle', 'adds the shuffled playlist to the queue'],
+    ['play https://www.youtube.com/watch?list=PLi9drqWffJ9FWBo7ZVOiaVy0UQQEm4IbP s', 'adds the shuffled playlist to the queue'],
   ];
 
   public requiresVC = true;
@@ -78,8 +81,9 @@ export default class implements Command {
     }
 
     const addToFrontOfQueue = args[args.length - 1] === 'i' || args[args.length - 1] === 'immediate';
+    const shuffleAdditions = args[args.length - 1] === 's' || args[args.length - 1] === 'shuffle';
 
-    const newSongs: Array<Except<QueuedSong, 'addedInChannelId'>> = [];
+    let newSongs: Array<Except<QueuedSong, 'addedInChannelId'>> = [];
     let extraMsg = '';
 
     // Test if it's a complete URL
@@ -148,6 +152,10 @@ export default class implements Command {
     if (newSongs.length === 0) {
       await res.stop(errorMsg('no songs found'));
       return;
+    }
+
+    if (shuffleAdditions) {
+      newSongs = shuffle(newSongs);
     }
 
     newSongs.forEach(song => {
