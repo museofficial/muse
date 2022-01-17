@@ -7,7 +7,7 @@ jobs:
     name: Release snapshot
     strategy:
       matrix:
-        os: [ARM64, ubuntu-latest]
+        os: [self-hosted, ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
     steps:
