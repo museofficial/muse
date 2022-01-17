@@ -43,7 +43,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: codetheweb/muse:${{ github.event.pull_request.head.sha }}-${{ matrix.tagged-platform }}
+          tags: codetheweb/muse:${{ github.sha }}-${{ matrix.tagged-platform }}
           platforms: ${{ matrix.build-arch }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
@@ -79,7 +79,7 @@ jobs:
           wait-interval: 10
 
       - name: Combine tags
-        run: docker buildx imagetools create $(echo '${{ steps.get-tags.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') 'codetheweb/muse:${{ github.event.pull_request.head.sha }}-arm64' 'codetheweb/muse:${{ github.event.pull_request.head.sha }}-amd64'
+        run: docker buildx imagetools create $(echo '${{ steps.get-tags.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') 'codetheweb/muse:${{ github.sha }}-arm64' 'codetheweb/muse:${{ github.sha }}-amd64'
 
       - name: Update Docker Hub description
         uses: peter-evans/dockerhub-description@v2.4.3
