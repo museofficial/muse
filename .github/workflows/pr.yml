@@ -3,7 +3,7 @@ name: PR Workflow
 on: pull_request
 
 jobs:
-  release:
+  release-snapshot:
     name: Release snapshot
     strategy:
       matrix:
@@ -47,6 +47,11 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
           platforms: ${{ matrix.build-arch }}
 
+  comment:
+    name: Leave comment in PR
+    runs-on: ubuntu-latest
+    needs: release-snapshot
+    steps:
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
