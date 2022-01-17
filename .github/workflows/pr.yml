@@ -61,7 +61,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Combine tags
-        run: docker buildx imagetools create -t codetheweb/muse:pr-${{ github.event.number }},codetheweb/muse:${{ github.event.pull_request.head.sha }} codetheweb/muse:${{ github.event.pull_request.head.sha }}-arm64 codetheweb/muse:${{ github.event.pull_request.head.sha }}-amd64
+        run: docker buildx imagetools create -t 'codetheweb/muse:pr-${{ github.event.number }}' -t 'codetheweb/muse:${{ github.event.pull_request.head.sha }}' 'codetheweb/muse:${{ github.event.pull_request.head.sha }}-arm64' 'codetheweb/muse:${{ github.event.pull_request.head.sha }}-amd64'
 
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v2
