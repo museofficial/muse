@@ -5,17 +5,7 @@ on: pull_request_target
 jobs:
   release:
     name: Release snapshot
-    strategy:
-      matrix:
-        os: [ARM64, ubuntu-latest]
-        include:
-          - os: ubuntu-latest
-            platform: linux/amd64
-          - os: ARM64
-            platform: linux/arm64
-
-
-    runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     steps:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v1
@@ -45,7 +35,7 @@ jobs:
           tags: codetheweb/muse:${{ github.event.pull_request.head.sha }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64,linux/arm64
 
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v2
