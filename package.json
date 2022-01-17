@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "exports": "./dist/src/index.js",
   "repository": "git@github.com:codetheweb/muse.git",
