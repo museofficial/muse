@@ -8,13 +8,6 @@ import {SlashCommandBuilder} from '@discordjs/builders';
 
 @injectable()
 export default class implements Command {
-  public name = 'skip';
-  public aliases = ['s'];
-  public examples = [
-    ['skip', 'skips the current song'],
-    ['skip 2', 'skips the next 2 songs'],
-  ];
-
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('skip')
     .setDescription('skips the next songs')
