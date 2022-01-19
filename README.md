@@ -4,7 +4,7 @@
 
 Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that doesn't suck**. It's made for small to medium-sized Discord servers/guilds (think about a group the size of you, your friends, and your friend's friends).
 
-### Features
+## Features
 
 - 🎥 Livestreams
 - ⏩ Seeking within a song/video
@@ -16,11 +16,11 @@ Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that
 - ✍️ Written in TypeScript, easily extendable
 - ❤️ Loyal Packers fan
 
-### Design Philosophy
+## Design Philosophy
 
 I believe it makes much more sense to let Discord handle user permissions (whenever possible) rather than building them into a bot and adding additional complexity. Instead of only allowing users with a certain role to control Muse, Muse allows anyone who has access to its bound channel to control it. Instead of specifying the owner as a user ID in the config, Muse simply looks at the guild owner.
 
-### Running
+## Running
 
 Muse is written in TypeScript. You can either run Muse with Docker (recommended) or directly with Node.js. Both methods require API keys passed in as environment variables:
 
@@ -30,14 +30,14 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 
-#### Versioning
+### Versioning
 
 The `master` branch acts as the developing / bleeding edge branch and is not guaranteed to be stable.
 
 When running a production instance, I recommend that you use the [latest release](https://github.com/codetheweb/muse/releases/).
 
 
-#### Docker
+### 🐳 Docker
 
 There are a variety of image tags available:
 - `:2`: versions >= 2.0.0
@@ -48,7 +48,7 @@ There are a variety of image tags available:
 (Replace empty config strings with correct values.)
 
 ```bash
-docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' -e NODE_ENV='development' codetheweb/muse:latest
+docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' codetheweb/muse:latest
 ```
 
 This starts Muse and creates a data directory in your current directory.
@@ -69,10 +69,9 @@ services:
       - YOUTUBE_API_KEY=
       - SPOTIFY_CLIENT_ID=
       - SPOTIFY_CLIENT_SECRET=
-    # - NODE_ENV=production
 ```
 
-#### Node.js
+### Node.js
 
 **Prerequisites**: Node.js, ffmpeg
 
@@ -85,6 +84,12 @@ services:
 
 **Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/codetheweb/muse/issues/345) for details.
 
-#### Advanced
+## ⚙️ Additional configuration (advanced)
+
+### Cache
 
 By default, Muse limits the total cache size to around 2 GB. If you want to change this, set the environment variable `CACHE_LIMIT`. For example, `CACHE_LIMIT=512MB` or `CACHE_LIMIT=10GB`.
+
+### Bot-wide commands
+
+If you have Muse running in a lot of guilds (10+) you may want to switch to registering commands bot-wide rather than for each guild. (The downside to this is that command updates can take up to an hour to propogate.) To do this, set the environment variable `REGISTER_COMMANDS_ON_BOT` to `true`.

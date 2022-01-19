@@ -13,32 +13,24 @@ import Config from './services/config.js';
 import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v9';
-import {Promise} from 'bluebird';
 
 @injectable()
 export default class {
   private readonly client: Client;
   private readonly token: string;
-  private readonly isProduction: boolean;
+  private readonly shouldRegisterCommandsOnBot: boolean;
   private readonly commandsByName!: Collection<string, Command>;
   private readonly commandsByButtonId!: Collection<string, Command>;
 
   constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config) config: Config) {
     this.client = client;
     this.token = config.DISCORD_TOKEN;
-    this.isProduction = config.IS_PRODUCTION;
+    this.shouldRegisterCommandsOnBot = config.REGISTER_COMMANDS_ON_BOT;
     this.commandsByName = new Collection();
     this.commandsByButtonId = new Collection();
   }
 
   public async listen(): Promise<void> {
-    // Log environment
-    if (this.isProduction) {
-      console.log('Production environment\n');
-    } else {
-      console.log('Development environment\n');
-    }
-
     // Load in commands
     container.getAll<Command>(TYPES.Command).forEach(command => {
       // TODO: remove !
@@ -122,18 +114,19 @@ export default class {
     this.client.once('ready', async () => {
       debug(generateDependencyReport());
 
-      spinner.text = '📡 Updating commands in all guilds...';
-
       // Update commands
       const rest = new REST({version: '9'}).setToken(this.token);
 
-      if (this.isProduction) {
+      if (this.shouldRegisterCommandsOnBot) {
+        spinner.text = '📡 updating commands on bot...';
+
         await rest.put(
           Routes.applicationCommands(this.client.user!.id),
           {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
         );
       } else {
-        // If development, set commands guild-wide
+        spinner.text = '📡 updating commands in all guilds...';
+
         await Promise.all(
           this.client.guilds.cache.map(async guild => {
             await rest.put(
