@@ -2,6 +2,7 @@ import {CommandInteraction, GuildMember} from 'discord.js';
 import {URL} from 'url';
 import {Except} from 'type-fest';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import shuffle from 'array-shuffle';
 import {inject, injectable} from 'inversify';
 import Command from '.';
 import {TYPES} from '../types.js';
@@ -10,7 +11,7 @@ import PlayerManager from '../managers/player.js';
 import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels.js';
 import errorMsg from '../utils/error-msg.js';
 import GetSongs from '../services/get-songs.js';
-import Settings from '../models/settings.js';
+import {prisma} from '../utils/db.js';
 
 @injectable()
 export default class implements Command {
@@ -23,7 +24,10 @@ export default class implements Command {
       .setDescription('YouTube URL, Spotify URL, or search query'))
     .addBooleanOption(option => option
       .setName('immediate')
-      .setDescription('adds track to the front of the queue'));
+      .setDescription('adds track to the front of the queue'))
+    .addBooleanOption(option => option
+      .setName('shuffle')
+      .setDescription('shuffles the input if it\'s a playlist'));
 
   public requiresVC = true;
 
@@ -39,8 +43,13 @@ export default class implements Command {
   public async executeFromInteraction(interaction: CommandInteraction): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
 
-    const settings = await Settings.findByPk(interaction.guild!.id);
-    const {playlistLimit} = settings!;
+    const settings = await prisma.setting.findUnique({where: {guildId: interaction.guild!.id}});
+
+    if (!settings) {
+      throw new Error('Could not find settings for guild');
+    }
+
+    const {playlistLimit} = settings;
 
     const player = this.playerManager.get(interaction.guild!.id);
     const wasPlayingSong = player.getCurrent() !== null;
@@ -67,8 +76,9 @@ export default class implements Command {
     }
 
     const addToFrontOfQueue = interaction.options.getBoolean('immediate');
+    const shuffleAdditions = interaction.options.getBoolean('shuffle');
 
-    const newSongs: Array<Except<QueuedSong, 'addedInChannelId'>> = [];
+    let newSongs: Array<Except<QueuedSong, 'addedInChannelId'>> = [];
     let extraMsg = '';
 
     await interaction.deferReply();
@@ -137,6 +147,10 @@ export default class implements Command {
     if (newSongs.length === 0) {
       await interaction.editReply(errorMsg('no songs found'));
       return;
+    }
+
+    if (shuffleAdditions) {
+      newSongs = shuffle(newSongs);
     }
 
     newSongs.forEach(song => {

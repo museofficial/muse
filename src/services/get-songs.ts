@@ -42,59 +42,51 @@ export default class {
     this.ytsrQueue = new PQueue({concurrency: 4});
   }
 
-  async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel | null> {
-    try {
-      const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
-        ytsr,
-        query,
-        {
-          limit: 10,
-        },
-        {
-          expiresIn: ONE_HOUR_IN_SECONDS,
-        },
-      ));
+  async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel> {
+    const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
+      ytsr,
+      query,
+      {
+        limit: 10,
+      },
+      {
+        expiresIn: ONE_HOUR_IN_SECONDS,
+      },
+    ));
 
-      let firstVideo: Video | undefined;
+    let firstVideo: Video | undefined;
 
-      for (const item of items) {
-        if (item.type === 'video') {
-          firstVideo = item;
-          break;
-        }
+    for (const item of items) {
+      if (item.type === 'video') {
+        firstVideo = item;
+        break;
       }
-
-      if (!firstVideo) {
-        throw new Error('No video found.');
-      }
-
-      return await this.youtubeVideo(firstVideo.id);
-    } catch (_: unknown) {
-      return null;
     }
+
+    if (!firstVideo) {
+      throw new Error('No video found.');
+    }
+
+    return this.youtubeVideo(firstVideo.id);
   }
 
-  async youtubeVideo(url: string): Promise<QueuedSongWithoutChannel | null> {
-    try {
-      const videoDetails = await this.cache.wrap(
-        this.youtube.videos.get,
-        cleanUrl(url),
-        {
-          expiresIn: ONE_HOUR_IN_SECONDS,
-        },
-      );
+  async youtubeVideo(url: string): Promise<QueuedSongWithoutChannel> {
+    const videoDetails = await this.cache.wrap(
+      this.youtube.videos.get,
+      cleanUrl(url),
+      {
+        expiresIn: ONE_HOUR_IN_SECONDS,
+      },
+    );
 
-      return {
-        title: videoDetails.snippet.title,
-        artist: videoDetails.snippet.channelTitle,
-        length: toSeconds(parse(videoDetails.contentDetails.duration)),
-        url: videoDetails.id,
-        playlist: null,
-        isLive: videoDetails.snippet.liveBroadcastContent === 'live',
-      };
-    } catch (_: unknown) {
-      return null;
-    }
+    return {
+      title: videoDetails.snippet.title,
+      artist: videoDetails.snippet.channelTitle,
+      length: toSeconds(parse(videoDetails.contentDetails.duration)),
+      url: videoDetails.id,
+      playlist: null,
+      isLive: videoDetails.snippet.liveBroadcastContent === 'live',
+    };
   }
 
   async youtubePlaylist(listId: string): Promise<QueuedSongWithoutChannel[]> {
@@ -279,11 +271,7 @@ export default class {
     return [songs as QueuedSongWithoutChannel[], nSongsNotFound, originalNSongs];
   }
 
-  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSongWithoutChannel | null> {
-    try {
-      return await this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`);
-    } catch (_: unknown) {
-      return null;
-    }
+  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSongWithoutChannel> {
+    return this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`);
   }
 }

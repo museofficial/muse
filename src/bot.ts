@@ -22,7 +22,10 @@ export default class {
   private readonly commandsByName!: Collection<string, Command>;
   private readonly commandsByButtonId!: Collection<string, Command>;
 
-  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config) config: Config) {
+  constructor(
+  @inject(TYPES.Client) client: Client,
+    @inject(TYPES.Config) config: Config,
+  ) {
     this.client = client;
     this.token = config.DISCORD_TOKEN;
     this.shouldRegisterCommandsOnBot = config.REGISTER_COMMANDS_ON_BOT;
@@ -61,7 +64,7 @@ export default class {
       }
 
       try {
-        if (command.requiresVC && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
+        if (command.requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
           await interaction.reply({content: errorMsg('gotta be in a voice channel'), ephemeral: true});
           return;
         }

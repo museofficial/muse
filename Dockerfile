@@ -1,7 +1,9 @@
-FROM node:16.13.0-alpine AS base
+FROM node:16.13.0 AS base
 
-# Install ffmpeg and build dependencies
-RUN apk add --no-cache ffmpeg python2 make g++
+# Install ffmpeg
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/app
 
@@ -22,12 +24,16 @@ FROM dependencies AS builder
 
 COPY . .
 
-RUN yarn build
+RUN yarn prisma generate && yarn build
 
 # Only copy essentials
 FROM base AS prod
 
 COPY --from=builder /usr/app/dist dist
+COPY --from=builder /usr/app/schema.prisma .
+COPY --from=builder /usr/app/migrations migrations
+
+RUN yarn prisma generate
 
 ENV DATA_DIR /data
 ENV NODE_ENV production

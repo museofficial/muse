@@ -42,10 +42,10 @@ export const getMostPopularVoiceChannel = (guild: Guild): [VoiceChannel, number]
 
   for (const [_, channel] of guild.channels.cache) {
     if (channel.type === 'GUILD_VOICE') {
-      const size = getSizeWithoutBots(channel as VoiceChannel);
+      const size = getSizeWithoutBots(channel);
 
       voiceChannels.push({
-        channel: channel as VoiceChannel,
+        channel,
         n: size,
       });
     }
