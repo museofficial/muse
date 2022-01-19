@@ -23,7 +23,7 @@ export default class implements Command {
     this.updatingQueueEmbedManager = updatingQueueEmbedManager;
   }
 
-  public async executeFromInteraction(interaction: CommandInteraction) {
+  public async execute(interaction: CommandInteraction) {
     const embed = this.updatingQueueEmbedManager.get(interaction.guild!.id);
 
     await embed.createFromInteraction(interaction);

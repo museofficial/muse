@@ -40,7 +40,7 @@ export default class implements Command {
   }
 
   // eslint-disable-next-line complexity
-  public async executeFromInteraction(interaction: CommandInteraction): Promise<void> {
+  public async execute(interaction: CommandInteraction): Promise<void> {
     const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
 
     const settings = await prisma.setting.findUnique({where: {guildId: interaction.guild!.id}});

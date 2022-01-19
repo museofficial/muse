@@ -21,7 +21,7 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async executeFromInteraction(interaction: CommandInteraction) {
+  public async execute(interaction: CommandInteraction) {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (player.status !== STATUS.PLAYING) {

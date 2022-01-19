@@ -25,7 +25,7 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async executeFromInteraction(interaction: CommandInteraction): Promise<void> {
+  public async execute(interaction: CommandInteraction): Promise<void> {
     const player = this.playerManager.get(interaction.guild!.id);
 
     const currentSong = player.getCurrent();

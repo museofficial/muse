@@ -69,8 +69,8 @@ export default class {
           return;
         }
 
-        if (command.executeFromInteraction) {
-          await command.executeFromInteraction(interaction);
+        if (command.execute) {
+          await command.execute(interaction);
         }
       } catch (error: unknown) {
         debug(error);

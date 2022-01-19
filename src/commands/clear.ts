@@ -19,7 +19,7 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async executeFromInteraction(interaction: CommandInteraction) {
+  public async execute(interaction: CommandInteraction) {
     this.playerManager.get(interaction.guild!.id).clear();
 
     await interaction.reply('clearer than a field after a fresh harvest');

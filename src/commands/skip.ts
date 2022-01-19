@@ -1,9 +1,8 @@
-import {CommandInteraction, Message, TextChannel} from 'discord.js';
+import {CommandInteraction} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from '.';
-import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 
@@ -32,7 +31,7 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async executeFromInteraction(interaction: CommandInteraction): Promise<void> {
+  public async execute(interaction: CommandInteraction): Promise<void> {
     const numToSkip = interaction.options.getInteger('skip') ?? 1;
 
     if (numToSkip < 1) {
@@ -46,29 +45,6 @@ export default class implements Command {
       await interaction.reply('keep \'er movin\'');
     } catch (_: unknown) {
       await interaction.reply({content: errorMsg('invalid number of songs to skip'), ephemeral: true});
-    }
-  }
-
-  public async execute(msg: Message, args: string []): Promise<void> {
-    let numToSkip = 1;
-
-    if (args.length === 1) {
-      if (!Number.isNaN(parseInt(args[0], 10))) {
-        numToSkip = parseInt(args[0], 10);
-      }
-    }
-
-    const player = this.playerManager.get(msg.guild!.id);
-
-    const loader = new LoadingMessage(msg.channel as TextChannel);
-
-    try {
-      await loader.start();
-      await player.forward(numToSkip);
-
-      await loader.stop('keep \'er movin\'');
-    } catch (_: unknown) {
-      await loader.stop(errorMsg('no song to skip to'));
     }
   }
 }
