@@ -1,4 +1,4 @@
-import {CommandInteraction, GuildMember} from 'discord.js';
+import {AutocompleteInteraction, CommandInteraction, GuildMember} from 'discord.js';
 import {URL} from 'url';
 import {Except} from 'type-fest';
 import {SlashCommandBuilder} from '@discordjs/builders';
@@ -12,6 +12,7 @@ import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channe
 import errorMsg from '../utils/error-msg.js';
 import GetSongs from '../services/get-songs.js';
 import {prisma} from '../utils/db.js';
+import getYouTubeSuggestionsFor from '../utils/get-youtube-suggestions-for.js';
 
 @injectable()
 export default class implements Command {
@@ -21,7 +22,8 @@ export default class implements Command {
     .setDescription('play a song or resume playback')
     .addStringOption(option => option
       .setName('query')
-      .setDescription('YouTube URL, Spotify URL, or search query'))
+      .setDescription('YouTube URL, Spotify URL, or search query')
+      .setAutocomplete(true))
     .addBooleanOption(option => option
       .setName('immediate')
       .setDescription('adds track to the front of the queue'))
@@ -190,5 +192,18 @@ export default class implements Command {
     } else {
       await interaction.editReply(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
     }
+  }
+
+  public async handleAutocompleteInteraction(interaction: AutocompleteInteraction): Promise<void> {
+    const query = interaction.options.getString('query')?.trim();
+
+    if (!query || query.length === 0) {
+      return interaction.respond([]);
+    }
+
+    await interaction.respond((await getYouTubeSuggestionsFor(query)).map(s => ({
+      name: s,
+      value: s,
+    })));
   }
 }

@@ -87,27 +87,40 @@ export default class {
     });
 
     this.client.on('interactionCreate', async interaction => {
-      if (!interaction.isButton()) {
-        return;
-      }
-
-      const command = this.commandsByButtonId.get(interaction.customId);
-
-      if (!command) {
-        return;
-      }
-
       try {
-        if (command.handleButtonInteraction) {
-          await command.handleButtonInteraction(interaction);
+        if (interaction.isButton()) {
+          const command = this.commandsByButtonId.get(interaction.customId);
+
+          if (!command) {
+            return;
+          }
+
+          if (command.handleButtonInteraction) {
+            await command.handleButtonInteraction(interaction);
+          }
+        }
+
+        if (interaction.isAutocomplete()) {
+          const command = this.commandsByName.get(interaction.commandName);
+
+          if (!command) {
+            return;
+          }
+
+          if (command.handleAutocompleteInteraction) {
+            await command.handleAutocompleteInteraction(interaction);
+          }
         }
       } catch (error: unknown) {
         debug(error);
 
-        if (interaction.replied || interaction.deferred) {
-          await interaction.editReply(errorMsg('something went wrong'));
-        } else {
-          await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
+        // Can't reply with errors for autocomplete queries
+        if (interaction.isButton()) {
+          if (interaction.replied || interaction.deferred) {
+            await interaction.editReply(errorMsg('something went wrong'));
+          } else {
+            await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
+          }
         }
       }
     });
