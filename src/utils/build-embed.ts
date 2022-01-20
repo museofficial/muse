@@ -14,7 +14,9 @@ const getMaxSongTitleLength = (title: string) => {
 };
 
 const getSongTitle = ({title, url}: QueuedSong, shouldTruncate = false) => {
-  const songTitle = shouldTruncate ? truncate(title, getMaxSongTitleLength(title)) : title;
+  const cleanSongTitle = title.replace(/\[.*\]/, '').trim();
+
+  const songTitle = shouldTruncate ? truncate(cleanSongTitle, getMaxSongTitleLength(cleanSongTitle)) : cleanSongTitle;
   const youtubeId = url.length === 11 ? url : getYouTubeID(url) ?? '';
 
   return `[${songTitle}](https://www.youtube.com/watch?v=${youtubeId})`;
