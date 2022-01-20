@@ -92,16 +92,19 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
 
   const message = new MessageEmbed();
 
+  let description = `**${getSongTitle(currentlyPlaying)}**\n`;
+  description += `Requested by: <@${requestedBy}>\n\n`;
+  description += `${getPlayerUI(player)}\n\n`;
+
+  if (player.getQueue().length > 0) {
+    description += '**Up next:**\n';
+    description += queuedSongs;
+  }
+
   message
     .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Queued songs')
     .setColor(player.status === STATUS.PLAYING ? 'DARK_GREEN' : 'NOT_QUITE_BLACK')
-    .setDescription(`
-      **${getSongTitle(currentlyPlaying)}**
-      Requested by: <@${requestedBy}>\n
-      ${getPlayerUI(player)}\n
-      **Up next:**
-      ${queuedSongs}
-    `)
+    .setDescription(description)
     .addField('In queue', `${queueSize} songs`, true)
     .addField('Total length', `${prettyTime(totalLength)}`, true)
     .addField('Page', `${page} out of ${maxQueuePage}`, true)
