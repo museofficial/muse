@@ -3,16 +3,26 @@ import {MessageEmbed} from 'discord.js';
 import Player, {QueuedSong, STATUS} from '../services/player.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
+import {truncate} from './string.js';
 
 const PAGE_SIZE = 10;
 
-const getSongTitle = ({title, url}: QueuedSong) => {
+const getMaxSongTitleLength = (title: string) => {
+  // eslint-disable-next-line no-control-regex
+  const nonASCII = /[^\x00-\x7F]+/;
+  return nonASCII.test(title) ? 28 : 48;
+};
+
+const getSongTitle = ({title, url}: QueuedSong, shouldTruncate = false) => {
+  const songTitle = shouldTruncate ? truncate(title, getMaxSongTitleLength(title)) : title;
   const youtubeId = url.length === 11 ? url : getYouTubeID(url) ?? '';
-  return `[${title}](https://www.youtube.com/watch?v=${youtubeId})`;
+
+  return `[${songTitle}](https://www.youtube.com/watch?v=${youtubeId})`;
 };
 
 const getPlayerUI = (player: Player) => {
   const song = player.getCurrent();
+
   if (!song) {
     return '';
   }
@@ -71,7 +81,7 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
   const queuedSongs = player
     .getQueue()
     .slice(queuePageBegin, queuePageEnd)
-    .map((song, index) => `\`${index + 1 + queuePageBegin}.\` ${getSongTitle(song)} \`[${prettyTime(song.length)}]\``)
+    .map((song, index) => `\`${index + 1 + queuePageBegin}.\` ${getSongTitle(song, true)} \`[${prettyTime(song.length)}]\``)
     .join('\n');
 
   const {artist, thumbnailUrl, playlist, requestedBy} = currentlyPlaying;
