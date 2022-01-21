@@ -5,6 +5,7 @@ import PlayerManager from '../managers/player.js';
 import Command from '.';
 import LoadingMessage from '../utils/loading-message.js';
 import errorMsg from '../utils/error-msg.js';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -39,10 +40,21 @@ export default class implements Command {
     try {
       await loader.start();
       await player.forward(numToSkip);
-
-      await loader.stop('keep \'er movin\'');
     } catch (_: unknown) {
       await loader.stop(errorMsg('no song to skip to'));
+      return;
     }
+
+    const promises = [
+      loader.stop('keep \'er movin\''),
+    ];
+
+    if (player.getCurrent()) {
+      promises.push(msg.channel.send({
+        embeds: [buildPlayingMessageEmbed(player)],
+      }));
+    }
+
+    await Promise.all(promises);
   }
 }

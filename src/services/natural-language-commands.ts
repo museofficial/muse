@@ -32,6 +32,8 @@ export default class {
           playlist: null,
           isLive: false,
           addedInChannelId: msg.channel.id,
+          thumbnailUrl: null,
+          requestedBy: msg.author.id,
         }, 8, 10),
       ]);
 
@@ -49,6 +51,8 @@ export default class {
           playlist: null,
           isLive: false,
           addedInChannelId: msg.channel.id,
+          thumbnailUrl: null,
+          requestedBy: msg.author.id,
         }, 358, 5.5),
       ]);
 
@@ -66,6 +70,8 @@ export default class {
           playlist: null,
           isLive: false,
           addedInChannelId: msg.channel.id,
+          thumbnailUrl: null,
+          requestedBy: msg.author.id,
         }, 50, 13),
       ]);
 
