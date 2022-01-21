@@ -1,4 +1,4 @@
-FROM node:lts-alpine AS base
+FROM node:16.13.2-alpine AS base
 
 # Install ffmpeg
 RUN apk update && \
