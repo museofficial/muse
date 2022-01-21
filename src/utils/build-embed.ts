@@ -22,6 +22,15 @@ const getSongTitle = ({title, url}: QueuedSong, shouldTruncate = false) => {
   return `[${songTitle}](https://www.youtube.com/watch?v=${youtubeId})`;
 };
 
+const getQueueInfo = (player: Player) => {
+  const queueSize = player.queueSize();
+  if (queueSize === 0) {
+    return '-';
+  }
+
+  return queueSize === 1 ? '1 song' : `${queueSize} songs`;
+};
+
 const getPlayerUI = (player: Player) => {
   const song = player.getCurrent();
 
@@ -105,8 +114,8 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
     .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Queued songs')
     .setColor(player.status === STATUS.PLAYING ? 'DARK_GREEN' : 'NOT_QUITE_BLACK')
     .setDescription(description)
-    .addField('In queue', `${queueSize} songs`, true)
-    .addField('Total length', `${prettyTime(totalLength)}`, true)
+    .addField('In queue', getQueueInfo(player), true)
+    .addField('Total length', `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, true)
     .addField('Page', `${page} out of ${maxQueuePage}`, true)
     .setFooter({text: `Source: ${artist} ${playlistTitle}`});
 
