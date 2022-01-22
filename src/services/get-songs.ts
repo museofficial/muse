@@ -15,11 +15,9 @@ import {cleanUrl} from '../utils/url.js';
 import ThirdParty from './third-party.js';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
+import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
 
 type QueuedSongWithoutChannel = Except<QueuedSong, 'addedInChannelId'>;
-
-const ONE_HOUR_IN_SECONDS = 60 * 60;
-const ONE_MINUTE_IN_SECONDS = 1 * 60;
 
 @injectable()
 export default class {

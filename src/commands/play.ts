@@ -4,6 +4,7 @@ import {Except} from 'type-fest';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import shuffle from 'array-shuffle';
 import {inject, injectable} from 'inversify';
+import Spotify from 'spotify-web-api-node';
 import Command from '.';
 import {TYPES} from '../types.js';
 import {QueuedSong, STATUS} from '../services/player.js';
@@ -12,7 +13,10 @@ import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channe
 import errorMsg from '../utils/error-msg.js';
 import GetSongs from '../services/get-songs.js';
 import {prisma} from '../utils/db.js';
-import getYouTubeSuggestionsFor from '../utils/get-youtube-suggestions-for.js';
+import ThirdParty from '../services/third-party.js';
+import getYouTubeAndSpotifySuggestionsFor from '../utils/get-youtube-and-spotify-suggestions-for.js';
+import KeyValueCacheProvider from '../services/key-value-cache.js';
+import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
 
 @injectable()
 export default class implements Command {
@@ -35,10 +39,14 @@ export default class implements Command {
 
   private readonly playerManager: PlayerManager;
   private readonly getSongs: GetSongs;
+  private readonly spotify: Spotify;
+  private readonly cache: KeyValueCacheProvider;
 
-  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Services.GetSongs) getSongs: GetSongs) {
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager, @inject(TYPES.Services.GetSongs) getSongs: GetSongs, @inject(TYPES.ThirdParty) thirdParty: ThirdParty, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
     this.playerManager = playerManager;
     this.getSongs = getSongs;
+    this.spotify = thirdParty.spotify;
+    this.cache = cache;
   }
 
   // eslint-disable-next-line complexity
@@ -201,9 +209,16 @@ export default class implements Command {
       return interaction.respond([]);
     }
 
-    await interaction.respond((await getYouTubeSuggestionsFor(query)).map(s => ({
-      name: s,
-      value: s,
-    })));
+    const suggestions = await this.cache.wrap(
+      getYouTubeAndSpotifySuggestionsFor,
+      query,
+      this.spotify,
+      10,
+      {
+        expiresIn: ONE_HOUR_IN_SECONDS,
+        key: `autocomplete:${query}`,
+      });
+
+    await interaction.respond(suggestions);
   }
 }
