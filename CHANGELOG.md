@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - Switched back to an Alpine container base image to reduce size
+- Unable to queue spotify playlist when a song is not available on Youtube search
 
 ## [0.5.0] - 2022-01-21
 ### Changed
