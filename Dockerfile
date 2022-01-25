@@ -2,7 +2,7 @@ FROM node:16.13.2-alpine AS base
 
 # Install ffmpeg
 RUN apk update && \
-    apk add ffmpeg && \
+    apk add ffmpeg python3 make g++ && \
     rm -rf /var/cache/apk/* 
 
 WORKDIR /usr/app
