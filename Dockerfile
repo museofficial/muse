@@ -1,9 +1,9 @@
-FROM node:16.13.2-alpine AS base
+FROM node:16.13.0 AS base
 
 # Install ffmpeg
-RUN apk update && \
-    apk add ffmpeg && \
-    rm -rf /var/cache/apk/* 
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/app
 
