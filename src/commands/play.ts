@@ -10,13 +10,13 @@ import {TYPES} from '../types.js';
 import {QueuedSong, STATUS} from '../services/player.js';
 import PlayerManager from '../managers/player.js';
 import {getMostPopularVoiceChannel, getMemberVoiceChannel} from '../utils/channels.js';
-import errorMsg from '../utils/error-msg.js';
 import GetSongs from '../services/get-songs.js';
 import {prisma} from '../utils/db.js';
 import ThirdParty from '../services/third-party.js';
 import getYouTubeAndSpotifySuggestionsFor from '../utils/get-youtube-and-spotify-suggestions-for.js';
 import KeyValueCacheProvider from '../services/key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -68,30 +68,32 @@ export default class implements Command {
 
     if (!query) {
       if (player.status === STATUS.PLAYING) {
-        await interaction.reply({content: errorMsg('already playing, give me a song name'), ephemeral: true});
-        return;
+        throw new Error('already playing, give me a song name');
       }
 
       // Must be resuming play
       if (!wasPlayingSong) {
-        await interaction.reply({content: errorMsg('nothing to play'), ephemeral: true});
-        return;
+        throw new Error('nothing to play');
       }
 
       await player.connect(targetVoiceChannel);
       await player.play();
 
-      await interaction.reply('the stop-and-go light is now green');
+      await interaction.reply({
+        content: 'the stop-and-go light is now green',
+        embeds: [buildPlayingMessageEmbed(player)],
+      });
+
       return;
     }
 
     const addToFrontOfQueue = interaction.options.getBoolean('immediate');
     const shuffleAdditions = interaction.options.getBoolean('shuffle');
 
-    let newSongs: Array<Except<QueuedSong, 'addedInChannelId'>> = [];
-    let extraMsg = '';
-
     await interaction.deferReply();
+
+    let newSongs: Array<Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>> = [];
+    let extraMsg = '';
 
     // Test if it's a complete URL
     try {
@@ -111,14 +113,12 @@ export default class implements Command {
           // YouTube playlist
           newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!));
         } else {
-          // Single video
           const song = await this.getSongs.youtubeVideo(url.href);
 
           if (song) {
             newSongs.push(song);
           } else {
-            await interaction.editReply(errorMsg('that doesn\'t exist'));
-            return;
+            throw new Error('that doesn\'t exist');
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
@@ -149,14 +149,12 @@ export default class implements Command {
       if (song) {
         newSongs.push(song);
       } else {
-        await interaction.editReply(errorMsg('that doesn\'t exist'));
-        return;
+        throw new Error('that doesn\'t exist');
       }
     }
 
     if (newSongs.length === 0) {
-      await interaction.editReply(errorMsg('no songs found'));
-      return;
+      throw new Error('no songs found');
     }
 
     if (shuffleAdditions) {
@@ -164,7 +162,7 @@ export default class implements Command {
     }
 
     newSongs.forEach(song => {
-      player.add({...song, addedInChannelId: interaction.channel?.id}, {immediate: addToFrontOfQueue ?? false});
+      player.add({...song, addedInChannelId: interaction.channel!.id, requestedBy: interaction.member!.user.id}, {immediate: addToFrontOfQueue ?? false});
     });
 
     const firstSong = newSongs[0];
@@ -180,6 +178,10 @@ export default class implements Command {
       if (wasPlayingSong) {
         statusMsg = 'resuming playback';
       }
+
+      await interaction.editReply({
+        embeds: [buildPlayingMessageEmbed(player)],
+      });
     }
 
     // Build response message
@@ -206,8 +208,17 @@ export default class implements Command {
     const query = interaction.options.getString('query')?.trim();
 
     if (!query || query.length === 0) {
-      return interaction.respond([]);
+      await interaction.respond([]);
+      return;
     }
+
+    try {
+      // Don't return suggestions for URLs
+      // eslint-disable-next-line no-new
+      new URL(query);
+      await interaction.respond([]);
+      return;
+    } catch {}
 
     const suggestions = await this.cache.wrap(
       getYouTubeAndSpotifySuggestionsFor,

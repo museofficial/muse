@@ -18,7 +18,7 @@ const startBot = async () => {
 
   await container.get<FileCacheProvider>(TYPES.FileCache).cleanup();
 
-  await bot.listen();
+  await bot.register();
 };
 
 export {startBot};

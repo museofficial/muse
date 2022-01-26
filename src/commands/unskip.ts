@@ -5,6 +5,7 @@ import PlayerManager from '../managers/player.js';
 import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -25,8 +26,10 @@ export default class implements Command {
 
     try {
       await player.back();
-
-      await interaction.reply('back \'er up\'');
+      await interaction.reply({
+        content: 'back \'er up\'',
+        embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
+      });
     } catch (_: unknown) {
       await interaction.reply({
         content: errorMsg('no song to go back to'),

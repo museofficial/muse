@@ -5,6 +5,7 @@ import PlayerManager from '../managers/player.js';
 import Command from '.';
 import errorMsg from '../utils/error-msg.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -35,9 +36,12 @@ export default class implements Command {
 
     try {
       await player.forward(numToSkip);
-      await interaction.reply('keep \'er movin\'');
+      await interaction.reply({
+        content: 'keep \'er movin\'',
+        embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
+      });
     } catch (_: unknown) {
-      await interaction.reply({content: errorMsg('invalid number of songs to skip'), ephemeral: true});
+      await interaction.reply({content: errorMsg('no song to skip to'), ephemeral: true});
     }
   }
 }

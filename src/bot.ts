@@ -33,7 +33,7 @@ export default class {
     this.commandsByButtonId = new Collection();
   }
 
-  public async listen(): Promise<void> {
+  public async register(): Promise<void> {
     // Load in commands
     container.getAll<Command>(TYPES.Command).forEach(command => {
       // TODO: remove !
@@ -48,47 +48,28 @@ export default class {
 
     // Register event handlers
     this.client.on('interactionCreate', async interaction => {
-      if (!interaction.isCommand()) {
-        return;
-      }
-
-      const command = this.commandsByName.get(interaction.commandName);
-
-      if (!command) {
-        return;
-      }
-
-      if (!interaction.guild) {
-        await interaction.reply(errorMsg('you can\'t use this bot in a DM'));
-        return;
-      }
-
       try {
-        if (command.requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
-          await interaction.reply({content: errorMsg('gotta be in a voice channel'), ephemeral: true});
-          return;
-        }
+        if (interaction.isCommand()) {
+          const command = this.commandsByName.get(interaction.commandName);
 
-        if (command.execute) {
-          await command.execute(interaction);
-        }
-      } catch (error: unknown) {
-        debug(error);
-
-        // This can fail if the message was deleted, and we don't want to crash the whole bot
-        try {
-          if (interaction.replied || interaction.deferred) {
-            await interaction.editReply(errorMsg('something went wrong'));
-          } else {
-            await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
+          if (!command) {
+            return;
           }
-        } catch {}
-      }
-    });
 
-    this.client.on('interactionCreate', async interaction => {
-      try {
-        if (interaction.isButton()) {
+          if (!interaction.guild) {
+            await interaction.reply(errorMsg('you can\'t use this bot in a DM'));
+            return;
+          }
+
+          if (command.requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
+            await interaction.reply({content: errorMsg('gotta be in a voice channel'), ephemeral: true});
+            return;
+          }
+
+          if (command.execute) {
+            await command.execute(interaction);
+          }
+        } else if (interaction.isButton()) {
           const command = this.commandsByButtonId.get(interaction.customId);
 
           if (!command) {
@@ -98,9 +79,7 @@ export default class {
           if (command.handleButtonInteraction) {
             await command.handleButtonInteraction(interaction);
           }
-        }
-
-        if (interaction.isAutocomplete()) {
+        } else if (interaction.isAutocomplete()) {
           const command = this.commandsByName.get(interaction.commandName);
 
           if (!command) {
@@ -114,14 +93,14 @@ export default class {
       } catch (error: unknown) {
         debug(error);
 
-        // Can't reply with errors for autocomplete queries
-        if (interaction.isButton()) {
-          if (interaction.replied || interaction.deferred) {
-            await interaction.editReply(errorMsg('something went wrong'));
-          } else {
+        // This can fail if the message was deleted, and we don't want to crash the whole bot
+        try {
+          if ((interaction.isApplicationCommand() || interaction.isButton()) && (interaction.replied || interaction.deferred)) {
+            await interaction.editReply(errorMsg(error as Error));
+          } else if (interaction.isApplicationCommand() || interaction.isButton()) {
             await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
           }
-        }
+        } catch {}
       }
     });
 
@@ -138,7 +117,7 @@ export default class {
 
         await rest.put(
           Routes.applicationCommands(this.client.user!.id),
-          {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
+          {body: this.commandsByName.map(command => command.slashCommand.toJSON())},
         );
       } else {
         spinner.text = '📡 updating commands in all guilds...';
@@ -147,7 +126,7 @@ export default class {
           this.client.guilds.cache.map(async guild => {
             await rest.put(
               Routes.applicationGuildCommands(this.client.user!.id, guild.id),
-              {body: this.commandsByName.map(command => command.slashCommand ? command.slashCommand.toJSON() : null)},
+              {body: this.commandsByName.map(command => command.slashCommand.toJSON())},
             );
           }),
         );

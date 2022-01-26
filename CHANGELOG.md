@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated to [Slash Commands](https://support.discord.com/hc/en-us/articles/1500000368501-Slash-Commands-FAQ)
 - The queue embed now automatically updates every 5 seconds (and has buttons for quick interactions)
 
+## [0.5.1] - 2022-01-25
+### Fixed
+- Queueing Spotify playlists could sometimes fail when a song wasn't found on YouTube
+
+## [0.5.0] - 2022-01-21
+### Changed
+- Queue embeds are now more detailed and appear when resuming playback. Thanks @bokherus!
+
 ## [0.4.0] - 2022-01-17
 ### Added
 - Playlists can now be shuffled as they are added to the queue, using the `shuffle` option to `play`.
@@ -45,7 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/codetheweb/muse/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/codetheweb/muse/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/codetheweb/muse/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/codetheweb/muse/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/codetheweb/muse/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/codetheweb/muse/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/codetheweb/muse/compare/v0.3.0...v0.3.1

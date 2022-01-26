@@ -17,7 +17,7 @@ import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
 
-type QueuedSongWithoutChannel = Except<QueuedSong, 'addedInChannelId'>;
+type SongMetadata = Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>;
 
 @injectable()
 export default class {
@@ -40,7 +40,7 @@ export default class {
     this.ytsrQueue = new PQueue({concurrency: 4});
   }
 
-  async youtubeVideoSearch(query: string): Promise<QueuedSongWithoutChannel> {
+  async youtubeVideoSearch(query: string): Promise<SongMetadata> {
     const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
       ytsr,
       query,
@@ -68,7 +68,7 @@ export default class {
     return this.youtubeVideo(firstVideo.id);
   }
 
-  async youtubeVideo(url: string): Promise<QueuedSongWithoutChannel> {
+  async youtubeVideo(url: string): Promise<SongMetadata> {
     const videoDetails = await this.cache.wrap(
       this.youtube.videos.get,
       cleanUrl(url),
@@ -84,10 +84,11 @@ export default class {
       url: videoDetails.id,
       playlist: null,
       isLive: videoDetails.snippet.liveBroadcastContent === 'live',
+      thumbnailUrl: videoDetails.snippet.thumbnails.medium.url,
     };
   }
 
-  async youtubePlaylist(listId: string): Promise<QueuedSongWithoutChannel[]> {
+  async youtubePlaylist(listId: string): Promise<SongMetadata[]> {
     // YouTube playlist
     const playlist = await this.cache.wrap(
       this.youtube.playlists.get,
@@ -156,7 +157,7 @@ export default class {
 
     const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
 
-    const songsToReturn: QueuedSongWithoutChannel[] = [];
+    const songsToReturn: SongMetadata[] = [];
 
     for (const video of playlistVideos) {
       try {
@@ -169,6 +170,7 @@ export default class {
           url: video.contentDetails.videoId,
           playlist: queuedPlaylist,
           isLive: false,
+          thumbnailUrl: video.snippet.thumbnails.medium.url,
         });
       } catch (_: unknown) {
         // Private and deleted videos are sometimes in playlists, duration of these is not returned and they should not be added to the queue.
@@ -178,7 +180,7 @@ export default class {
     return songsToReturn;
   }
 
-  async spotifySource(url: string, playlistLimit: number): Promise<[QueuedSongWithoutChannel[], number, number]> {
+  async spotifySource(url: string, playlistLimit: number): Promise<[SongMetadata[], number, number]> {
     const parsed = spotifyURI.parse(url);
 
     let tracks: SpotifyApi.TrackObjectSimplified[] = [];
@@ -251,14 +253,17 @@ export default class {
       tracks = shuffled.slice(0, playlistLimit);
     }
 
-    let songs = await Promise.all(tracks.map(async track => this.spotifyToYouTube(track, playlist)));
+    const searchResults = await Promise.allSettled(tracks.map(async track => this.spotifyToYouTube(track)));
 
     let nSongsNotFound = 0;
 
-    // Get rid of null values
-    songs = songs.reduce((accum: QueuedSongWithoutChannel[], song) => {
-      if (song) {
-        accum.push(song);
+    // Count songs that couldn't be found
+    const songs: SongMetadata[] = searchResults.reduce((accum: SongMetadata[], result) => {
+      if (result.status === 'fulfilled') {
+        accum.push({
+          ...result.value,
+          ...(playlist ? {playlist} : {}),
+        });
       } else {
         nSongsNotFound++;
       }
@@ -266,10 +271,10 @@ export default class {
       return accum;
     }, []);
 
-    return [songs as QueuedSongWithoutChannel[], nSongsNotFound, originalNSongs];
+    return [songs, nSongsNotFound, originalNSongs];
   }
 
-  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<QueuedSongWithoutChannel> {
+  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified): Promise<SongMetadata> {
     return this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`);
   }
 }

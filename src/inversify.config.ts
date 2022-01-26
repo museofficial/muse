@@ -7,7 +7,6 @@ import ConfigProvider from './services/config.js';
 
 // Managers
 import PlayerManager from './managers/player.js';
-import UpdatingQueueEmbed from './managers/updating-queue-embed.js';
 
 // Helpers
 import GetSongs from './services/get-songs.js';
@@ -46,7 +45,6 @@ container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
 
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
-container.bind<UpdatingQueueEmbed>(TYPES.Managers.UpdatingQueueEmbed).to(UpdatingQueueEmbed).inSingletonScope();
 
 // Helpers
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();
