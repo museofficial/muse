@@ -255,14 +255,17 @@ export default class {
       tracks = shuffled.slice(0, playlistLimit);
     }
 
-    let songs = await Promise.all(tracks.map(async track => this.spotifyToYouTube(track, playlist)));
+    const searchResults = await Promise.allSettled(tracks.map(async track => this.spotifyToYouTube(track)));
 
     let nSongsNotFound = 0;
 
-    // Get rid of null values
-    songs = songs.reduce((accum: SongMetadata[], song) => {
-      if (song) {
-        accum.push(song);
+    // Count songs that couldn't be found
+    const songs: SongMetadata[] = searchResults.reduce((accum: SongMetadata[], result) => {
+      if (result.status === 'fulfilled') {
+        accum.push({
+          ...result.value,
+          ...(playlist ? {playlist} : {}),
+        });
       } else {
         nSongsNotFound++;
       }
@@ -270,10 +273,10 @@ export default class {
       return accum;
     }, []);
 
-    return [songs as SongMetadata[], nSongsNotFound, originalNSongs];
+    return [songs, nSongsNotFound, originalNSongs];
   }
 
-  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, _: QueuedPlaylist | null): Promise<SongMetadata> {
+  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified): Promise<SongMetadata> {
     return this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`);
   }
 }
