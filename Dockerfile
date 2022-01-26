@@ -1,9 +1,7 @@
 FROM node:16.13.0-alpine AS base
 
-# Install ffmpeg
-RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache --virtual build-dependencies alpine-sdk python3 openssl-dev gcompat
 
 WORKDIR /usr/app
 
@@ -17,6 +15,7 @@ RUN yarn install --prod
 FROM base AS dependencies
 
 # Install dev dependencies
+RUN apk add --no-cache python3
 RUN yarn install
 
 # Build app
