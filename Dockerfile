@@ -1,4 +1,4 @@
-FROM node:16.13.0 AS base
+FROM node:16.13.0-alpine AS base
 
 # Install ffmpeg
 RUN apt-get update && \
