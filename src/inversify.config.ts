@@ -10,7 +10,6 @@ import PlayerManager from './managers/player.js';
 
 // Helpers
 import GetSongs from './services/get-songs.js';
-import NaturalLanguage from './services/natural-language-commands.js';
 
 // Comands
 import Command from './commands';
@@ -48,7 +47,6 @@ container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSinglet
 
 // Helpers
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();
-container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLanguage).inSingletonScope();
 
 // Commands
 [
