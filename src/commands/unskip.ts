@@ -2,7 +2,6 @@ import {CommandInteraction} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
-import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
@@ -31,10 +30,7 @@ export default class implements Command {
         embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
       });
     } catch (_: unknown) {
-      await interaction.reply({
-        content: errorMsg('no song to go back to'),
-        ephemeral: true,
-      });
+      throw new Error('no song to go back to');
     }
   }
 }

@@ -4,7 +4,6 @@ import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';
-import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 
 @injectable()
@@ -25,11 +24,7 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (player.status !== STATUS.PLAYING) {
-      await interaction.reply({
-        content: errorMsg('not currently playing'),
-        ephemeral: true,
-      });
-      return;
+      throw new Error('not currently playing');
     }
 
     player.pause();

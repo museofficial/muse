@@ -3,7 +3,6 @@ import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from '.';
-import errorMsg from '../utils/error-msg.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
@@ -29,7 +28,7 @@ export default class implements Command {
     const numToSkip = interaction.options.getInteger('skip') ?? 1;
 
     if (numToSkip < 1) {
-      await interaction.reply({content: errorMsg('invalid number of songs to skip'), ephemeral: true});
+      throw new Error('invalid number of songs to skip');
     }
 
     const player = this.playerManager.get(interaction.guild!.id);
@@ -41,7 +40,7 @@ export default class implements Command {
         embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
       });
     } catch (_: unknown) {
-      await interaction.reply({content: errorMsg('no song to skip to'), ephemeral: true});
+      throw new Error('no song to skip to');
     }
   }
 }

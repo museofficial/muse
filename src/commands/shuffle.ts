@@ -2,7 +2,6 @@ import {CommandInteraction} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
-import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import {SlashCommandBuilder} from '@discordjs/builders';
 
@@ -24,11 +23,7 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (player.isQueueEmpty()) {
-      await interaction.reply({
-        content: errorMsg('not enough songs to shuffle'),
-        ephemeral: true,
-      });
-      return;
+      throw new Error('not enough songs to shuffle');
     }
 
     player.shuffle();

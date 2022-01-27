@@ -3,7 +3,6 @@ import {inject, injectable} from 'inversify';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from '.';
-import errorMsg from '../utils/error-msg.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 
 @injectable()
@@ -34,17 +33,11 @@ export default class implements Command {
     const range = interaction.options.getInteger('range') ?? 1;
 
     if (position < 1) {
-      await interaction.reply({
-        content: errorMsg('position must be greater than 0'),
-        ephemeral: true,
-      });
+      throw new Error('position must be at least 1');
     }
 
     if (range < 1) {
-      await interaction.reply({
-        content: errorMsg('range must be greater than 0'),
-        ephemeral: true,
-      });
+      throw new Error('range must be at least 1');
     }
 
     player.removeFromQueue(position, range);

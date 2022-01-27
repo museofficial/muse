@@ -3,7 +3,6 @@ import {SlashCommandBuilder} from '@discordjs/builders';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
-import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 import {prettyTime} from '../utils/time.js';
 
@@ -31,41 +30,21 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      await interaction.reply({
-        content: errorMsg('nothing is playing'),
-        ephemeral: true,
-      });
-
-      return;
+      throw new Error('nothing is playing');
     }
 
     if (currentSong.isLive) {
-      await interaction.reply({
-        content: errorMsg('can\'t seek in a livestream'),
-        ephemeral: true,
-      });
-
-      return;
+      throw new Error('can\'t seek in a livestream');
     }
 
     const seekTime = interaction.options.getNumber('seconds');
 
     if (!seekTime) {
-      await interaction.reply({
-        content: errorMsg('missing number of seconds to seek'),
-        ephemeral: true,
-      });
-
-      return;
+      throw new Error('missing number of seconds to seek');
     }
 
     if (seekTime + player.getPosition() > currentSong.length) {
-      await interaction.reply({
-        content: errorMsg('can\'t seek past the end of the song'),
-        ephemeral: true,
-      });
-
-      return;
+      throw new Error('can\'t seek past the end of the song');
     }
 
     await Promise.all([

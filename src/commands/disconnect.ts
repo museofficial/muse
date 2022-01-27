@@ -3,7 +3,6 @@ import {SlashCommandBuilder} from '@discordjs/builders';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
-import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 
 @injectable()
@@ -24,12 +23,7 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.voiceConnection) {
-      await interaction.reply({
-        content: errorMsg('not connected'),
-        ephemeral: true,
-      });
-
-      return;
+      throw new Error('not connected');
     }
 
     player.disconnect();

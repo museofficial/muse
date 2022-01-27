@@ -1,7 +1,5 @@
 import {VoiceChannel, Snowflake, Client, TextChannel} from 'discord.js';
 import {Readable} from 'stream';
-import EventEmitter from 'events';
-import TypedEmitter from 'typed-emitter';
 import hasha from 'hasha';
 import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
@@ -37,8 +35,10 @@ export interface PlayerEvents {
   statusChange: (oldStatus: STATUS, newStatus: STATUS) => void;
 }
 
-export default class extends (EventEmitter as new () => TypedEmitter<PlayerEvents>) {
+export default class {
   public voiceConnection: VoiceConnection | null = null;
+  public status = STATUS.PAUSED;
+
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
   private audioPlayer: AudioPlayer | null = null;
@@ -47,14 +47,11 @@ export default class extends (EventEmitter as new () => TypedEmitter<PlayerEvent
   private lastSongURL = '';
 
   private positionInSeconds = 0;
-  private internalStatus = STATUS.PAUSED;
 
   private readonly discordClient: Client;
   private readonly fileCache: FileCacheProvider;
 
   constructor(client: Client, fileCache: FileCacheProvider) {
-    // eslint-disable-next-line constructor-super
-    super();
     this.discordClient = client;
     this.fileCache = fileCache;
   }
@@ -307,17 +304,6 @@ export default class extends (EventEmitter as new () => TypedEmitter<PlayerEvent
 
   isQueueEmpty(): boolean {
     return this.queueSize() === 0;
-  }
-
-  get status() {
-    return this.internalStatus;
-  }
-
-  set status(newStatus: STATUS) {
-    const previousStatus = this.internalStatus;
-    this.internalStatus = newStatus;
-
-    this.emit('statusChange', previousStatus, newStatus);
   }
 
   private getHashForCache(url: string): string {
