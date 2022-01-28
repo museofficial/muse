@@ -38,6 +38,7 @@ export interface PlayerEvents {
 export default class {
   public voiceConnection: VoiceConnection | null = null;
   public status = STATUS.PAUSED;
+  public guildId: string;
 
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
@@ -51,9 +52,10 @@ export default class {
   private readonly discordClient: Client;
   private readonly fileCache: FileCacheProvider;
 
-  constructor(client: Client, fileCache: FileCacheProvider) {
+  constructor(client: Client, fileCache: FileCacheProvider, guildId: string) {
     this.discordClient = client;
     this.fileCache = fileCache;
+    this.guildId = guildId;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {

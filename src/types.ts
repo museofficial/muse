@@ -11,7 +11,7 @@ export const TYPES = {
     UpdatingQueueEmbed: Symbol('UpdatingQueueEmbed'),
   },
   Services: {
+    AddQueryToQueue: Symbol('AddQueryToQueue'),
     GetSongs: Symbol('GetSongs'),
-    NaturalLanguage: Symbol('NaturalLanguage'),
   },
 };

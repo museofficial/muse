@@ -8,13 +8,15 @@ import ConfigProvider from './services/config.js';
 // Managers
 import PlayerManager from './managers/player.js';
 
-// Helpers
+// Services
+import AddQueryToQueue from './services/add-query-to-queue.js';
 import GetSongs from './services/get-songs.js';
 
 // Comands
 import Command from './commands';
 import Clear from './commands/clear.js';
 import Disconnect from './commands/disconnect.js';
+import Favorites from './commands/favorites.js';
 import ForwardSeek from './commands/fseek.js';
 import Pause from './commands/pause.js';
 import Play from './commands/play.js';
@@ -45,13 +47,15 @@ container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
 
-// Helpers
+// Services
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();
+container.bind<AddQueryToQueue>(TYPES.Services.AddQueryToQueue).to(AddQueryToQueue).inSingletonScope();
 
 // Commands
 [
   Clear,
   Disconnect,
+  Favorites,
   ForwardSeek,
   Pause,
   Play,

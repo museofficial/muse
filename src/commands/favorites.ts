@@ -1,0 +1,191 @@
+import {SlashCommandBuilder} from '@discordjs/builders';
+import {AutocompleteInteraction, CommandInteraction, MessageEmbed} from 'discord.js';
+import {inject, injectable} from 'inversify';
+import Command from '.';
+import AddQueryToQueue from '../services/add-query-to-queue.js';
+import {TYPES} from '../types.js';
+import {prisma} from '../utils/db.js';
+
+@injectable()
+export default class implements Command {
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('favorites')
+    .setDescription('adds a song to your favorites')
+    .addSubcommand(subcommand => subcommand
+      .setName('use')
+      .setDescription('use a favorite')
+      .addStringOption(option => option
+        .setName('name')
+        .setDescription('name of favorite')
+        .setRequired(true)
+        .setAutocomplete(true))
+      .addBooleanOption(option => option
+        .setName('immediate')
+        .setDescription('add track to the front of the queue'))
+      .addBooleanOption(option => option
+        .setName('shuffle')
+        .setDescription('shuffle the input if you\'re adding multiple tracks')))
+    .addSubcommand(subcommand => subcommand
+      .setName('list')
+      .setDescription('list all favorites'))
+    .addSubcommand(subcommand => subcommand
+      .setName('create')
+      .setDescription('create a new favorite')
+      .addStringOption(option => option
+        .setName('name')
+        .setDescription('you\'ll type this when using this favorite')
+        .setRequired(true))
+      .addStringOption(option => option
+        .setName('query')
+        .setDescription('any input you\'d normally give to the play command')
+        .setRequired(true),
+      ))
+    .addSubcommand(subcommand => subcommand
+      .setName('remove')
+      .setDescription('remove a favorite')
+      .addStringOption(option => option
+        .setName('name')
+        .setDescription('name of favorite')
+        .setAutocomplete(true)
+        .setRequired(true),
+      ),
+    );
+
+  constructor(@inject(TYPES.Services.AddQueryToQueue) private readonly addQueryToQueue: AddQueryToQueue) {}
+
+  requiresVC = (interaction: CommandInteraction) => interaction.options.getSubcommand() === 'use';
+
+  async execute(interaction: CommandInteraction) {
+    switch (interaction.options.getSubcommand()) {
+      case 'use':
+        await this.use(interaction);
+        break;
+      case 'list':
+        await this.list(interaction);
+        break;
+      case 'create':
+        await this.create(interaction);
+        break;
+      case 'remove':
+        await this.remove(interaction);
+        break;
+      default:
+        throw new Error('unknown subcommand');
+    }
+  }
+
+  async handleAutocompleteInteraction(interaction: AutocompleteInteraction) {
+    const query = interaction.options.getString('name')!.trim();
+
+    const favorites = await prisma.favoriteQuery.findMany({
+      where: {
+        guildId: interaction.guild!.id,
+      },
+    });
+
+    const names = favorites.map(favorite => favorite.name);
+
+    const results = query === '' ? names : names.filter(name => name.startsWith(query));
+
+    await interaction.respond(results.map(r => ({
+      name: r,
+      value: r,
+    })));
+  }
+
+  private async use(interaction: CommandInteraction) {
+    const name = interaction.options.getString('name')!.trim();
+
+    const favorite = await prisma.favoriteQuery.findFirst({
+      where: {
+        name,
+        guildId: interaction.guild!.id,
+      },
+    });
+
+    if (!favorite) {
+      throw new Error('no favorite with that name exists');
+    }
+
+    await this.addQueryToQueue.addToQueue({
+      interaction,
+      query: favorite.query,
+      shuffleAdditions: interaction.options.getBoolean('shuffle') ?? false,
+      addToFrontOfQueue: interaction.options.getBoolean('immediate') ?? false,
+    });
+  }
+
+  private async list(interaction: CommandInteraction) {
+    const favorites = await prisma.favoriteQuery.findMany({
+      where: {
+        guildId: interaction.guild!.id,
+      },
+    });
+
+    if (favorites.length === 0) {
+      await interaction.reply('there aren\'t any favorites yet');
+      return;
+    }
+
+    const embed = new MessageEmbed().setTitle('Favorites');
+
+    let description = '';
+    for (const favorite of favorites) {
+      description += `**${favorite.name}**: ${favorite.query} (<@${favorite.authorId}>)\n`;
+    }
+
+    embed.setDescription(description);
+
+    await interaction.reply({
+      embeds: [embed],
+    });
+  }
+
+  private async create(interaction: CommandInteraction) {
+    const name = interaction.options.getString('name')!.trim();
+    const query = interaction.options.getString('query')!.trim();
+
+    const existingFavorite = await prisma.favoriteQuery.findFirst({where: {
+      guildId: interaction.guild!.id,
+      name,
+    }});
+
+    if (existingFavorite) {
+      throw new Error('a favorite with that name already exists');
+    }
+
+    await prisma.favoriteQuery.create({
+      data: {
+        authorId: interaction.member!.user.id,
+        guildId: interaction.guild!.id,
+        name,
+        query,
+      },
+    });
+
+    await interaction.reply('👍 favorite created');
+  }
+
+  private async remove(interaction: CommandInteraction) {
+    const name = interaction.options.getString('name')!.trim();
+
+    const favorite = await prisma.favoriteQuery.findFirst({where: {
+      name,
+      guildId: interaction.guild!.id,
+    }});
+
+    if (!favorite) {
+      throw new Error('no favorite with that name exists');
+    }
+
+    const isUserGuildOwner = interaction.member!.user.id === interaction.guild!.ownerId;
+
+    if (favorite.authorId !== interaction.member!.user.id && !isUserGuildOwner) {
+      throw new Error('you can only remove your own favorites');
+    }
+
+    await prisma.favoriteQuery.delete({where: {id: favorite.id}});
+
+    await interaction.reply('👍 favorite removed');
+  }
+}

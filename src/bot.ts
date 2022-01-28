@@ -35,16 +35,25 @@ export default class {
 
   public async register(): Promise<void> {
     // Load in commands
-    container.getAll<Command>(TYPES.Command).forEach(command => {
-      // TODO: remove !
-      if (command.slashCommand?.name) {
+    for (const command of container.getAll<Command>(TYPES.Command)) {
+      // Make sure we can serialize to JSON without errors
+      try {
+        command.slashCommand.toJSON();
+      } catch (error) {
+        console.error(error);
+        throw new Error(`Could not serialize /${command.slashCommand.name ?? ''} to JSON`);
+      }
+
+      if (command.slashCommand.name) {
         this.commandsByName.set(command.slashCommand.name, command);
       }
 
       if (command.handledButtonIds) {
-        command.handledButtonIds.forEach(id => this.commandsByButtonId.set(id, command));
+        for (const buttonId of command.handledButtonIds) {
+          this.commandsByButtonId.set(buttonId, command);
+        }
       }
-    });
+    }
 
     // Register event handlers
     this.client.on('interactionCreate', async interaction => {
@@ -61,7 +70,9 @@ export default class {
             return;
           }
 
-          if (command.requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
+          const requiresVC = command.requiresVC instanceof Function ? command.requiresVC(interaction) : command.requiresVC;
+
+          if (requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
             await interaction.reply({content: errorMsg('gotta be in a voice channel'), ephemeral: true});
             return;
           }
@@ -122,13 +133,16 @@ export default class {
       } else {
         spinner.text = '📡 updating commands in all guilds...';
 
-        await Promise.all(
-          this.client.guilds.cache.map(async guild => {
+        await Promise.all([
+          ...this.client.guilds.cache.map(async guild => {
             await rest.put(
               Routes.applicationGuildCommands(this.client.user!.id, guild.id),
               {body: this.commandsByName.map(command => command.slashCommand.toJSON())},
             );
           }),
+          // Remove commands registered on bot (if they exist)
+          rest.put(Routes.applicationCommands(this.client.user!.id), {body: []}),
+        ],
         );
       }
 
