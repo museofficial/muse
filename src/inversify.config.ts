@@ -15,6 +15,7 @@ import GetSongs from './services/get-songs.js';
 // Comands
 import Command from './commands';
 import Clear from './commands/clear.js';
+import Config from './commands/config.js';
 import Disconnect from './commands/disconnect.js';
 import Favorites from './commands/favorites.js';
 import ForwardSeek from './commands/fseek.js';
@@ -54,6 +55,7 @@ container.bind<AddQueryToQueue>(TYPES.Services.AddQueryToQueue).to(AddQueryToQue
 // Commands
 [
   Clear,
+  Config,
   Disconnect,
   Favorites,
   ForwardSeek,

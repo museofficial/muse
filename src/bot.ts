@@ -13,6 +13,7 @@ import Config from './services/config.js';
 import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v9';
+import updatePermissionsForGuild from './utils/update-permissions-for-guild.js';
 
 @injectable()
 export default class {
@@ -145,6 +146,10 @@ export default class {
         ],
         );
       }
+
+      // Update permissions
+      spinner.text = '📡 updating permissions...';
+      await Promise.all(this.client.guilds.cache.map(async guild => updatePermissionsForGuild(guild)));
 
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=2184236096`);
     });

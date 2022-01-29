@@ -75,6 +75,7 @@ export default class implements Command {
   }
 
   async handleAutocompleteInteraction(interaction: AutocompleteInteraction) {
+    const subcommand = interaction.options.getSubcommand();
     const query = interaction.options.getString('name')!.trim();
 
     const favorites = await prisma.favoriteQuery.findMany({
@@ -83,13 +84,16 @@ export default class implements Command {
       },
     });
 
-    const names = favorites.map(favorite => favorite.name);
+    let results = query === '' ? favorites : favorites.filter(f => f.name.startsWith(query));
 
-    const results = query === '' ? names : names.filter(name => name.startsWith(query));
+    if (subcommand === 'remove') {
+      // Only show favorites that user is allowed to remove
+      results = interaction.member?.user.id === interaction.guild?.ownerId ? results : results.filter(r => r.authorId === interaction.member!.user.id);
+    }
 
     await interaction.respond(results.map(r => ({
-      name: r,
-      value: r,
+      name: r.name,
+      value: r.name,
     })));
   }
 
