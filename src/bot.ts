@@ -14,6 +14,7 @@ import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v9';
 import updatePermissionsForGuild from './utils/update-permissions-for-guild.js';
+import handleGuildUpdate from './events/handle-guild-update.js';
 
 @injectable()
 export default class {
@@ -159,6 +160,7 @@ export default class {
 
     this.client.on('guildCreate', handleGuildCreate);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
+    this.client.on('guildUpdate', handleGuildUpdate);
 
     await this.client.login(this.token);
   }
