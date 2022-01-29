@@ -35,7 +35,11 @@ COPY --from=builder /usr/app/migrations migrations
 
 RUN yarn prisma generate
 
+ARG COMMIT_HASH=unknown
+
 ENV DATA_DIR /data
 ENV NODE_ENV production
+ENV BUILD_DATE $(date)
+ENV COMMIT_HASH $COMMIT_HASH
 
 CMD ["yarn", "start"]

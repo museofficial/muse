@@ -1,4 +1,4 @@
-import {AutocompleteInteraction, CommandInteraction} from 'discord.js';
+import {AutocompleteInteraction, CommandInteraction, GuildMember} from 'discord.js';
 import {URL} from 'url';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {inject, injectable} from 'inversify';
@@ -10,6 +10,10 @@ import getYouTubeAndSpotifySuggestionsFor from '../utils/get-youtube-and-spotify
 import KeyValueCacheProvider from '../services/key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
 import AddQueryToQueue from '../services/add-query-to-queue.js';
+import PlayerManager from '../managers/player.js';
+import {STATUS} from '../services/player.js';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
 
 @injectable()
 export default class implements Command {
@@ -33,18 +37,46 @@ export default class implements Command {
   private readonly spotify: Spotify;
   private readonly cache: KeyValueCacheProvider;
   private readonly addQueryToQueue: AddQueryToQueue;
+  private readonly playerManager: PlayerManager;
 
-  constructor(@inject(TYPES.ThirdParty) thirdParty: ThirdParty, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider, @inject(TYPES.Services.AddQueryToQueue) addQueryToQueue: AddQueryToQueue) {
+  constructor(@inject(TYPES.ThirdParty) thirdParty: ThirdParty, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider, @inject(TYPES.Services.AddQueryToQueue) addQueryToQueue: AddQueryToQueue, @inject(TYPES.Managers.Player) playerManager: PlayerManager) {
     this.spotify = thirdParty.spotify;
     this.cache = cache;
     this.addQueryToQueue = addQueryToQueue;
+    this.playerManager = playerManager;
   }
 
   // eslint-disable-next-line complexity
   public async execute(interaction: CommandInteraction): Promise<void> {
+    const query = interaction.options.getString('query');
+
+    const player = this.playerManager.get(interaction.guild!.id);
+    const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
+
+    if (!query) {
+      if (player.status === STATUS.PLAYING) {
+        throw new Error('already playing, give me a song name');
+      }
+
+      // Must be resuming play
+      if (!player.getCurrent()) {
+        throw new Error('nothing to play');
+      }
+
+      await player.connect(targetVoiceChannel);
+      await player.play();
+
+      await interaction.reply({
+        content: 'the stop-and-go light is now green',
+        embeds: [buildPlayingMessageEmbed(player)],
+      });
+
+      return;
+    }
+
     await this.addQueryToQueue.addToQueue({
       interaction,
-      query: interaction.options.getString('query')!.trim(),
+      query: query.trim(),
       addToFrontOfQueue: interaction.options.getBoolean('immediate') ?? false,
       shuffleAdditions: interaction.options.getBoolean('shuffle') ?? false,
     });
