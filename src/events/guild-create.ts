@@ -32,4 +32,8 @@ export default async (guild: Guild): Promise<void> => {
       {body: container.getAll<Command>(TYPES.Command).map(command => command.slashCommand.toJSON())},
     );
   }
+
+  const owner = await guild.fetchOwner();
+
+  await owner.send('👋 Hi! Someone (probably you) just invited me to a server you own. I can\'t be used by your server members until you complete setup by running /config set-role in your server.');
 };
