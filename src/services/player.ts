@@ -52,14 +52,11 @@ export default class {
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
-    const conn = joinVoiceChannel({
+    this.voiceConnection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
-      // @ts-expect-error (see https://github.com/discordjs/voice/issues/166)
       adapterCreator: channel.guild.voiceAdapterCreator,
     });
-
-    this.voiceConnection = conn;
   }
 
   disconnect(): void {
@@ -94,7 +91,12 @@ export default class {
     }
 
     const stream = await this.getStream(currentSong.url, {seek: positionSeconds});
-    this.audioPlayer = createAudioPlayer();
+    this.audioPlayer = createAudioPlayer({
+      behaviors: {
+        // Needs to be somewhat high for livestreams
+        maxMissedFrames: 50,
+      },
+    });
     this.voiceConnection.subscribe(this.audioPlayer);
     this.audioPlayer.play(createAudioResource(stream, {
       inputType: StreamType.WebmOpus,
@@ -141,7 +143,12 @@ export default class {
 
     try {
       const stream = await this.getStream(currentSong.url);
-      this.audioPlayer = createAudioPlayer();
+      this.audioPlayer = createAudioPlayer({
+        behaviors: {
+          // Needs to be somewhat high for livestreams
+          maxMissedFrames: 50,
+        },
+      });
       this.voiceConnection.subscribe(this.audioPlayer);
       this.audioPlayer.play(createAudioResource(stream, {
         inputType: StreamType.WebmOpus,
