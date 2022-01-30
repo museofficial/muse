@@ -1,13 +1,13 @@
-import {VoiceChannel, Snowflake, Client, TextChannel} from 'discord.js';
+import {VoiceChannel, Snowflake} from 'discord.js';
 import {Readable} from 'stream';
 import hasha from 'hasha';
 import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
-import errorMsg from '../utils/error-msg.js';
 import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
+import debug from '../utils/debug.js';
 
 export interface QueuedPlaylist {
   title: string;
@@ -49,11 +49,9 @@ export default class {
 
   private positionInSeconds = 0;
 
-  private readonly discordClient: Client;
   private readonly fileCache: FileCacheProvider;
 
-  constructor(client: Client, fileCache: FileCacheProvider, guildId: string) {
-    this.discordClient = client;
+  constructor(fileCache: FileCacheProvider, guildId: string) {
     this.fileCache = fileCache;
     this.guildId = guildId;
   }
@@ -62,7 +60,6 @@ export default class {
     const conn = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
-      // @ts-expect-error (see https://github.com/discordjs/voice/issues/166)
       adapterCreator: channel.guild.voiceAdapterCreator,
     });
 
@@ -150,9 +147,11 @@ export default class {
       const stream = await this.getStream(currentSong.url);
       this.audioPlayer = createAudioPlayer();
       this.voiceConnection.subscribe(this.audioPlayer);
-      this.audioPlayer.play(createAudioResource(stream, {
+      const resource = createAudioResource(stream, {
         inputType: StreamType.WebmOpus,
-      }));
+      });
+
+      this.audioPlayer.play(resource);
 
       this.attachListeners();
 
@@ -167,14 +166,13 @@ export default class {
         this.lastSongURL = currentSong.url;
       }
     } catch (error: unknown) {
-      const currentSong = this.getCurrent();
       await this.forward(1);
 
       if ((error as {statusCode: number}).statusCode === 410 && currentSong) {
         const channelId = currentSong.addedInChannelId;
 
         if (channelId) {
-          await (this.discordClient.channels.cache.get(channelId) as TextChannel).send(errorMsg(`${currentSong.title} is unavailable`));
+          debug(`${currentSong.title} is unavailable`);
           return;
         }
       }
@@ -405,6 +403,9 @@ export default class {
         .on('error', error => {
           console.error(error);
           reject(error);
+        })
+        .on('start', command => {
+          debug(`Spawned ffmpeg with ${command as string}`);
         });
 
       youtubeStream.pipe(capacitor);
