@@ -298,9 +298,9 @@
     detect-newline "^3.1.0"
 
 "@sapphire/async-queue@^1.1.9":
-  version "1.1.9"
-  resolved "https://registry.yarnpkg.com/@sapphire/async-queue/-/async-queue-1.1.9.tgz#ce69611c8753c4affd905a7ef43061c7eb95c01b"
-  integrity sha512-CbXaGwwlEMq+l1TRu01FJCvySJ1CEFKFclHT48nIfNeZXaAAmmwwy7scUKmYHPUa3GhoMp6Qr1B3eAJux6XgOQ==
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@sapphire/async-queue/-/async-queue-1.2.0.tgz#7a56afd318101d338433d7180ebd6af349243268"
+  integrity sha512-O5ND5Ljpef86X5oy8zXorQ754TMjWALcPSAgPBu4+76HLtDTrNoDyzU2uGE2G4A8Wv51u0MXHzGQ0WZ4GMtpIw==
 
 "@sapphire/snowflake@^3.0.1":
   version "3.1.0"
@@ -435,9 +435,9 @@
     form-data "^3.0.0"
 
 "@types/node@*", "@types/node@^17.0.0":
-  version "17.0.12"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.12.tgz#f7aa331b27f08244888c47b7df126184bc2339c5"
-  integrity sha512-4YpbAsnJXWYK/fpTVFlMIcUIho2AYCi4wg5aNPrG1ng7fn/1/RZfCIpRCiBX+12RVa34RluilnvCqD+g3KiSiA==
+  version "17.0.13"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.13.tgz#5ed7ed7c662948335fcad6c412bb42d99ea754e3"
+  integrity sha512-Y86MAxASe25hNzlDbsviXl8jQHb0RDvKt4c40ZJQ1Don0AAL0STLZSs4N+6gLEO55pedy7r2cLwS+ZDxPm/2Bw==
 
 "@types/parse-json@^4.0.0":
   version "4.0.0"
@@ -457,9 +457,9 @@
   integrity sha512-rHmG4soR13N3jDCu0QL9cv6q3jMM/AU/0w5w7ukTt89e23rv5Vz86BNqXP/34wEzYWgiTNSG+f+xGT1rjABj4g==
 
 "@types/spotify-web-api-node@^5.0.2":
-  version "5.0.6"
-  resolved "https://registry.yarnpkg.com/@types/spotify-web-api-node/-/spotify-web-api-node-5.0.6.tgz#4787a0ae7f610b71f8f16eb467e2d83a961ba7ce"
-  integrity sha512-2zu9z9mtML5W5Q2cgtuu/FQ/KeZuOJ6ruKya5BUgyOKRGMamFbTe8Z/00TqRlm6MGDUWBcPKY4BZZAxhwPozgQ==
+  version "5.0.7"
+  resolved "https://registry.yarnpkg.com/@types/spotify-web-api-node/-/spotify-web-api-node-5.0.7.tgz#de5cb576781e0aaa38568744dfb891c86a7938ee"
+  integrity sha512-8ajd4xS3+l4Zau1OyggPv7DjeSFEIGYvG5Q8PbbBMKiaRFD53IkcvU4Bx4Ijyzw+l+Kc09L5L+MXRj0wyVLx9Q==
   dependencies:
     "@types/spotify-api" "*"
 
@@ -1564,9 +1564,9 @@ flat-cache@^3.0.4:
     rimraf "^3.0.2"
 
 flatted@^3.1.0:
-  version "3.2.4"
-  resolved "https://registry.yarnpkg.com/flatted/-/flatted-3.2.4.tgz#28d9969ea90661b5134259f312ab6aa7929ac5e2"
-  integrity sha512-8/sOawo8tJ4QOBX8YlQBMxL8+RLZfxMQOif9o0KUKTNTjMYElWPE0r/m5VNFxTRd0NSw8qSy8dajrwX4RYI1Hw==
+  version "3.2.5"
+  resolved "https://registry.yarnpkg.com/flatted/-/flatted-3.2.5.tgz#76c8584f4fc843db64702a6bd04ab7a8bd666da3"
+  integrity sha512-WIWGi2L3DyTUvUrwRKgGi9TwxQMUEqPOPQBVi71R96jZXJdFskXEmf54BoZaS1kknGODoIGASGEzBUYdyMCBJg==
 
 fluent-ffmpeg@^2.1.2:
   version "2.1.2"
@@ -3508,9 +3508,9 @@ type-fest@^0.8.0:
   integrity sha512-4dbzIzqvjtgiM5rw1k5rEHtBANKmdudhGyBEajN01fEyhaAIhsoKNy6y7+IN93IfpFtwY9iqi7kD+xwKhQsNJA==
 
 type-fest@^2.8.0:
-  version "2.10.0"
-  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-2.10.0.tgz#0ee9c3cd411efb3bba434065d32235592d3644cf"
-  integrity sha512-u2yreDMllFI3VCpWt0rKrGs/E2LO0YHBwiiOIj+ilQh9+ALMaa4lNBSdoDvuHN3cbKcYk9L1BXP49x9RT+o/SA==
+  version "2.11.0"
+  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-2.11.0.tgz#732ffaf73e4d17d1f762a539876a791b45ed273b"
+  integrity sha512-GwRKR1jZMAQP/hVR929DWB5Z2lwSIM/nNcHEfDj2E0vOMhcYbqFxGKE5JaSzMdzmEtWJiamEn6VwHs/YVXVhEQ==
 
 typedarray-to-buffer@^3.1.5:
   version "3.1.5"
