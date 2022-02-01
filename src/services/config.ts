@@ -38,7 +38,7 @@ export default class Config {
       if (typeof value === 'number') {
         this[key as ConditionalKeys<typeof CONFIG_MAP, number>] = value;
       } else if (typeof value === 'string') {
-        this[key as ConditionalKeys<typeof CONFIG_MAP, string>] = value;
+        this[key as ConditionalKeys<typeof CONFIG_MAP, string>] = value.trim();
       } else {
         throw new Error(`Unsupported type for ${key}`);
       }
