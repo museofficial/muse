@@ -10,7 +10,7 @@ import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('unskip')
-    .setDescription('goes back in the queue by one song');
+    .setDescription('go back in the queue by one song');
 
   public requiresVC = true;
 
