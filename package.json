@@ -17,8 +17,8 @@
     "dts"
   ],
   "scripts": {
-    "lint": "eslint 'src/**/*.ts'",
-    "lint:fix": "eslint 'src/**/*.ts' --fix",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "clean": "rm -rf dist dts",
     "test": "npm run lint",
     "build": "tsc",
@@ -52,7 +52,7 @@
     "eslint-config-xo-typescript": "^0.44.0",
     "husky": "^4.3.8",
     "nodemon": "^2.0.7",
-    "prisma": "^3.7.0",
+    "prisma": "^3.8.1",
     "release-it": "^14.11.8",
     "ts-node": "^10.4.0",
     "type-fest": "^2.8.0",
@@ -81,9 +81,11 @@
     }
   },
   "dependencies": {
+    "@discordjs/builders": "^0.12.0",
     "@discordjs/opus": "^0.7.0",
+    "@discordjs/rest": "^0.3.0",
     "@discordjs/voice": "^0.8.0",
-    "@prisma/client": "^3.7.0",
+    "@prisma/client": "^3.8.1",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
     "debug": "^4.3.3",

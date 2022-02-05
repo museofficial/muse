@@ -1,13 +1,13 @@
-import {VoiceChannel, Snowflake, Client, TextChannel} from 'discord.js';
+import {VoiceChannel, Snowflake} from 'discord.js';
 import {Readable} from 'stream';
 import hasha from 'hasha';
 import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
-import errorMsg from '../utils/error-msg.js';
 import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
+import debug from '../utils/debug.js';
 
 export interface QueuedPlaylist {
   title: string;
@@ -31,9 +31,15 @@ export enum STATUS {
   PAUSED,
 }
 
+export interface PlayerEvents {
+  statusChange: (oldStatus: STATUS, newStatus: STATUS) => void;
+}
+
 export default class {
-  public status = STATUS.PAUSED;
   public voiceConnection: VoiceConnection | null = null;
+  public status = STATUS.PAUSED;
+  public guildId: string;
+
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
   private audioPlayer: AudioPlayer | null = null;
@@ -43,12 +49,11 @@ export default class {
 
   private positionInSeconds = 0;
 
-  private readonly discordClient: Client;
   private readonly fileCache: FileCacheProvider;
 
-  constructor(client: Client, fileCache: FileCacheProvider) {
-    this.discordClient = client;
+  constructor(fileCache: FileCacheProvider, guildId: string) {
     this.fileCache = fileCache;
+    this.guildId = guildId;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -150,9 +155,11 @@ export default class {
         },
       });
       this.voiceConnection.subscribe(this.audioPlayer);
-      this.audioPlayer.play(createAudioResource(stream, {
+      const resource = createAudioResource(stream, {
         inputType: StreamType.WebmOpus,
-      }));
+      });
+
+      this.audioPlayer.play(resource);
 
       this.attachListeners();
 
@@ -167,14 +174,13 @@ export default class {
         this.lastSongURL = currentSong.url;
       }
     } catch (error: unknown) {
-      const currentSong = this.getCurrent();
       await this.forward(1);
 
       if ((error as {statusCode: number}).statusCode === 410 && currentSong) {
         const channelId = currentSong.addedInChannelId;
 
         if (channelId) {
-          await (this.discordClient.channels.cache.get(channelId) as TextChannel).send(errorMsg(`${currentSong.title} is unavailable`));
+          debug(`${currentSong.title} is unavailable`);
           return;
         }
       }
@@ -213,8 +219,12 @@ export default class {
     }
   }
 
+  canGoForward(skip: number) {
+    return (this.queuePosition + skip - 1) < this.queue.length;
+  }
+
   manualForward(skip: number): void {
-    if ((this.queuePosition + skip - 1) < this.queue.length) {
+    if (this.canGoForward(skip)) {
       this.queuePosition += skip;
       this.positionInSeconds = 0;
       this.stopTrackingPosition();
@@ -223,8 +233,12 @@ export default class {
     }
   }
 
+  canGoBack() {
+    return this.queuePosition - 1 >= 0;
+  }
+
   async back(): Promise<void> {
-    if (this.queuePosition - 1 >= 0) {
+    if (this.canGoBack()) {
       this.queuePosition--;
       this.positionInSeconds = 0;
       this.stopTrackingPosition();
@@ -397,6 +411,9 @@ export default class {
         .on('error', error => {
           console.error(error);
           reject(error);
+        })
+        .on('start', command => {
+          debug(`Spawned ffmpeg with ${command as string}`);
         });
 
       youtubeStream.pipe(capacitor);

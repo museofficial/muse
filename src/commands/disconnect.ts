@@ -1,17 +1,15 @@
-import {Message} from 'discord.js';
+import {CommandInteraction} from 'discord.js';
+import {SlashCommandBuilder} from '@discordjs/builders';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
-import errorMsg from '../utils/error-msg.js';
 import Command from '.';
 
 @injectable()
 export default class implements Command {
-  public name = 'disconnect';
-  public aliases = ['dc'];
-  public examples = [
-    ['disconnect', 'pauses and disconnects player'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('disconnect')
+    .setDescription('pauses and disconnects player');
 
   public requiresVC = true;
 
@@ -21,16 +19,15 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async execute(msg: Message, _: string []): Promise<void> {
-    const player = this.playerManager.get(msg.guild!.id);
+  public async execute(interaction: CommandInteraction) {
+    const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.voiceConnection) {
-      await msg.channel.send(errorMsg('not connected'));
-      return;
+      throw new Error('not connected');
     }
 
     player.disconnect();
 
-    await msg.channel.send('u betcha');
+    await interaction.reply('u betcha');
   }
 }

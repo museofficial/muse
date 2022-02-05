@@ -8,23 +8,22 @@ import ConfigProvider from './services/config.js';
 // Managers
 import PlayerManager from './managers/player.js';
 
-// Helpers
+// Services
+import AddQueryToQueue from './services/add-query-to-queue.js';
 import GetSongs from './services/get-songs.js';
-import NaturalLanguage from './services/natural-language-commands.js';
 
 // Comands
 import Command from './commands';
 import Clear from './commands/clear.js';
 import Config from './commands/config.js';
 import Disconnect from './commands/disconnect.js';
+import Favorites from './commands/favorites.js';
 import ForwardSeek from './commands/fseek.js';
-import Help from './commands/help.js';
 import Pause from './commands/pause.js';
 import Play from './commands/play.js';
 import QueueCommand from './commands/queue.js';
 import Remove from './commands/remove.js';
 import Seek from './commands/seek.js';
-import Shortcuts from './commands/shortcuts.js';
 import Shuffle from './commands/shuffle.js';
 import Skip from './commands/skip.js';
 import Unskip from './commands/unskip.js';
@@ -49,23 +48,22 @@ container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
 
-// Helpers
+// Services
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();
-container.bind<NaturalLanguage>(TYPES.Services.NaturalLanguage).to(NaturalLanguage).inSingletonScope();
+container.bind<AddQueryToQueue>(TYPES.Services.AddQueryToQueue).to(AddQueryToQueue).inSingletonScope();
 
 // Commands
 [
   Clear,
   Config,
   Disconnect,
+  Favorites,
   ForwardSeek,
-  Help,
   Pause,
   Play,
   QueueCommand,
   Remove,
   Seek,
-  Shortcuts,
   Shuffle,
   Skip,
   Unskip,

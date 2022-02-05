@@ -1,21 +1,21 @@
-import {Message, TextChannel} from 'discord.js';
+import {CommandInteraction} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
-import LoadingMessage from '../utils/loading-message.js';
-import errorMsg from '../utils/error-msg.js';
 import Command from '.';
-import {parseTime} from '../utils/time.js';
+import {parseTime, prettyTime} from '../utils/time.js';
+import {SlashCommandBuilder} from '@discordjs/builders';
 
 @injectable()
 export default class implements Command {
-  public name = 'seek';
-  public aliases = [];
-  public examples = [
-    ['seek 10', 'seeks to 10 seconds from beginning of song'],
-    ['seek 1:30', 'seeks to 1 minute and 30 seconds from beginning of song'],
-    ['seek 1:00:00', 'seeks to 1 hour from beginning of song'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('seek')
+    .setDescription('seek to a position from beginning of song')
+    .addStringOption(option =>
+      option.setName('time')
+        .setDescription('time to seek')
+        .setRequired(true),
+    );
 
   public requiresVC = true;
 
@@ -25,22 +25,20 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async execute(msg: Message, args: string []): Promise<void> {
-    const player = this.playerManager.get(msg.guild!.id);
+  public async execute(interaction: CommandInteraction): Promise<void> {
+    const player = this.playerManager.get(interaction.guild!.id);
 
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      await msg.channel.send(errorMsg('nothing is playing'));
-      return;
+      throw new Error('nothing is playing');
     }
 
     if (currentSong.isLive) {
-      await msg.channel.send(errorMsg('can\'t seek in a livestream'));
-      return;
+      throw new Error('can\'t seek in a livestream');
     }
 
-    const time = args[0];
+    const time = interaction.options.getString('time')!;
 
     let seekTime = 0;
 
@@ -51,20 +49,14 @@ export default class implements Command {
     }
 
     if (seekTime > currentSong.length) {
-      await msg.channel.send(errorMsg('can\'t seek past the end of the song'));
-      return;
+      throw new Error('can\'t seek past the end of the song');
     }
 
-    const loading = new LoadingMessage(msg.channel as TextChannel);
+    await Promise.all([
+      player.seek(seekTime),
+      interaction.deferReply(),
+    ]);
 
-    await loading.start();
-
-    try {
-      await player.seek(seekTime);
-
-      await loading.stop();
-    } catch (error: unknown) {
-      await loading.stop(errorMsg(error as Error));
-    }
+    await interaction.editReply(`👍 seeked to ${prettyTime(player.getPosition())}`);
   }
 }

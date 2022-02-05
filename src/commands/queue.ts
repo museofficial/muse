@@ -1,4 +1,5 @@
-import {Message} from 'discord.js';
+import {CommandInteraction} from 'discord.js';
+import {SlashCommandBuilder} from '@discordjs/builders';
 import {inject, injectable} from 'inversify';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
@@ -7,12 +8,13 @@ import {buildQueueEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
-  public name = 'queue';
-  public aliases = ['q'];
-  public examples = [
-    ['queue', 'shows current queue'],
-    ['queue 2', 'shows second page of queue'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('queue')
+    .setDescription('show the current queue')
+    .addIntegerOption(option => option
+      .setName('page')
+      .setDescription('page of queue to show [default: 1]')
+      .setRequired(false));
 
   private readonly playerManager: PlayerManager;
 
@@ -20,11 +22,11 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async execute(msg: Message, args: string []): Promise<void> {
-    const player = this.playerManager.get(msg.guild!.id);
+  public async execute(interaction: CommandInteraction) {
+    const player = this.playerManager.get(interaction.guild!.id);
 
-    const embed = buildQueueEmbed(player, args[0] ? parseInt(args[0], 10) : 1);
+    const embed = buildQueueEmbed(player, interaction.options.getInteger('page') ?? 1);
 
-    await msg.channel.send({embeds: [embed]});
+    await interaction.reply({embeds: [embed]});
   }
 }

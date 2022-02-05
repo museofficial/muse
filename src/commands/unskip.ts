@@ -1,18 +1,16 @@
-import {Message} from 'discord.js';
+import {CommandInteraction} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
-import errorMsg from '../utils/error-msg.js';
 import Command from '.';
+import {SlashCommandBuilder} from '@discordjs/builders';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
-  public name = 'unskip';
-  public aliases = ['back'];
-  public examples = [
-    ['unskip', 'goes back in the queue by one song'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('unskip')
+    .setDescription('goes back in the queue by one song');
 
   public requiresVC = true;
 
@@ -22,19 +20,17 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async execute(msg: Message, _: string []): Promise<void> {
-    const player = this.playerManager.get(msg.guild!.id);
+  public async execute(interaction: CommandInteraction): Promise<void> {
+    const player = this.playerManager.get(interaction.guild!.id);
 
     try {
       await player.back();
+      await interaction.reply({
+        content: 'back \'er up\'',
+        embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
+      });
     } catch (_: unknown) {
-      await msg.channel.send(errorMsg('no song to go back to'));
-      return;
+      throw new Error('no song to go back to');
     }
-
-    await msg.channel.send({
-      content: 'back \'er up\'',
-      embeds: [buildPlayingMessageEmbed(player)],
-    });
   }
 }

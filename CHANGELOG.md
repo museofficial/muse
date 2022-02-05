@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Migrated to [Slash Commands](https://support.discord.com/hc/en-us/articles/1500000368501-Slash-Commands-FAQ)
+- Upgrading **will cause unavoidable data loss**. Because slash commands work differently, **all shortcuts will be lost**. Functionality similar to shortcuts is provided by the `/favorites` command.
+- Because slash commands require different permissions, **you must kick Muse and re-add Muse to your server** before you can use the bot.
 
 ## [0.5.4] - 2022-02-01
 ### Fixed

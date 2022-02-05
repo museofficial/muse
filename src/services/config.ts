@@ -13,6 +13,7 @@ const CONFIG_MAP = {
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
   SPOTIFY_CLIENT_ID: process.env.SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET: process.env.SPOTIFY_CLIENT_SECRET,
+  REGISTER_COMMANDS_ON_BOT: process.env.REGISTER_COMMANDS_ON_BOT === 'true',
   DATA_DIR,
   CACHE_DIR: path.join(DATA_DIR, 'cache'),
   CACHE_LIMIT_IN_BYTES: xbytes.parseSize(process.env.CACHE_LIMIT ?? '2GB'),
@@ -24,6 +25,7 @@ export default class Config {
   readonly YOUTUBE_API_KEY!: string;
   readonly SPOTIFY_CLIENT_ID!: string;
   readonly SPOTIFY_CLIENT_SECRET!: string;
+  readonly REGISTER_COMMANDS_ON_BOT!: boolean;
   readonly DATA_DIR!: string;
   readonly CACHE_DIR!: string;
   readonly CACHE_LIMIT_IN_BYTES!: number;
@@ -39,6 +41,8 @@ export default class Config {
         this[key as ConditionalKeys<typeof CONFIG_MAP, number>] = value;
       } else if (typeof value === 'string') {
         this[key as ConditionalKeys<typeof CONFIG_MAP, string>] = value.trim();
+      } else if (typeof value === 'boolean') {
+        this[key as ConditionalKeys<typeof CONFIG_MAP, boolean>] = value;
       } else {
         throw new Error(`Unsupported type for ${key}`);
       }

@@ -25,25 +25,20 @@ model KeyValueCache {
 
 model Setting {
   guildId       String   @id
-  prefix        String
-  channel       String?
-  finishedSetup Boolean  @default(false)
   playlistLimit Int      @default(50)
+  roleId        String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
-model Shortcut {
+model FavoriteQuery {
   id        Int      @id @default(autoincrement())
   guildId   String
   authorId  String
-  shortcut  String
-  command   String
+  name      String
+  query     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-
-  @@index([shortcut], map: "shortcuts_shortcut")
-  @@index([guildId], map: "shortcuts_guild_id")
-  @@index([guildId, shortcut])
+  @@unique([guildId, name])
 }

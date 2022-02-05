@@ -1,121 +1,103 @@
-import {TextChannel, Message, GuildChannel, ThreadChannel} from 'discord.js';
+import {SlashCommandBuilder} from '@discordjs/builders';
+import {CommandInteraction, MessageEmbed} from 'discord.js';
 import {injectable} from 'inversify';
-import errorMsg from '../utils/error-msg.js';
-import Command from '.';
 import {prisma} from '../utils/db.js';
+import updatePermissionsForGuild from '../utils/update-permissions-for-guild.js';
+import Command from './index.js';
 
 @injectable()
 export default class implements Command {
-  public name = 'config';
-  public aliases = [];
-  public examples = [
-    ['config prefix !', 'set the prefix to !'],
-    ['config channel music-commands', 'bind the bot to the music-commands channel'],
-    ['config playlist-limit 30', 'set the playlist song limit to 30'],
-  ];
+  public readonly slashCommand = new SlashCommandBuilder()
+    .setName('config')
+    .setDescription('configure bot settings')
+    .addSubcommand(subcommand => subcommand
+      .setName('set-playlist-limit')
+      .setDescription('set the maximum number of tracks that can be added from a playlist')
+      .addIntegerOption(option => option
+        .setName('limit')
+        .setDescription('maximum number of tracks')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('set-role')
+      .setDescription('set the role that is allowed to use the bot')
+      .addRoleOption(option => option
+        .setName('role')
+        .setDescription('allowed role')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('get')
+      .setDescription('show all settings'));
 
-  public async execute(msg: Message, args: string []): Promise<void> {
-    if (args.length === 0) {
-      // Show current settings
-      const settings = await prisma.setting.findUnique({
-        where: {
-          guildId: msg.guild!.id,
-        },
-      });
+  async execute(interaction: CommandInteraction) {
+    switch (interaction.options.getSubcommand()) {
+      case 'set-playlist-limit': {
+        const limit = interaction.options.getInteger('limit')!;
 
-      if (settings?.channel) {
-        let response = `prefix: \`${settings.prefix}\`\n`;
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
-        response += `channel: ${msg.guild!.channels.cache.get(settings.channel)!.toString()}\n`;
-        response += `playlist-limit: ${settings.playlistLimit}`;
-
-        await msg.channel.send(response);
-      }
-
-      return;
-    }
-
-    const setting = args[0];
-
-    if (args.length !== 2) {
-      await msg.channel.send(errorMsg('incorrect number of arguments'));
-      return;
-    }
-
-    if (msg.author.id !== msg.guild!.ownerId) {
-      await msg.channel.send(errorMsg('not authorized'));
-      return;
-    }
-
-    switch (setting) {
-      case 'prefix': {
-        const newPrefix = args[1];
-
-        await prisma.setting.update({
-          where: {
-            guildId: msg.guild!.id,
-          },
-          data: {
-            prefix: newPrefix,
-          },
-        });
-
-        await msg.channel.send(`👍 prefix updated to \`${newPrefix}\``);
-        break;
-      }
-
-      case 'channel': {
-        let channel: GuildChannel | ThreadChannel | undefined;
-
-        if (args[1].includes('<#') && args[1].includes('>')) {
-          channel = msg.guild!.channels.cache.find(c => c.id === args[1].slice(2, args[1].indexOf('>')));
-        } else {
-          channel = msg.guild!.channels.cache.find(c => c.name === args[1]);
-        }
-
-        if (channel && channel.type === 'GUILD_TEXT') {
-          await prisma.setting.update({
-            where: {
-              guildId: msg.guild!.id,
-            },
-            data: {
-              channel: channel.id,
-            },
-          });
-
-          await Promise.all([
-            (channel as TextChannel).send('hey apparently I\'m bound to this channel now'),
-            msg.react('👍'),
-          ]);
-        } else {
-          await msg.channel.send(errorMsg('either that channel doesn\'t exist or you want me to become sentient and listen to a voice channel'));
-        }
-
-        break;
-      }
-
-      case 'playlist-limit': {
-        const playlistLimit = parseInt(args[1], 10);
-        if (playlistLimit <= 0) {
-          await msg.channel.send(errorMsg('please enter a valid number'));
-          return;
+        if (limit < 1) {
+          throw new Error('invalid limit');
         }
 
         await prisma.setting.update({
           where: {
-            guildId: msg.guild!.id,
+            guildId: interaction.guild!.id,
           },
           data: {
-            playlistLimit,
+            playlistLimit: limit,
           },
         });
 
-        await msg.channel.send(`👍 playlist-limit updated to ${playlistLimit}`);
+        await interaction.reply('👍 limit updated');
+
+        break;
+      }
+
+      case 'set-role': {
+        const role = interaction.options.getRole('role')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            roleId: role.id,
+          },
+        });
+
+        await updatePermissionsForGuild(interaction.guild!);
+
+        await interaction.reply('👍 role updated');
+
+        break;
+      }
+
+      case 'get': {
+        const embed = new MessageEmbed().setTitle('Config');
+
+        const config = await prisma.setting.findUnique({where: {guildId: interaction.guild!.id}});
+
+        if (!config) {
+          throw new Error('no config found');
+        }
+
+        const settingsToShow = {
+          'Playlist Limit': config.playlistLimit,
+          Role: config.roleId ? `<@&${config.roleId}>` : 'not set',
+        };
+
+        let description = '';
+        for (const [key, value] of Object.entries(settingsToShow)) {
+          description += `**${key}**: ${value}\n`;
+        }
+
+        embed.setDescription(description);
+
+        await interaction.reply({embeds: [embed]});
+
         break;
       }
 
       default:
-        await msg.channel.send(errorMsg('I\'ve never met this setting in my life'));
+        throw new Error('unknown subcommand');
     }
   }
 }
