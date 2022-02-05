@@ -9,7 +9,7 @@ import Command from '.';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('disconnect')
-    .setDescription('pauses and disconnects player');
+    .setDescription('pause and disconnect Muse');
 
   public requiresVC = true;
 

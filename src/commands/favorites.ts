@@ -10,7 +10,7 @@ import {prisma} from '../utils/db.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('favorites')
-    .setDescription('adds a song to your favorites')
+    .setDescription('add a song to your favorites')
     .addSubcommand(subcommand => subcommand
       .setName('use')
       .setDescription('use a favorite')

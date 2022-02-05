@@ -10,7 +10,7 @@ import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('skip')
-    .setDescription('skips the next songs')
+    .setDescription('skip the next songs')
     .addIntegerOption(option => option
       .setName('number')
       .setDescription('number of songs to skip [default: 1]')

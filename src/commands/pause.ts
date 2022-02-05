@@ -10,7 +10,7 @@ import Command from '.';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('pause')
-    .setDescription('pauses the current song');
+    .setDescription('pause the current song');
 
   public requiresVC = true;
 
