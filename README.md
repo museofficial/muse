@@ -4,6 +4,8 @@
 
 Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that doesn't suck**. It's made for small to medium-sized Discord servers/guilds (think about a group the size of you, your friends, and your friend's friends).
 
+![Hero graphic](.github/hero.png)
+
 ## Features
 
 - 🎥 Livestreams
@@ -15,10 +17,6 @@ Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that
 - 1️⃣ Muse instance supports multiple guilds
 - ✍️ Written in TypeScript, easily extendable
 - ❤️ Loyal Packers fan
-
-## Design Philosophy
-
-I believe it makes much more sense to let Discord handle user permissions (whenever possible) rather than building them into a bot and adding additional complexity. Instead of only allowing users with a certain role to control Muse, Muse allows anyone who has access to its bound channel to control it. Instead of specifying the owner as a user ID in the config, Muse simply looks at the guild owner.
 
 ## Running
 
@@ -92,4 +90,4 @@ By default, Muse limits the total cache size to around 2 GB. If you want to chan
 
 ### Bot-wide commands
 
-If you have Muse running in a lot of guilds (10+) you may want to switch to registering commands bot-wide rather than for each guild. (The downside to this is that command updates can take up to an hour to propogate.) To do this, set the environment variable `REGISTER_COMMANDS_ON_BOT` to `true`.
+If you have Muse running in a lot of guilds (10+) you may want to switch to registering commands bot-wide rather than for each guild. (The downside to this is that command updates can take up to an hour to propagate.) To do this, set the environment variable `REGISTER_COMMANDS_ON_BOT` to `true`.
