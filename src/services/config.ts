@@ -40,7 +40,7 @@ export default class Config {
       if (typeof value === 'number') {
         this[key as ConditionalKeys<typeof CONFIG_MAP, number>] = value;
       } else if (typeof value === 'string') {
-        this[key as ConditionalKeys<typeof CONFIG_MAP, string>] = value;
+        this[key as ConditionalKeys<typeof CONFIG_MAP, string>] = value.trim();
       } else if (typeof value === 'boolean') {
         this[key as ConditionalKeys<typeof CONFIG_MAP, boolean>] = value;
       } else {
