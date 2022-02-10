@@ -28,6 +28,8 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 
+A 64-bit OS is required to run Muse.
+
 ### Versioning
 
 The `master` branch acts as the developing / bleeding edge branch and is not guaranteed to be stable.
