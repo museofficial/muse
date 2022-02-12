@@ -48,7 +48,7 @@ jobs:
           push: true
           tags: codetheweb/muse:${{ github.event.pull_request.head.sha }}-${{ matrix.tagged-platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=min
           platforms: ${{ matrix.build-arch }}
 
   combine-and-comment:
