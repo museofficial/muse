@@ -131,7 +131,9 @@ export default class implements Command {
         const settingsToShow = {
           'Playlist Limit': config.playlistLimit,
           Role: config.roleId ? `<@&${config.roleId}>` : 'not set',
-          'Wait before leaving after queue empty': `${config.waitAfterQueueEmpty}s`,
+          'Wait before leaving after queue empty': config.waitAfterQueueEmpty === 0
+            ? 'never leave'
+            : `${config.waitAfterQueueEmpty}s`,
           'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
         };
 
