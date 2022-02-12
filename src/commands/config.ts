@@ -25,7 +25,7 @@ export default class implements Command {
         .setDescription('allowed role')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
-      .setName('set-wait-after-queue-empty')
+      .setName('set-wait-after-queue-empties')
       .setDescription('set the time to wait before leaving the voice channel when queue empties')
       .addIntegerOption(option => option
         .setName('delay')
@@ -93,7 +93,7 @@ export default class implements Command {
             guildId: interaction.guild!.id,
           },
           data: {
-            waitAfterQueueEmpty: delay,
+            secondsToWaitAfterQueueEmpties: delay,
           },
         });
 
@@ -131,9 +131,9 @@ export default class implements Command {
         const settingsToShow = {
           'Playlist Limit': config.playlistLimit,
           Role: config.roleId ? `<@&${config.roleId}>` : 'not set',
-          'Wait before leaving after queue empty': config.waitAfterQueueEmpty === 0
+          'Wait before leaving after queue empty': config.secondsToWaitAfterQueueEmpties === 0
             ? 'never leave'
-            : `${config.waitAfterQueueEmpty}s`,
+            : `${config.secondsToWaitAfterQueueEmpties}s`,
           'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
         };
 

@@ -8,7 +8,7 @@ import shuffle from 'array-shuffle';
 import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
-import { prisma } from '../utils/db.js';
+import {prisma} from '../utils/db.js';
 
 export interface QueuedPlaylist {
   title: string;
@@ -134,9 +134,9 @@ export default class {
       throw new Error('Queue empty.');
     }
 
-    // cancel any pending idle disconnection
+    // Cancel any pending idle disconnection
     if (this.disconnectTimer) {
-      clearInterval(this.disconnectTimer)
+      clearInterval(this.disconnectTimer);
       this.disconnectTimer = null;
     }
 
@@ -215,27 +215,30 @@ export default class {
   async forward(skip: number): Promise<void> {
     this.manualForward(skip);
 
+    console.log(this.getCurrent());
+
     try {
       if (this.getCurrent() && this.status !== STATUS.PAUSED) {
         await this.play();
       } else {
+        this.audioPlayer?.stop();
         this.status = STATUS.IDLE;
 
-        const settings = await prisma.setting.findUnique({where: { guildId: this.guildId }});
+        const settings = await prisma.setting.findUnique({where: {guildId: this.guildId}});
 
         if (!settings) {
           throw new Error('Could not find settings for guild');
         }
 
-        const { waitAfterQueueEmpty } = settings;
-        if (waitAfterQueueEmpty !== 0) {
+        const {secondsToWaitAfterQueueEmpties} = settings;
+        if (secondsToWaitAfterQueueEmpties !== 0) {
           this.disconnectTimer = setTimeout(() => {
-            // make sure we are not accidentally playing
+            // Make sure we are not accidentally playing
             // when disconnecting
             if (this.status === STATUS.IDLE) {
               this.disconnect();
             }
-          }, waitAfterQueueEmpty * 1000)
+          }, secondsToWaitAfterQueueEmpties * 1000);
         }
       }
     } catch (error: unknown) {

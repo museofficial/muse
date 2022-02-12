@@ -132,7 +132,7 @@ export default class AddQueryToQueue {
         embeds: [buildPlayingMessageEmbed(player)],
       });
     } else if (player.status === STATUS.IDLE) {
-      // player is idle, start playback instead
+      // Player is idle, start playback instead
       await player.play();
     }
 
