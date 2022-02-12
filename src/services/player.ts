@@ -8,6 +8,7 @@ import shuffle from 'array-shuffle';
 import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
+import {prisma} from '../utils/db.js';
 
 export interface QueuedPlaylist {
   title: string;
@@ -29,6 +30,7 @@ export interface QueuedSong {
 export enum STATUS {
   PLAYING,
   PAUSED,
+  IDLE,
 }
 
 export interface PlayerEvents {
@@ -50,6 +52,7 @@ export default class {
   private positionInSeconds = 0;
 
   private readonly fileCache: FileCacheProvider;
+  private disconnectTimer: NodeJS.Timeout | null = null;
 
   constructor(fileCache: FileCacheProvider, guildId: string) {
     this.fileCache = fileCache;
@@ -131,6 +134,12 @@ export default class {
       throw new Error('Queue empty.');
     }
 
+    // Cancel any pending idle disconnection
+    if (this.disconnectTimer) {
+      clearInterval(this.disconnectTimer);
+      this.disconnectTimer = null;
+    }
+
     // Resume from paused state
     if (this.status === STATUS.PAUSED && currentSong.url === this.nowPlaying?.url) {
       if (this.audioPlayer) {
@@ -206,12 +215,31 @@ export default class {
   async forward(skip: number): Promise<void> {
     this.manualForward(skip);
 
+    console.log(this.getCurrent());
+
     try {
       if (this.getCurrent() && this.status !== STATUS.PAUSED) {
         await this.play();
       } else {
-        this.status = STATUS.PAUSED;
-        this.disconnect();
+        this.audioPlayer?.stop();
+        this.status = STATUS.IDLE;
+
+        const settings = await prisma.setting.findUnique({where: {guildId: this.guildId}});
+
+        if (!settings) {
+          throw new Error('Could not find settings for guild');
+        }
+
+        const {secondsToWaitAfterQueueEmpties} = settings;
+        if (secondsToWaitAfterQueueEmpties !== 0) {
+          this.disconnectTimer = setTimeout(() => {
+            // Make sure we are not accidentally playing
+            // when disconnecting
+            if (this.status === STATUS.IDLE) {
+              this.disconnect();
+            }
+          }, secondsToWaitAfterQueueEmpties * 1000);
+        }
       }
     } catch (error: unknown) {
       this.queuePosition--;

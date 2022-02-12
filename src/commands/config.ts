@@ -25,6 +25,21 @@ export default class implements Command {
         .setDescription('allowed role')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
+      .setName('set-wait-after-queue-empties')
+      .setDescription('set the time to wait before leaving the voice channel when queue empties')
+      .addIntegerOption(option => option
+        .setName('delay')
+        .setDescription('delay in seconds (set to 0 to never leave)')
+        .setRequired(true)
+        .setMinValue(0)))
+    .addSubcommand(subcommand => subcommand
+      .setName('set-leave-if-no-listeners')
+      .setDescription('set whether to leave when all other participants leave')
+      .addBooleanOption(option => option
+        .setName('value')
+        .setDescription('whether to leave when everyone else leaves')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
       .setName('get')
       .setDescription('show all settings'));
 
@@ -70,6 +85,40 @@ export default class implements Command {
         break;
       }
 
+      case 'set-wait-after-queue-empty': {
+        const delay = interaction.options.getInteger('delay')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            secondsToWaitAfterQueueEmpties: delay,
+          },
+        });
+
+        await interaction.reply('👍 wait delay updated');
+
+        break;
+      }
+
+      case 'set-leave-if-no-listeners': {
+        const value = interaction.options.getBoolean('value')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            leaveIfNoListeners: value,
+          },
+        });
+
+        await interaction.reply('👍 leave setting updated');
+
+        break;
+      }
+
       case 'get': {
         const embed = new MessageEmbed().setTitle('Config');
 
@@ -82,6 +131,10 @@ export default class implements Command {
         const settingsToShow = {
           'Playlist Limit': config.playlistLimit,
           Role: config.roleId ? `<@&${config.roleId}>` : 'not set',
+          'Wait before leaving after queue empty': config.secondsToWaitAfterQueueEmpties === 0
+            ? 'never leave'
+            : `${config.secondsToWaitAfterQueueEmpties}s`,
+          'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
         };
 
         let description = '';
