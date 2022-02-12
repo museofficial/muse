@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.1.0] - 2022-02-11
 ### Changed
 - Muse now stays in a voice channel after the queue finishes for 30 seconds by default. This behavior can be changed with `/config set-wait-after-queue-empties`.
 
@@ -70,7 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/codetheweb/muse/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/codetheweb/muse/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/codetheweb/muse/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/codetheweb/muse/compare/v0.5.4...v1.0.0
 [0.5.4]: https://github.com/codetheweb/muse/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/codetheweb/muse/compare/v0.5.2...v0.5.3
