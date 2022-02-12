@@ -115,7 +115,7 @@
     "spotify-web-api-node": "^5.0.2",
     "xbytes": "^1.7.0",
     "youtube.ts": "^0.2.5",
-    "ytdl-core": "^4.10.0",
+    "ytdl-core": "^4.10.1",
     "ytsr": "^3.6.0"
   }
 }
