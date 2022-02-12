@@ -33,6 +33,13 @@ export default class implements Command {
         .setRequired(true)
         .setMinValue(0)))
     .addSubcommand(subcommand => subcommand
+      .setName('set-leave-if-no-listeners')
+      .setDescription('set whether to leave when all other participants leave')
+      .addBooleanOption(option => option
+        .setName('value')
+        .setDescription('whether to leave when everyone else leaves')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
       .setName('get')
       .setDescription('show all settings'));
 
@@ -95,6 +102,23 @@ export default class implements Command {
         break;
       }
 
+      case 'set-leave-if-no-listeners': {
+        const value = interaction.options.getBoolean('value')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            leaveIfNoListeners: value,
+          },
+        });
+
+        await interaction.reply('👍 leave setting updated');
+
+        break;
+      }
+
       case 'get': {
         const embed = new MessageEmbed().setTitle('Config');
 
@@ -108,6 +132,7 @@ export default class implements Command {
           'Playlist Limit': config.playlistLimit,
           Role: config.roleId ? `<@&${config.roleId}>` : 'not set',
           'Wait before leaving after queue empty': `${config.waitAfterQueueEmpty}s`,
+          'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
         };
 
         let description = '';
