@@ -1294,10 +1294,10 @@ eslint-config-xo-typescript@^0.44.0:
   dependencies:
     typescript ">=4.3"
 
-eslint-config-xo@^0.38.0:
-  version "0.38.0"
-  resolved "https://registry.yarnpkg.com/eslint-config-xo/-/eslint-config-xo-0.38.0.tgz#50cbe676a90d5582e1bbf1de750286e7cf09378e"
-  integrity sha512-G2jL+VyfkcZW8GoTmqLsExvrWssBedSoaQQ11vyhflDeT3csMdBVp0On+AVijrRuvgmkWeDwwUL5Rj0qDRHK6g==
+eslint-config-xo@^0.39.0:
+  version "0.39.0"
+  resolved "https://registry.yarnpkg.com/eslint-config-xo/-/eslint-config-xo-0.39.0.tgz#a76074270d5ecaa6655a740cbdc86eba621590b7"
+  integrity sha512-QX+ZnQgzy/UtgF8dksIiIBzpYoEKmiL0CmZ8O0Gnby7rGXg8Cny1CXirmHp1zKYIpO7BuTmtWj8eUYOsGr0IGQ==
   dependencies:
     confusing-browser-globals "1.0.10"
 
