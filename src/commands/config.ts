@@ -85,7 +85,7 @@ export default class implements Command {
         break;
       }
 
-      case 'set-wait-after-queue-empty': {
+      case 'set-wait-after-queue-empties': {
         const delay = interaction.options.getInteger('delay')!;
 
         await prisma.setting.update({
