@@ -24,6 +24,8 @@ jobs:
                 ${{ runner.OS }}-
         - name: Install dependencies
           run: yarn install
+        - name: Generate Prisma client
+          run: yarn prisma generate
         - name: Run lint
           run: yarn lint
         - name: Build
