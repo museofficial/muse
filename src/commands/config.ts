@@ -25,6 +25,14 @@ export default class implements Command {
         .setDescription('allowed role')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
+      .setName('set-wait-after-queue-empty')
+      .setDescription('set the time to wait before leaving the voice channel when queue empties')
+      .addIntegerOption(option => option
+        .setName('delay')
+        .setDescription('delay in seconds (set to 0 to never leave)')
+        .setRequired(true)
+        .setMinValue(0)))
+    .addSubcommand(subcommand => subcommand
       .setName('get')
       .setDescription('show all settings'));
 
@@ -70,6 +78,23 @@ export default class implements Command {
         break;
       }
 
+      case 'set-wait-after-queue-empty': {
+        const delay = interaction.options.getInteger('delay')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            waitAfterQueueEmpty: delay,
+          },
+        });
+
+        await interaction.reply('👍 wait delay updated');
+
+        break;
+      }
+
       case 'get': {
         const embed = new MessageEmbed().setTitle('Config');
 
@@ -82,6 +107,7 @@ export default class implements Command {
         const settingsToShow = {
           'Playlist Limit': config.playlistLimit,
           Role: config.roleId ? `<@&${config.roleId}>` : 'not set',
+          'Wait before leaving after queue empty': `${config.waitAfterQueueEmpty}s`,
         };
 
         let description = '';

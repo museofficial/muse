@@ -4,7 +4,7 @@ import {Except} from 'type-fest';
 import shuffle from 'array-shuffle';
 import {TYPES} from '../types.js';
 import GetSongs from '../services/get-songs.js';
-import {QueuedSong} from './player.js';
+import {QueuedSong, STATUS} from './player.js';
 import PlayerManager from '../managers/player.js';
 import {prisma} from '../utils/db.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
@@ -131,6 +131,9 @@ export default class AddQueryToQueue {
       await interaction.editReply({
         embeds: [buildPlayingMessageEmbed(player)],
       });
+    } else if (player.status === STATUS.IDLE) {
+      // player is idle, start playback instead
+      await player.play();
     }
 
     // Build response message
