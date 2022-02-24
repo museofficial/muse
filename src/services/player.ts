@@ -215,8 +215,6 @@ export default class {
   async forward(skip: number): Promise<void> {
     this.manualForward(skip);
 
-    console.log(this.getCurrent());
-
     try {
       if (this.getCurrent() && this.status !== STATUS.PAUSED) {
         await this.play();
