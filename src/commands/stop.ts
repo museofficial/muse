@@ -10,7 +10,7 @@ import Command from '.';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('stop')
-    .setDescription('stop playback, disconnect and clear all songs in the queue');
+    .setDescription('stop playback, disconnect, and clear all songs in the queue');
 
   public requiresVC = true;
 
