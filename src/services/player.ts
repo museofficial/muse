@@ -340,6 +340,12 @@ export default class {
     return this.queueSize() === 0;
   }
 
+  stop(): void {
+    this.disconnect();
+    this.queuePosition = 0;
+    this.queue = [];
+  }
+
   private getHashForCache(url: string): string {
     return hasha(url);
   }
