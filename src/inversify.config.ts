@@ -26,6 +26,7 @@ import Remove from './commands/remove.js';
 import Seek from './commands/seek.js';
 import Shuffle from './commands/shuffle.js';
 import Skip from './commands/skip.js';
+import Stop from './commands/stop.js';
 import Unskip from './commands/unskip.js';
 import ThirdParty from './services/third-party.js';
 import FileCacheProvider from './services/file-cache.js';
@@ -66,6 +67,7 @@ container.bind<AddQueryToQueue>(TYPES.Services.AddQueryToQueue).to(AddQueryToQue
   Seek,
   Shuffle,
   Skip,
+  Stop,
   Unskip,
 ].forEach(command => {
   container.bind<Command>(TYPES.Command).to(command).inSingletonScope();
