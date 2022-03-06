@@ -13,13 +13,13 @@ const getMaxSongTitleLength = (title: string) => {
   return nonASCII.test(title) ? 28 : 48;
 };
 
-const getSongTitle = ({title, url}: QueuedSong, shouldTruncate = false) => {
+const getSongTitle = ({title, url, offset}: QueuedSong, shouldTruncate = false) => {
   const cleanSongTitle = title.replace(/\[.*\]/, '').trim();
 
   const songTitle = shouldTruncate ? truncate(cleanSongTitle, getMaxSongTitleLength(cleanSongTitle)) : cleanSongTitle;
   const youtubeId = url.length === 11 ? url : getYouTubeID(url) ?? '';
 
-  return `[${songTitle}](https://www.youtube.com/watch?v=${youtubeId})`;
+  return `[${songTitle}](https://www.youtube.com/watch?v=${youtubeId}${offset === 0 ? '' : '&t=' + String(offset)})`;
 };
 
 const getQueueInfo = (player: Player) => {
