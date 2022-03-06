@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import {CommandInteraction, GuildMember} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import {Except} from 'type-fest';
@@ -18,11 +19,13 @@ export default class AddQueryToQueue {
     query,
     addToFrontOfQueue,
     shuffleAdditions,
+    splitChapters,
     interaction,
   }: {
     query: string;
     addToFrontOfQueue: boolean;
     shuffleAdditions: boolean;
+    splitChapters: boolean;
     interaction: CommandInteraction;
   }): Promise<void> {
     const guildId = interaction.guild!.id;
@@ -60,18 +63,18 @@ export default class AddQueryToQueue {
         // YouTube source
         if (url.searchParams.get('list')) {
           // YouTube playlist
-          newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!));
+          newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!, splitChapters));
         } else {
-          const song = await this.getSongs.youtubeVideo(url.href);
+          const songs = await this.getSongs.youtubeVideo(url.href, splitChapters);
 
-          if (song) {
-            newSongs.push(song);
+          if (songs) {
+            newSongs.push(...songs);
           } else {
             throw new Error('that doesn\'t exist');
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(query, playlistLimit);
+        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(query, playlistLimit, splitChapters);
 
         if (totalSongs > playlistLimit) {
           extraMsg = `a random sample of ${playlistLimit} songs was taken`;
@@ -93,10 +96,10 @@ export default class AddQueryToQueue {
       }
     } catch (_: unknown) {
       // Not a URL, must search YouTube
-      const song = await this.getSongs.youtubeVideoSearch(query);
+      const songs = await this.getSongs.youtubeVideoSearch(query, splitChapters);
 
-      if (song) {
-        newSongs.push(song);
+      if (songs) {
+        newSongs.push(...songs);
       } else {
         throw new Error('that doesn\'t exist');
       }

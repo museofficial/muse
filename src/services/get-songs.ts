@@ -5,7 +5,7 @@ import got from 'got';
 import ytsr, {Video} from 'ytsr';
 import spotifyURI from 'spotify-uri';
 import Spotify from 'spotify-web-api-node';
-import YouTube, {YoutubePlaylistItem} from 'youtube.ts';
+import YouTube, {YoutubePlaylistItem, YoutubeVideo} from 'youtube.ts';
 import PQueue from 'p-queue';
 import shuffle from 'array-shuffle';
 import {Except} from 'type-fest';
@@ -16,8 +16,17 @@ import ThirdParty from './third-party.js';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
+import {parseTime} from '../utils/time.js';
 
 type SongMetadata = Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>;
+
+interface VideoDetailsResponse {
+  id: string;
+  contentDetails: {
+    videoId: string;
+    duration: string;
+  };
+}
 
 @injectable()
 export default class {
@@ -40,7 +49,7 @@ export default class {
     this.ytsrQueue = new PQueue({concurrency: 4});
   }
 
-  async youtubeVideoSearch(query: string): Promise<SongMetadata> {
+  async youtubeVideoSearch(query: string, splitChapters: boolean): Promise<SongMetadata[]> {
     const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
       ytsr,
       query,
@@ -65,10 +74,10 @@ export default class {
       throw new Error('No video found.');
     }
 
-    return this.youtubeVideo(firstVideo.id);
+    return this.youtubeVideo(firstVideo.id, splitChapters);
   }
 
-  async youtubeVideo(url: string): Promise<SongMetadata> {
+  async youtubeVideo(url: string, splitChapters: boolean): Promise<SongMetadata[]> {
     const videoDetails = await this.cache.wrap(
       this.youtube.videos.get,
       cleanUrl(url),
@@ -77,18 +86,13 @@ export default class {
       },
     );
 
-    return {
-      title: videoDetails.snippet.title,
-      artist: videoDetails.snippet.channelTitle,
-      length: toSeconds(parse(videoDetails.contentDetails.duration)),
-      url: videoDetails.id,
-      playlist: null,
-      isLive: videoDetails.snippet.liveBroadcastContent === 'live',
-      thumbnailUrl: videoDetails.snippet.thumbnails.medium.url,
-    };
+    const songsToReturn: SongMetadata[] = [];
+    this.splitVideoIfNeeded(videoDetails, splitChapters, songsToReturn);
+
+    return songsToReturn;
   }
 
-  async youtubePlaylist(listId: string): Promise<SongMetadata[]> {
+  async youtubePlaylist(listId: string, splitChapters: boolean): Promise<SongMetadata[]> {
     // YouTube playlist
     const playlist = await this.cache.wrap(
       this.youtube.playlists.get,
@@ -97,14 +101,6 @@ export default class {
         expiresIn: ONE_MINUTE_IN_SECONDS,
       },
     );
-
-    interface VideoDetailsResponse {
-      id: string;
-      contentDetails: {
-        videoId: string;
-        duration: string;
-      };
-    }
 
     const playlistVideos: YoutubePlaylistItem[] = [];
     const videoDetailsPromises: Array<Promise<void>> = [];
@@ -161,17 +157,9 @@ export default class {
 
     for (const video of playlistVideos) {
       try {
-        const length = toSeconds(parse(videoDetails.find((i: {id: string}) => i.id === video.contentDetails.videoId)!.contentDetails.duration));
+        const vd = videoDetails.find((i: {id: string}) => i.id === video.contentDetails.videoId);
 
-        songsToReturn.push({
-          title: video.snippet.title,
-          artist: video.snippet.channelTitle,
-          length,
-          url: video.contentDetails.videoId,
-          playlist: queuedPlaylist,
-          isLive: false,
-          thumbnailUrl: video.snippet.thumbnails.medium.url,
-        });
+        this.splitVideoIfNeeded(video, splitChapters, songsToReturn, queuedPlaylist, vd);
       } catch (_: unknown) {
         // Private and deleted videos are sometimes in playlists, duration of these is not returned and they should not be added to the queue.
       }
@@ -180,7 +168,7 @@ export default class {
     return songsToReturn;
   }
 
-  async spotifySource(url: string, playlistLimit: number): Promise<[SongMetadata[], number, number]> {
+  async spotifySource(url: string, playlistLimit: number, splitChapters: boolean): Promise<[SongMetadata[], number, number]> {
     const parsed = spotifyURI.parse(url);
 
     let tracks: SpotifyApi.TrackObjectSimplified[] = [];
@@ -253,17 +241,19 @@ export default class {
       tracks = shuffled.slice(0, playlistLimit);
     }
 
-    const searchResults = await Promise.allSettled(tracks.map(async track => this.spotifyToYouTube(track)));
+    const searchResults = await Promise.allSettled(tracks.map(async track => this.spotifyToYouTube(track, splitChapters)));
 
     let nSongsNotFound = 0;
 
     // Count songs that couldn't be found
     const songs: SongMetadata[] = searchResults.reduce((accum: SongMetadata[], result) => {
       if (result.status === 'fulfilled') {
-        accum.push({
-          ...result.value,
-          ...(playlist ? {playlist} : {}),
-        });
+        for (const v of result.value) {
+          accum.push({
+            ...v,
+            ...(playlist ? {playlist} : {}),
+          });
+        }
       } else {
         nSongsNotFound++;
       }
@@ -274,7 +264,79 @@ export default class {
     return [songs, nSongsNotFound, originalNSongs];
   }
 
-  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified): Promise<SongMetadata> {
-    return this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`);
+  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, splitChapters: boolean): Promise<SongMetadata[]> {
+    return this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`, splitChapters);
+  }
+
+  private splitVideoIfNeeded(video: YoutubePlaylistItem | YoutubeVideo, splitChapters: boolean, songsToReturn: SongMetadata[], queuedPlaylist?: QueuedPlaylist | null, videoDetails?: VideoDetailsResponse) {
+    let chapters: Map<number, string> | null = null;
+    if (splitChapters) {
+      chapters = this.parseChaptersFromDescription(video.snippet.description);
+    }
+
+    let url: string;
+    let length: number;
+    // Dirty hack
+    if (queuedPlaylist) {
+      // Is playlist item
+      video = video as YoutubePlaylistItem;
+      url = video.contentDetails.videoId;
+      length = toSeconds(parse(videoDetails!.contentDetails.duration));
+    } else {
+      video = video as YoutubeVideo;
+      length = toSeconds(parse(video.contentDetails.duration));
+      url = video.id;
+      queuedPlaylist = null;
+    }
+
+    const baseVideo: SongMetadata = {
+      title: video.snippet.title,
+      artist: video.snippet.channelTitle,
+      length,
+      offset: 0,
+      url,
+      playlist: queuedPlaylist,
+      isLive: false,
+      thumbnailUrl: video.snippet.thumbnails.medium.url,
+    };
+
+    if (chapters === null) {
+      songsToReturn.push(baseVideo);
+    } else {
+      const chapterSeconds = [...chapters.keys()].sort((a, b) => a < b ? -1 : 1);
+      for (const s of chapterSeconds) {
+        const i = chapterSeconds.indexOf(s);
+        songsToReturn.push({...baseVideo, offset: s, length: i === chapterSeconds.length - 1 ? baseVideo.length - s : chapterSeconds[i + 1] - s, title: baseVideo.title + ' - ' + chapters.get(s)!});
+      }
+    }
+  }
+
+  private parseChaptersFromDescription(description: string): Map<number, string> | null {
+    const map = new Map<number, string>();
+    let foundFirstTimestamp = false;
+
+    for (const line of description.split('\n')) {
+      const timestamps = Array.from(line.matchAll(/(?:\d+:)+\d+/g));
+      if (timestamps?.length !== 1) {
+        continue;
+      }
+
+      if (!foundFirstTimestamp) {
+        if (/0{1,2}:00/.test(timestamps[0][0])) {
+          foundFirstTimestamp = true;
+        } else {
+          continue;
+        }
+      }
+
+      const seconds = parseTime(timestamps[0][0]);
+      map.set(seconds, line);
+    }
+
+    if (!map.size) {
+      return null;
+    }
+
+    return map;
   }
 }
