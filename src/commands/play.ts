@@ -81,7 +81,7 @@ export default class implements Command {
       query: query.trim(),
       addToFrontOfQueue: interaction.options.getBoolean('immediate') ?? false,
       shuffleAdditions: interaction.options.getBoolean('shuffle') ?? false,
-      splitChapters: interaction.options.getBoolean('split') ?? false,
+      shouldSplitChapters: interaction.options.getBoolean('split') ?? false,
     });
   }
 

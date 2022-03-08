@@ -25,7 +25,7 @@ export default class implements Command {
   }
 
   public async execute(interaction: CommandInteraction): Promise<void> {
-    const numToSkip = interaction.options.getInteger('skip') ?? 1;
+    const numToSkip = interaction.options.getInteger('number') ?? 1;
 
     if (numToSkip < 1) {
       throw new Error('invalid number of songs to skip');

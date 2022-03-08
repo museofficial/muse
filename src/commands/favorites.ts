@@ -119,7 +119,7 @@ export default class implements Command {
       query: favorite.query,
       shuffleAdditions: interaction.options.getBoolean('shuffle') ?? false,
       addToFrontOfQueue: interaction.options.getBoolean('immediate') ?? false,
-      splitChapters: interaction.options.getBoolean('split') ?? false,
+      shouldSplitChapters: interaction.options.getBoolean('split') ?? false,
     });
   }
 

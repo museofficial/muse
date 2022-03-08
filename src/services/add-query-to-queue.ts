@@ -19,13 +19,13 @@ export default class AddQueryToQueue {
     query,
     addToFrontOfQueue,
     shuffleAdditions,
-    splitChapters,
+    shouldSplitChapters,
     interaction,
   }: {
     query: string;
     addToFrontOfQueue: boolean;
     shuffleAdditions: boolean;
-    splitChapters: boolean;
+    shouldSplitChapters: boolean;
     interaction: CommandInteraction;
   }): Promise<void> {
     const guildId = interaction.guild!.id;
@@ -63,9 +63,9 @@ export default class AddQueryToQueue {
         // YouTube source
         if (url.searchParams.get('list')) {
           // YouTube playlist
-          newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!, splitChapters));
+          newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters));
         } else {
-          const songs = await this.getSongs.youtubeVideo(url.href, splitChapters);
+          const songs = await this.getSongs.youtubeVideo(url.href, shouldSplitChapters);
 
           if (songs) {
             newSongs.push(...songs);
@@ -74,7 +74,7 @@ export default class AddQueryToQueue {
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(query, playlistLimit, splitChapters);
+        const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(query, playlistLimit, shouldSplitChapters);
 
         if (totalSongs > playlistLimit) {
           extraMsg = `a random sample of ${playlistLimit} songs was taken`;
@@ -96,7 +96,7 @@ export default class AddQueryToQueue {
       }
     } catch (_: unknown) {
       // Not a URL, must search YouTube
-      const songs = await this.getSongs.youtubeVideoSearch(query, splitChapters);
+      const songs = await this.getSongs.youtubeVideoSearch(query, shouldSplitChapters);
 
       if (songs) {
         newSongs.push(...songs);

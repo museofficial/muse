@@ -49,7 +49,7 @@ export default class {
     this.ytsrQueue = new PQueue({concurrency: 4});
   }
 
-  async youtubeVideoSearch(query: string, splitChapters: boolean): Promise<SongMetadata[]> {
+  async youtubeVideoSearch(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
       ytsr,
       query,
@@ -74,11 +74,11 @@ export default class {
       throw new Error('No video found.');
     }
 
-    return this.youtubeVideo(firstVideo.id, splitChapters);
+    return this.youtubeVideo(firstVideo.id, shouldSplitChapters);
   }
 
-  async youtubeVideo(url: string, splitChapters: boolean): Promise<SongMetadata[]> {
-    const videoDetails = await this.cache.wrap(
+  async youtubeVideo(url: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+    const video = await this.cache.wrap(
       this.youtube.videos.get,
       cleanUrl(url),
       {
@@ -86,13 +86,10 @@ export default class {
       },
     );
 
-    const songsToReturn: SongMetadata[] = [];
-    this.splitVideoIfNeeded(videoDetails, splitChapters, songsToReturn);
-
-    return songsToReturn;
+    return this.getMetadataFromVideo({video, shouldSplitChapters});
   }
 
-  async youtubePlaylist(listId: string, splitChapters: boolean): Promise<SongMetadata[]> {
+  async youtubePlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     // YouTube playlist
     const playlist = await this.cache.wrap(
       this.youtube.playlists.get,
@@ -157,9 +154,12 @@ export default class {
 
     for (const video of playlistVideos) {
       try {
-        const vd = videoDetails.find((i: {id: string}) => i.id === video.contentDetails.videoId);
-
-        this.splitVideoIfNeeded(video, splitChapters, songsToReturn, queuedPlaylist, vd);
+        songsToReturn.push(...this.getMetadataFromVideo({
+          video,
+          queuedPlaylist,
+          videoDetails: videoDetails.find((i: {id: string}) => i.id === video.contentDetails.videoId),
+          shouldSplitChapters,
+        }));
       } catch (_: unknown) {
         // Private and deleted videos are sometimes in playlists, duration of these is not returned and they should not be added to the queue.
       }
@@ -168,7 +168,7 @@ export default class {
     return songsToReturn;
   }
 
-  async spotifySource(url: string, playlistLimit: number, splitChapters: boolean): Promise<[SongMetadata[], number, number]> {
+  async spotifySource(url: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], number, number]> {
     const parsed = spotifyURI.parse(url);
 
     let tracks: SpotifyApi.TrackObjectSimplified[] = [];
@@ -241,7 +241,7 @@ export default class {
       tracks = shuffled.slice(0, playlistLimit);
     }
 
-    const searchResults = await Promise.allSettled(tracks.map(async track => this.spotifyToYouTube(track, splitChapters)));
+    const searchResults = await Promise.allSettled(tracks.map(async track => this.spotifyToYouTube(track, shouldSplitChapters)));
 
     let nSongsNotFound = 0;
 
@@ -264,57 +264,72 @@ export default class {
     return [songs, nSongsNotFound, originalNSongs];
   }
 
-  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, splitChapters: boolean): Promise<SongMetadata[]> {
-    return this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`, splitChapters);
+  private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+    return this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`, shouldSplitChapters);
   }
 
-  private splitVideoIfNeeded(video: YoutubePlaylistItem | YoutubeVideo, splitChapters: boolean, songsToReturn: SongMetadata[], queuedPlaylist?: QueuedPlaylist | null, videoDetails?: VideoDetailsResponse) {
-    let chapters: Map<number, string> | null = null;
-    if (splitChapters) {
-      chapters = this.parseChaptersFromDescription(video.snippet.description);
-    }
-
+  // TODO: we should convert YouTube videos (from both single videos and playlists) to an intermediate representation so we don't have to check if it's from a playlist
+  private getMetadataFromVideo({
+    video,
+    queuedPlaylist,
+    videoDetails,
+    shouldSplitChapters,
+  }: {
+    video: YoutubeVideo | YoutubePlaylistItem;
+    queuedPlaylist?: QueuedPlaylist;
+    videoDetails?: VideoDetailsResponse;
+    shouldSplitChapters?: boolean;
+  }): SongMetadata[] {
     let url: string;
-    let length: number;
+    let videoDurationSeconds: number;
     // Dirty hack
     if (queuedPlaylist) {
       // Is playlist item
       video = video as YoutubePlaylistItem;
       url = video.contentDetails.videoId;
-      length = toSeconds(parse(videoDetails!.contentDetails.duration));
+      videoDurationSeconds = toSeconds(parse(videoDetails!.contentDetails.duration));
     } else {
       video = video as YoutubeVideo;
-      length = toSeconds(parse(video.contentDetails.duration));
+      videoDurationSeconds = toSeconds(parse(video.contentDetails.duration));
       url = video.id;
-      queuedPlaylist = null;
     }
 
-    const baseVideo: SongMetadata = {
+    const chapters = this.parseChaptersFromDescription(video.snippet.description, videoDurationSeconds);
+
+    const base: SongMetadata = {
       title: video.snippet.title,
       artist: video.snippet.channelTitle,
-      length,
+      length: videoDurationSeconds,
       offset: 0,
       url,
-      playlist: queuedPlaylist,
+      playlist: queuedPlaylist ?? null,
       isLive: false,
       thumbnailUrl: video.snippet.thumbnails.medium.url,
     };
 
-    if (chapters === null) {
-      songsToReturn.push(baseVideo);
-    } else {
-      const chapterSeconds = [...chapters.keys()].sort((a, b) => a < b ? -1 : 1);
-      for (const s of chapterSeconds) {
-        const i = chapterSeconds.indexOf(s);
-        songsToReturn.push({...baseVideo, offset: s, length: i === chapterSeconds.length - 1 ? baseVideo.length - s : chapterSeconds[i + 1] - s, title: baseVideo.title + ' - ' + chapters.get(s)!});
-      }
+    if (!chapters || !shouldSplitChapters) {
+      return [base];
     }
+
+    const tracks: SongMetadata[] = [];
+
+    for (const [label, {offset, length}] of chapters) {
+      tracks.push({
+        ...base,
+        offset,
+        length,
+        title: `${label} (${base.title})`,
+      });
+    }
+
+    return tracks;
   }
 
-  private parseChaptersFromDescription(description: string): Map<number, string> | null {
-    const map = new Map<number, string>();
+  private parseChaptersFromDescription(description: string, videoDurationSeconds: number) {
+    const map = new Map<string, {offset: number; length: number}>();
     let foundFirstTimestamp = false;
 
+    const foundTimestamps: Array<{name: string; offset: number}> = [];
     for (const line of description.split('\n')) {
       const timestamps = Array.from(line.matchAll(/(?:\d+:)+\d+/g));
       if (timestamps?.length !== 1) {
@@ -329,8 +344,20 @@ export default class {
         }
       }
 
-      const seconds = parseTime(timestamps[0][0]);
-      map.set(seconds, line);
+      const timestamp = timestamps[0][0];
+      const seconds = parseTime(timestamp);
+      const chapterName = line.split(timestamp)[1].trim();
+
+      foundTimestamps.push({name: chapterName, offset: seconds});
+    }
+
+    for (const [i, {name, offset}] of foundTimestamps.entries()) {
+      map.set(name, {
+        offset,
+        length: i === foundTimestamps.length - 1
+          ? videoDurationSeconds - offset
+          : foundTimestamps[i + 1].offset - offset,
+      });
     }
 
     if (!map.size) {
