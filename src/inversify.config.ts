@@ -23,6 +23,7 @@ import Pause from './commands/pause.js';
 import Play from './commands/play.js';
 import QueueCommand from './commands/queue.js';
 import Remove from './commands/remove.js';
+import Resume from './commands/resume.js';
 import Seek from './commands/seek.js';
 import Shuffle from './commands/shuffle.js';
 import Skip from './commands/skip.js';
@@ -64,6 +65,7 @@ container.bind<AddQueryToQueue>(TYPES.Services.AddQueryToQueue).to(AddQueryToQue
   Play,
   QueueCommand,
   Remove,
+  Resume,
   Seek,
   Shuffle,
   Skip,
