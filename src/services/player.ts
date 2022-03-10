@@ -20,6 +20,7 @@ export interface QueuedSong {
   artist: string;
   url: string;
   length: number;
+  offset: number;
   playlist: QueuedPlaylist | null;
   isLive: boolean;
   addedInChannelId: Snowflake;
@@ -98,7 +99,14 @@ export default class {
       throw new Error('Seek position is outside the range of the song.');
     }
 
-    const stream = await this.getStream(currentSong.url, {seek: positionSeconds});
+    let realPositionSeconds = positionSeconds;
+    let to: number | undefined;
+    if (currentSong.offset !== undefined) {
+      realPositionSeconds += currentSong.offset;
+      to = currentSong.length + currentSong.offset;
+    }
+
+    const stream = await this.getStream(currentSong.url, {seek: realPositionSeconds, to});
     this.audioPlayer = createAudioPlayer({
       behaviors: {
         // Needs to be somewhat high for livestreams
@@ -156,7 +164,14 @@ export default class {
     }
 
     try {
-      const stream = await this.getStream(currentSong.url);
+      let positionSeconds: number | undefined;
+      let to: number | undefined;
+      if (currentSong.offset !== undefined) {
+        positionSeconds = currentSong.offset;
+        to = currentSong.length + currentSong.offset;
+      }
+
+      const stream = await this.getStream(currentSong.url, {seek: positionSeconds, to});
       this.audioPlayer = createAudioPlayer({
         behaviors: {
           // Needs to be somewhat high for livestreams
@@ -350,7 +365,7 @@ export default class {
     return hasha(url);
   }
 
-  private async getStream(url: string, options: {seek?: number} = {}): Promise<Readable> {
+  private async getStream(url: string, options: {seek?: number; to?: number} = {}): Promise<Readable> {
     let ffmpegInput = '';
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
@@ -362,6 +377,10 @@ export default class {
 
       if (options.seek) {
         ffmpegInputOptions.push('-ss', options.seek.toString());
+      }
+
+      if (options.to) {
+        ffmpegInputOptions.push('-to', options.to.toString());
       }
     } catch {
       // Not yet cached, must download
@@ -405,7 +424,7 @@ export default class {
 
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-      shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.videoDetails.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
+      shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.videoDetails.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek && !options.to;
 
       ffmpegInputOptions.push(...[
         '-reconnect',
@@ -417,8 +436,11 @@ export default class {
       ]);
 
       if (options.seek) {
-        // Fudge seek position since FFMPEG doesn't do a great job
-        ffmpegInputOptions.push('-ss', (options.seek + 7).toString());
+        ffmpegInputOptions.push('-ss', options.seek.toString());
+      }
+
+      if (options.to) {
+        ffmpegInputOptions.push('-to', options.to.toString());
       }
     }
 

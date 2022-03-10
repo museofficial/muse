@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `/play` has a new `split` option that will split queued YouTube videos into chapters, if the video has them
 - `/resume` command to resume playback
 
 ### Changed

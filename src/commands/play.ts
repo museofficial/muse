@@ -26,7 +26,10 @@ export default class implements Command {
       .setDescription('add track to the front of the queue'))
     .addBooleanOption(option => option
       .setName('shuffle')
-      .setDescription('shuffle the input if you\'re adding multiple tracks'));
+      .setDescription('shuffle the input if you\'re adding multiple tracks'))
+    .addBooleanOption(option => option
+      .setName('split')
+      .setDescription('if a track has chapters, split it'));
 
   public requiresVC = true;
 
@@ -49,6 +52,7 @@ export default class implements Command {
       query: query.trim(),
       addToFrontOfQueue: interaction.options.getBoolean('immediate') ?? false,
       shuffleAdditions: interaction.options.getBoolean('shuffle') ?? false,
+      shouldSplitChapters: interaction.options.getBoolean('split') ?? false,
     });
   }
 
