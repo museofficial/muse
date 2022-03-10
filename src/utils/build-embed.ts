@@ -1,6 +1,6 @@
 import getYouTubeID from 'get-youtube-id';
 import {MessageEmbed} from 'discord.js';
-import Player, {QueuedSong, STATUS} from '../services/player.js';
+import Player, {MediaSource, QueuedSong, STATUS} from '../services/player.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
 import {truncate} from './string.js';
@@ -13,7 +13,11 @@ const getMaxSongTitleLength = (title: string) => {
   return nonASCII.test(title) ? 28 : 48;
 };
 
-const getSongTitle = ({title, url, offset}: QueuedSong, shouldTruncate = false) => {
+const getSongTitle = ({title, url, offset, source}: QueuedSong, shouldTruncate = false) => {
+  if (source === MediaSource.HLS) {
+    return `[${title}](${url})`;
+  }
+
   const cleanSongTitle = title.replace(/\[.*\]/, '').trim();
 
   const songTitle = shouldTruncate ? truncate(cleanSongTitle, getMaxSongTitleLength(cleanSongTitle)) : cleanSongTitle;
@@ -92,7 +96,12 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
   const queuedSongs = player
     .getQueue()
     .slice(queuePageBegin, queuePageEnd)
-    .map((song, index) => `\`${index + 1 + queuePageBegin}.\` ${getSongTitle(song, true)} \`[${prettyTime(song.length)}]\``)
+    .map((song, index) => {
+      const songNumber = index + 1 + queuePageBegin;
+      const duration = song.isLive ? 'live' : prettyTime(song.length);
+
+      return `\`${songNumber}.\` ${getSongTitle(song, true)} \`[${duration}]\``;
+    })
     .join('\n');
 
   const {artist, thumbnailUrl, playlist, requestedBy} = currentlyPlaying;

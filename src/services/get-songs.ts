@@ -9,7 +9,7 @@ import YouTube, {YoutubePlaylistItem, YoutubeVideo} from 'youtube.ts';
 import PQueue from 'p-queue';
 import shuffle from 'array-shuffle';
 import {Except} from 'type-fest';
-import {QueuedSong, QueuedPlaylist} from '../services/player.js';
+import {QueuedSong, QueuedPlaylist, MediaSource} from '../services/player.js';
 import {TYPES} from '../types.js';
 import {cleanUrl} from '../utils/url.js';
 import ThirdParty from './third-party.js';
@@ -17,6 +17,7 @@ import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
 import {parseTime} from '../utils/time.js';
+import ffmpeg from 'fluent-ffmpeg';
 
 type SongMetadata = Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>;
 
@@ -264,6 +265,28 @@ export default class {
     return [songs, nSongsNotFound, originalNSongs];
   }
 
+  async httpLiveStream(url: string): Promise<SongMetadata> {
+    return new Promise((resolve, reject) => {
+      ffmpeg(url).ffprobe((err, _) => {
+        if (err) {
+          reject();
+        }
+
+        resolve({
+          url,
+          source: MediaSource.HLS,
+          isLive: true,
+          title: url,
+          artist: url,
+          length: 0,
+          offset: 0,
+          playlist: null,
+          thumbnailUrl: null,
+        });
+      });
+    });
+  }
+
   private async spotifyToYouTube(track: SpotifyApi.TrackObjectSimplified, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     return this.youtubeVideoSearch(`"${track.name}" "${track.artists[0].name}"`, shouldSplitChapters);
   }
@@ -295,6 +318,7 @@ export default class {
     }
 
     const base: SongMetadata = {
+      source: MediaSource.Youtube,
       title: video.snippet.title,
       artist: video.snippet.channelTitle,
       length: videoDurationSeconds,

@@ -93,6 +93,14 @@ export default class AddQueryToQueue {
         }
 
         newSongs.push(...convertedSongs);
+      } else {
+        const song = await this.getSongs.httpLiveStream(query);
+
+        if (song) {
+          newSongs.push(song);
+        } else {
+          throw new Error('that doesn\'t exist');
+        }
       }
     } catch (_: unknown) {
       // Not a URL, must search YouTube
