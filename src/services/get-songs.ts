@@ -294,8 +294,6 @@ export default class {
       url = video.id;
     }
 
-    const chapters = this.parseChaptersFromDescription(video.snippet.description, videoDurationSeconds);
-
     const base: SongMetadata = {
       title: video.snippet.title,
       artist: video.snippet.channelTitle,
@@ -307,7 +305,13 @@ export default class {
       thumbnailUrl: video.snippet.thumbnails.medium.url,
     };
 
-    if (!chapters || !shouldSplitChapters) {
+    if (!shouldSplitChapters) {
+      return [base];
+    }
+
+    const chapters = this.parseChaptersFromDescription(video.snippet.description, videoDurationSeconds);
+
+    if (!chapters) {
       return [base];
     }
 
