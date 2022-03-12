@@ -152,7 +152,7 @@ export default class {
       spinner.text = '📡 updating permissions...';
       await Promise.all(this.client.guilds.cache.map(async guild => updatePermissionsForGuild(guild)));
 
-      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700160`);
+      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700288`);
     });
 
     this.client.on('error', console.error);

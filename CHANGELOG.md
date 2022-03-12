@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Muse will now allow the member who invited Muse to set config options. For this to work, the View Audit Logs permission must be given when inviting Muse. If it isn't given, Muse still works and will contact the owner instead for initial setup.
 
 ## [1.4.1] - 2022-03-12
 ### Changed

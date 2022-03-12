@@ -6,16 +6,30 @@ import Config from '../services/config.js';
 import {prisma} from '../utils/db.js';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v9';
+import updatePermissionsForGuild from '../utils/update-permissions-for-guild.js';
 
 export default async (guild: Guild): Promise<void> => {
+  let invitedBy;
+  try {
+    const logs = await guild.fetchAuditLogs({type: 'BOT_ADD'});
+    invitedBy = logs.entries.find(entry => entry.target?.id === guild.client.user?.id)?.executor;
+  } catch {}
+
+  if (!invitedBy) {
+    console.warn(`Could not find user who invited Muse to ${guild.name} from the audit logs.`);
+  }
+
   await prisma.setting.upsert({
     where: {
       guildId: guild.id,
     },
     create: {
       guildId: guild.id,
+      invitedByUserId: invitedBy?.id,
     },
-    update: {},
+    update: {
+      invitedByUserId: invitedBy?.id,
+    },
   });
 
   const config = container.get<Config>(TYPES.Config);
@@ -33,7 +47,12 @@ export default async (guild: Guild): Promise<void> => {
     );
   }
 
-  const owner = await guild.fetchOwner();
+  await updatePermissionsForGuild(guild);
 
-  await owner.send('👋 Hi! Someone (probably you) just invited me to a server you own. I can\'t be used by your server members until you complete setup by running /config set-role in your server.');
+  if (invitedBy) {
+    await invitedBy.send('👋 Hi! You just invited me to a server. I can\'t be used by your server members until you complete setup by running /config set-role in your server.');
+  } else {
+    const owner = await guild.fetchOwner();
+    await owner.send('👋 Hi! Someone (probably you) just invited me to a server you own. I can\'t be used by your server members until you complete setup by running /config set-role in your server.');
+  }
 };
