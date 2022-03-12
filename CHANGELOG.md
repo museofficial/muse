@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.4.0] - 2022-03-12
 ### Added
 - Muse can now HTTP stream live audio files (see #396)
 
@@ -97,7 +99,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/codetheweb/muse/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/codetheweb/muse/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/codetheweb/muse/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/codetheweb/muse/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/codetheweb/muse/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/codetheweb/muse/compare/v1.1.1...v1.1.2
