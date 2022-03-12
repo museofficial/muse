@@ -26,6 +26,15 @@ const updatePermissionsForGuild = async (guild: Guild) => {
       permission: false,
     },
   ];
+
+  if (settings.invitedByUserId) {
+    permissions.push({
+      id: settings.invitedByUserId,
+      type: 'USER',
+      permission: true,
+    });
+  }
+
   const commands = await guild.commands.fetch();
 
   await guild.commands.permissions.set({fullPermissions: commands.map(command => ({
