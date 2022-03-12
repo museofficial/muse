@@ -4,8 +4,7 @@ import got from 'got';
 import ytsr, {Video} from 'ytsr';
 import YouTube, {YoutubePlaylistItem, YoutubeVideo} from 'youtube.ts';
 import PQueue from 'p-queue';
-import {Except} from 'type-fest';
-import {QueuedSong, QueuedPlaylist, MediaSource} from './player.js';
+import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import {cleanUrl} from '../utils/url.js';
 import ThirdParty from './third-party.js';
@@ -13,8 +12,6 @@ import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
 import {parseTime} from '../utils/time.js';
-
-type SongMetadata = Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>;
 
 interface VideoDetailsResponse {
   id: string;

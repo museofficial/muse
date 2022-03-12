@@ -1,13 +1,10 @@
 import {inject, injectable} from 'inversify';
 import spotifyURI from 'spotify-uri';
-import {Except} from 'type-fest';
-import {QueuedSong, QueuedPlaylist, MediaSource} from '../services/player.js';
+import {SongMetadata, QueuedPlaylist, MediaSource} from '../services/player.js';
 import {TYPES} from '../types.js';
 import ffmpeg from 'fluent-ffmpeg';
 import YoutubeAPI from './youtube-api.js';
 import SpotifyAPI, {SpotifyTrack} from './spotify-api.js';
-
-type SongMetadata = Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>;
 
 @injectable()
 export default class {

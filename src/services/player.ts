@@ -20,7 +20,7 @@ export interface QueuedPlaylist {
   source: string;
 }
 
-export interface QueuedSong {
+export interface SongMetadata {
   title: string;
   artist: string;
   url: string;
@@ -28,10 +28,12 @@ export interface QueuedSong {
   offset: number;
   playlist: QueuedPlaylist | null;
   isLive: boolean;
-  addedInChannelId: Snowflake;
   thumbnailUrl: string | null;
-  requestedBy: string;
   source: MediaSource;
+}
+export interface QueuedSong extends SongMetadata {
+  addedInChannelId: Snowflake;
+  requestedBy: string;
 }
 
 export enum STATUS {
