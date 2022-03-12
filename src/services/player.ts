@@ -10,12 +10,17 @@ import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {prisma} from '../utils/db.js';
 
+export enum MediaSource {
+  Youtube,
+  HLS,
+}
+
 export interface QueuedPlaylist {
   title: string;
   source: string;
 }
 
-export interface QueuedSong {
+export interface SongMetadata {
   title: string;
   artist: string;
   url: string;
@@ -23,8 +28,11 @@ export interface QueuedSong {
   offset: number;
   playlist: QueuedPlaylist | null;
   isLive: boolean;
-  addedInChannelId: Snowflake;
   thumbnailUrl: string | null;
+  source: MediaSource;
+}
+export interface QueuedSong extends SongMetadata {
+  addedInChannelId: Snowflake;
   requestedBy: string;
 }
 
@@ -106,7 +114,7 @@ export default class {
       to = currentSong.length + currentSong.offset;
     }
 
-    const stream = await this.getStream(currentSong.url, {seek: realPositionSeconds, to});
+    const stream = await this.getStream(currentSong, {seek: realPositionSeconds, to});
     this.audioPlayer = createAudioPlayer({
       behaviors: {
         // Needs to be somewhat high for livestreams
@@ -171,7 +179,7 @@ export default class {
         to = currentSong.length + currentSong.offset;
       }
 
-      const stream = await this.getStream(currentSong.url, {seek: positionSeconds, to});
+      const stream = await this.getStream(currentSong, {seek: positionSeconds, to});
       this.audioPlayer = createAudioPlayer({
         behaviors: {
           // Needs to be somewhat high for livestreams
@@ -365,7 +373,11 @@ export default class {
     return hasha(url);
   }
 
-  private async getStream(url: string, options: {seek?: number; to?: number} = {}): Promise<Readable> {
+  private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
+    if (song.source === MediaSource.HLS) {
+      return this.createReadStream(song.url);
+    }
+
     let ffmpegInput = '';
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
@@ -373,7 +385,7 @@ export default class {
     let format: ytdl.videoFormat | undefined;
 
     try {
-      ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(url));
+      ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
 
       if (options.seek) {
         ffmpegInputOptions.push('-ss', options.seek.toString());
@@ -384,7 +396,7 @@ export default class {
       }
     } catch {
       // Not yet cached, must download
-      const info = await ytdl.getInfo(url);
+      const info = await ytdl.getInfo(song.url);
 
       const {formats} = info;
 
@@ -444,36 +456,7 @@ export default class {
       }
     }
 
-    // Create stream and pipe to capacitor
-    return new Promise((resolve, reject) => {
-      const capacitor = new WriteStream();
-
-      // Cache video if necessary
-      if (shouldCacheVideo) {
-        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(url));
-
-        capacitor.createReadStream().pipe(cacheStream);
-      } else {
-        ffmpegInputOptions.push('-re');
-      }
-
-      const youtubeStream = ffmpeg(ffmpegInput)
-        .inputOptions(ffmpegInputOptions)
-        .noVideo()
-        .audioCodec('libopus')
-        .outputFormat('webm')
-        .on('error', error => {
-          console.error(error);
-          reject(error);
-        })
-        .on('start', command => {
-          debug(`Spawned ffmpeg with ${command as string}`);
-        });
-
-      youtubeStream.pipe(capacitor);
-
-      resolve(capacitor.createReadStream());
-    });
+    return this.createReadStream(ffmpegInput, {ffmpegInputOptions, cache: shouldCacheVideo});
   }
 
   private startTrackingPosition(initalPosition?: number): void {
@@ -523,5 +506,33 @@ export default class {
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
     }
+  }
+
+  private async createReadStream(url: string, options: {ffmpegInputOptions?: string[]; cache?: boolean} = {}): Promise<Readable> {
+    return new Promise((resolve, reject) => {
+      const capacitor = new WriteStream();
+
+      if (options?.cache) {
+        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(url));
+        capacitor.createReadStream().pipe(cacheStream);
+      }
+
+      const stream = ffmpeg(url)
+        .inputOptions(options?.ffmpegInputOptions ?? ['-re'])
+        .noVideo()
+        .audioCodec('libopus')
+        .outputFormat('webm')
+        .on('error', error => {
+          console.error(error);
+          reject(error);
+        })
+        .on('start', command => {
+          debug(`Spawned ffmpeg with ${command as string}`);
+        });
+
+      stream.pipe(capacitor);
+
+      resolve(capacitor.createReadStream());
+    });
   }
 }

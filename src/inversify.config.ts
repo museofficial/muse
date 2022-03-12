@@ -11,6 +11,8 @@ import PlayerManager from './managers/player.js';
 // Services
 import AddQueryToQueue from './services/add-query-to-queue.js';
 import GetSongs from './services/get-songs.js';
+import YoutubeAPI from './services/youtube-api.js';
+import SpotifyAPI from './services/spotify-api.js';
 
 // Comands
 import Command from './commands';
@@ -53,6 +55,8 @@ container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSinglet
 // Services
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();
 container.bind<AddQueryToQueue>(TYPES.Services.AddQueryToQueue).to(AddQueryToQueue).inSingletonScope();
+container.bind<YoutubeAPI>(TYPES.Services.YoutubeAPI).to(YoutubeAPI).inSingletonScope();
+container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingletonScope();
 
 // Commands
 [

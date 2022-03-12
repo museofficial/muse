@@ -1,11 +1,10 @@
 /* eslint-disable complexity */
 import {CommandInteraction, GuildMember} from 'discord.js';
 import {inject, injectable} from 'inversify';
-import {Except} from 'type-fest';
 import shuffle from 'array-shuffle';
 import {TYPES} from '../types.js';
 import GetSongs from '../services/get-songs.js';
-import {QueuedSong, STATUS} from './player.js';
+import {SongMetadata, STATUS} from './player.js';
 import PlayerManager from '../managers/player.js';
 import {prisma} from '../utils/db.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
@@ -44,7 +43,7 @@ export default class AddQueryToQueue {
 
     await interaction.deferReply();
 
-    let newSongs: Array<Except<QueuedSong, 'addedInChannelId' | 'requestedBy'>> = [];
+    let newSongs: SongMetadata[] = [];
     let extraMsg = '';
 
     // Test if it's a complete URL
@@ -93,6 +92,14 @@ export default class AddQueryToQueue {
         }
 
         newSongs.push(...convertedSongs);
+      } else {
+        const song = await this.getSongs.httpLiveStream(query);
+
+        if (song) {
+          newSongs.push(song);
+        } else {
+          throw new Error('that doesn\'t exist');
+        }
       }
     } catch (_: unknown) {
       // Not a URL, must search YouTube
