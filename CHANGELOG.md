@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Now uses [esmo](https://github.com/antfu/esno) so we don't have to build
+- `/seek` and `/fseek` can now be given duration strings. For example, `1m` and `2m 15s` work. If the input consists only of numbers, Muse will treat it as the number of seconds to advance (backwards-compatible behavior).
 
 ## [1.5.0] - 2022-03-12
 ### Changed
