@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.6.0] - 2022-03-13
 ### Changed
 - Now uses [esmo](https://github.com/antfu/esno) so we don't have to build
 - `/seek` and `/fseek` can now be given duration strings. For example, `1m` and `2m 15s` work. If the input consists only of numbers, Muse will treat it as the number of seconds to advance (backwards-compatible behavior).
@@ -110,7 +112,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/codetheweb/muse/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/codetheweb/muse/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/codetheweb/muse/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/codetheweb/muse/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/codetheweb/muse/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/codetheweb/muse/compare/v1.3.0...v1.4.0
