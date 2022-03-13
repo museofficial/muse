@@ -5,7 +5,17 @@ import ytdl from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
-import {AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource, joinVoiceChannel, StreamType, VoiceConnection, VoiceConnectionStatus} from '@discordjs/voice';
+import {
+  AudioPlayer,
+  AudioPlayerState,
+  AudioPlayerStatus,
+  createAudioPlayer,
+  createAudioResource,
+  joinVoiceChannel,
+  StreamType,
+  VoiceConnection,
+  VoiceConnectionStatus,
+} from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {prisma} from '../utils/db.js';
@@ -493,7 +503,7 @@ export default class {
     }
 
     if (this.audioPlayer.listeners('stateChange').length === 0) {
-      this.audioPlayer.on('stateChange', this.onAudioPlayerStateChange.bind(this));
+      this.audioPlayer.on(AudioPlayerStatus.Idle, this.onAudioPlayerIdle.bind(this));
     }
   }
 
@@ -501,7 +511,7 @@ export default class {
     this.disconnect();
   }
 
-  private async onAudioPlayerStateChange(_oldState: {status: AudioPlayerStatus}, newState: {status: AudioPlayerStatus}): Promise<void> {
+  private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
     // Automatically advance queued song at end
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);

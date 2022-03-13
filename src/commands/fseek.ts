@@ -5,15 +5,16 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from '.';
 import {prettyTime} from '../utils/time.js';
+import durationStringToSeconds from '../utils/duration-string-to-seconds.js';
 
 @injectable()
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('fseek')
     .setDescription('seek forward in the current song')
-    .addNumberOption(option => option
-      .setName('seconds')
-      .setDescription('the number of seconds to skip forward')
+    .addStringOption(option => option
+      .setName('time')
+      .setDescription('an interval expression or number of seconds (1m, 30s, 100)')
       .setRequired(true));
 
   public requiresVC = true;
@@ -37,11 +38,13 @@ export default class implements Command {
       throw new Error('can\'t seek in a livestream');
     }
 
-    const seekTime = interaction.options.getNumber('seconds');
+    const seekValue = interaction.options.getString('value');
 
-    if (!seekTime) {
-      throw new Error('missing number of seconds to seek');
+    if (!seekValue) {
+      throw new Error('missing seek value');
     }
+
+    const seekTime = durationStringToSeconds(seekValue);
 
     if (seekTime + player.getPosition() > currentSong.length) {
       throw new Error('can\'t seek past the end of the song');
