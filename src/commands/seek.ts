@@ -5,6 +5,7 @@ import PlayerManager from '../managers/player.js';
 import Command from '.';
 import {parseTime, prettyTime} from '../utils/time.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import durationStringToSeconds from '../utils/duration-string-to-seconds.js';
 
 @injectable()
 export default class implements Command {
@@ -13,7 +14,7 @@ export default class implements Command {
     .setDescription('seek to a position from beginning of song')
     .addStringOption(option =>
       option.setName('time')
-        .setDescription('time to seek')
+        .setDescription('an interval expression or number of seconds (1m, 30s, 100)')
         .setRequired(true),
     );
 
@@ -45,7 +46,7 @@ export default class implements Command {
     if (time.includes(':')) {
       seekTime = parseTime(time);
     } else {
-      seekTime = parseInt(time, 10);
+      seekTime = durationStringToSeconds(time);
     }
 
     if (seekTime > currentSong.length) {
