@@ -70,14 +70,6 @@ jobs:
         with:
           docker_image: codetheweb/muse
 
-      - name: Wait on lint & build
-        uses: lewagon/wait-on-check-action@v1.1.1
-        with:
-          ref: ${{ github.sha }}
-          check-name: 'Lint & build'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
-
       - name: Combine tags
         run: docker buildx imagetools create $(echo '${{ steps.get-tags.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') 'codetheweb/muse:${{ github.sha }}-arm64' 'codetheweb/muse:${{ github.sha }}-amd64'
 
