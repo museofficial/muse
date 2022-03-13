@@ -1,10 +1,10 @@
-name: Lint
+name: Type Check
 
 on: push
 
 jobs:
   build:
-    name: Lint
+    name: Type Check
     runs-on: ubuntu-latest
     steps:
         - uses: actions/checkout@v1
@@ -16,5 +16,5 @@ jobs:
           run: yarn install
         - name: Generate Prisma client
           run: yarn prisma generate
-        - name: Run lint
-          run: yarn lint
+        - name: Run type check
+          run: yarn tsc
