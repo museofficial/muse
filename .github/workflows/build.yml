@@ -1,4 +1,4 @@
-name: Lint & build
+name: Lint
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Lint & build
+    name: Lint
     runs-on: ubuntu-latest
     steps:
         - uses: actions/checkout@v1
@@ -28,5 +28,3 @@ jobs:
           run: yarn prisma generate
         - name: Run lint
           run: yarn lint
-        - name: Build
-          run: yarn build
