@@ -2,7 +2,7 @@
   <img width="250" height="250" src="https://raw.githubusercontent.com/codetheweb/muse/master/.github/logo.png">
 </p>
 
-🚨: v1.0.0 was a breaking change. Please take a look at the [release notes](https://github.com/codetheweb/muse/releases/tag/v1.0.0) for upgrade instructions 
+🚨: v1.0.0 was a breaking change. Please take a look at the [release notes](https://github.com/codetheweb/muse/releases/tag/v1.0.0) for upgrade instructions
 
 ------
 
@@ -83,8 +83,7 @@ services:
 2. Copy `.env.example` to `.env` and populate with values
 3. I recommend checking out a tagged release with `git checkout v[latest release]`
 4. `yarn install` (or `npm i`)
-5. `yarn build` (or `npm run build`)
-6. `yarn start` (or `npm run start`)
+5. `yarn start` (or `npm run start`)
 
 **Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/codetheweb/muse/issues/345) for details.
 

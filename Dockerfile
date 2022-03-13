@@ -24,12 +24,12 @@ FROM dependencies AS builder
 
 COPY . .
 
-RUN yarn prisma generate && yarn build
+RUN yarn prisma generate
 
 # Only copy essentials
 FROM base AS prod
 
-COPY --from=builder /usr/app/dist dist
+COPY --from=builder /usr/app/src src
 COPY --from=builder /usr/app/schema.prisma .
 COPY --from=builder /usr/app/migrations migrations
 

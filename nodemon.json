@@ -1,6 +1,6 @@
 {
     "ignore": ["**/*.test.ts", "**/*.spec.ts", ".git", "node_modules"],
-    "watch": ["dist"],
-    "exec": "npm run env:set-database-url -- node --experimental-json-modules dist/scripts/start.js",
-    "ext": "js"
+    "watch": ["src"],
+    "exec": "npm run env:set-database-url -- esmo src/scripts/start.ts",
+    "ext": "ts"
 }
