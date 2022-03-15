@@ -193,7 +193,7 @@ export default class {
       offset: 0,
       url,
       playlist: queuedPlaylist ?? null,
-      isLive: false,
+      isLive: (video as YoutubeVideo).snippet.liveBroadcastContent === 'live',
       thumbnailUrl: video.snippet.thumbnails.medium.url,
     };
 
