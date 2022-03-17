@@ -527,14 +527,18 @@ export default class {
         capacitor.createReadStream().pipe(cacheStream);
       }
 
+      const returnedStream = capacitor.createReadStream();
+      let hasReturnedStreamClosed = false;
+
       const stream = ffmpeg(url)
         .inputOptions(options?.ffmpegInputOptions ?? ['-re'])
         .noVideo()
         .audioCodec('libopus')
         .outputFormat('webm')
         .on('error', error => {
-          console.error(error);
-          reject(error);
+          if (!hasReturnedStreamClosed) {
+            reject(error);
+          }
         })
         .on('start', command => {
           debug(`Spawned ffmpeg with ${command as string}`);
@@ -542,7 +546,12 @@ export default class {
 
       stream.pipe(capacitor);
 
-      resolve(capacitor.createReadStream());
+      returnedStream.on('close', () => {
+        stream.kill('SIGKILL');
+        hasReturnedStreamClosed = true;
+      });
+
+      resolve(returnedStream);
     });
   }
 }
