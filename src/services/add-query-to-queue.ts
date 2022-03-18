@@ -69,25 +69,25 @@ export default class AddQueryToQueue {
           if (songs) {
             newSongs.push(...songs);
           } else {
-            throw new Error('that doesn\'t exist');
+            throw new Error('Der Song existiert nicht!');
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
         const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(query, playlistLimit, shouldSplitChapters);
 
         if (totalSongs > playlistLimit) {
-          extraMsg = `a random sample of ${playlistLimit} songs was taken`;
+          extraMsg = `Ein zufälliges Lied von ${playlistLimit} Songs wurde ausgewählt`;
         }
 
         if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
-          extraMsg += ' and ';
+          extraMsg += ' und ';
         }
 
         if (nSongsNotFound !== 0) {
           if (nSongsNotFound === 1) {
-            extraMsg += '1 song was not found';
+            extraMsg += '1 Song wurde nicht gefunden!';
           } else {
-            extraMsg += `${nSongsNotFound.toString()} songs were not found`;
+            extraMsg += `${nSongsNotFound.toString()} Songs wurden nicht gefunden!`;
           }
         }
 
@@ -98,7 +98,7 @@ export default class AddQueryToQueue {
         if (song) {
           newSongs.push(song);
         } else {
-          throw new Error('that doesn\'t exist');
+          throw new Error('Der Song existiert nicht!');
         }
       }
     } catch (_: unknown) {
@@ -108,12 +108,12 @@ export default class AddQueryToQueue {
       if (songs) {
         newSongs.push(...songs);
       } else {
-        throw new Error('that doesn\'t exist');
+        throw new Error('Der Song existiert nicht!');
       }
     }
 
     if (newSongs.length === 0) {
-      throw new Error('no songs found');
+      throw new Error('Es gibt keine Songs!');
     }
 
     if (shuffleAdditions) {
@@ -160,9 +160,9 @@ export default class AddQueryToQueue {
     }
 
     if (newSongs.length === 1) {
-      await interaction.editReply(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
+      await interaction.editReply(`Ab geht\'s! **${firstSong.title}** wurde${addToFrontOfQueue ? ' an die Spitze' : ''} der Queue hinzugefügt!${extraMsg}`);
     } else {
-      await interaction.editReply(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
+      await interaction.editReply(`Ab geht\'s! **${firstSong.title}** und ${newSongs.length - 1} andere Songs wurden zur Queue hinzugefügt!${extraMsg}`);
     }
   }
 }

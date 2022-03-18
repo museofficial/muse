@@ -15,21 +15,21 @@ import AddQueryToQueue from '../services/add-query-to-queue.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('play')
-    .setDescription('play a song')
+    .setDescription('Spielt den Song.')
     .addStringOption(option => option
       .setName('query')
-      .setDescription('YouTube URL, Spotify URL, or search query')
+      .setDescription('YouTube Link, Spotify Link, oder such was.')
       .setAutocomplete(true)
       .setRequired(true))
     .addBooleanOption(option => option
       .setName('immediate')
-      .setDescription('add track to the front of the queue'))
+      .setDescription('Fügt den Song ganz an die Spitze.'))
     .addBooleanOption(option => option
       .setName('shuffle')
-      .setDescription('shuffle the input if you\'re adding multiple tracks'))
+      .setDescription('Lass mich entscheiden was zuerst kommt, wenn du mehrere Songs hinzufügst.'))
     .addBooleanOption(option => option
       .setName('split')
-      .setDescription('if a track has chapters, split it'));
+      .setDescription('Splittet den Song wenn er mehrere Kapitel hat.'));
 
   public requiresVC = true;
 
