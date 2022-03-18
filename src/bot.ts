@@ -1,4 +1,4 @@
-import {Client, Collection, Presence, User} from 'discord.js';
+import {Client, Collection, User} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import ora from 'ora';
 import {TYPES} from './types.js';
@@ -156,8 +156,8 @@ export default class {
         status: 'idle',
         activity: {
           name: 'den Anfragen zu.',
-          type: 'LISTENING'
-        }
+          type: 'LISTENING',
+        },
       });
 
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700288`);
