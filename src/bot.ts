@@ -155,14 +155,15 @@ export default class {
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700288`);
     });
 
+    this.client.on('ready', () => {
+      this.client.user.setPresence({LISTENING: {name: 'Walgesängen zu.'}, status: 'online'});});
+
     this.client.on('error', console.error);
     this.client.on('debug', debug);
 
     this.client.on('guildCreate', handleGuildCreate);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
     this.client.on('guildUpdate', handleGuildUpdate);
-
-    this.client.on('ready', () => {this.client.user.setActivity('Walgesängen zu.', {type: 'LISTENING'})});
 
     await this.client.login(this.token);
   }
