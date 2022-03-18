@@ -162,7 +162,7 @@ export default class {
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
     this.client.on('guildUpdate', handleGuildUpdate);
 
-    this.client.on('ready', () => {this.client.user.setActivity('Walgesängen zu.', {type: 'LISTENING'})},
+    this.client.on('ready', () => {this.client.user.setActivity('Walgesängen zu.', {type: 'LISTENING'})});
 
     await this.client.login(this.token);
   }
