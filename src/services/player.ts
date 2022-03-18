@@ -19,6 +19,7 @@ import {
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {prisma} from '../utils/db.js';
+import nowPlaying from '../commands/now-playing.js';
 
 export enum MediaSource {
   Youtube,
@@ -553,5 +554,11 @@ export default class {
 
       resolve(returnedStream);
     });
+  }
+
+  private nowPlaying(currentSong: string): void {
+    if (!currentSong) {
+      throw new Error('Du musst erst neues Zeug zum Spielen reinpacken!')
+    }
   }
 }
