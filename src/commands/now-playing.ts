@@ -10,7 +10,7 @@ import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('now-playing')
-    .setDescription('Zeigt an was gespielt wird.')
+    .setDescription('Zeigt an was gespielt wird.');
 
   public requiresVC = true;
 
