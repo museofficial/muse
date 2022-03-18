@@ -18,7 +18,7 @@ import updatePermissionsForGuild from './utils/update-permissions-for-guild.js';
 
 @injectable()
 export default class {
-  private client: Client;
+  private readonly client: Client;
   private readonly token: string;
   private readonly shouldRegisterCommandsOnBot: boolean;
   private readonly commandsByName!: Collection<string, Command>;
@@ -121,8 +121,6 @@ export default class {
 
     this.client.once('ready', async () => {
       debug(generateDependencyReport());
-
-      this.client.user.setActivity('running with the wild things.');
 
       // Update commands
       const rest = new REST({version: '9'}).setToken(this.token);
