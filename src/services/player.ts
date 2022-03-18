@@ -554,4 +554,14 @@ export default class {
       resolve(returnedStream);
     });
   }
+
+  move(fromindex: number, toindex: number): void {
+
+    if (fromindex > this.queueSize() || toindex > this.queueSize()){
+      throw new Error('Move index is outside the range of the queue.' )
+    }
+
+    this.queue.splice( this.queuePosition + toindex ,0, this.queue.splice(this.queuePosition + fromindex, 1)[0]);
+  }
+
 }
