@@ -19,7 +19,6 @@ import {
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {prisma} from '../utils/db.js';
-import nowPlaying from '../commands/now-playing.js';
 
 export enum MediaSource {
   Youtube,
