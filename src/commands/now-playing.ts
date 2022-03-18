@@ -24,6 +24,7 @@ export default class implements Command {
   public async execute(interaction: CommandInteraction): Promise<void> {
     const player = this.playerManager.get(interaction.guild!.id);
 
+    // Check which state the Bot is
     if (player.voiceConnection === null) {
       throw new Error('Join a voice channel first!');
     } else if (player.voiceConnection !== null) {
