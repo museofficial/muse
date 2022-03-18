@@ -122,6 +122,14 @@ export default class {
     this.client.once('ready', async () => {
       debug(generateDependencyReport());
 
+      this.client.user.setPresence({
+        status: 'available',
+        activity: {
+          name: 'with depression',
+          type: 'PLAYING'
+        }
+      });
+
       // Update commands
       const rest = new REST({version: '9'}).setToken(this.token);
 
@@ -154,9 +162,6 @@ export default class {
 
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700288`);
     });
-
-    this.client.on('ready', () => {
-      this.client.user.setPresence({LISTENING: {name: 'Walgesängen zu.'}, status: 'online'});});
 
     this.client.on('error', console.error);
     this.client.on('debug', debug);
