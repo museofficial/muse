@@ -160,9 +160,9 @@ export default class AddQueryToQueue {
     }
 
     if (newSongs.length === 1) {
-      await interaction.editReply(`Ab geht\'s! **${firstSong.title}** wurde${addToFrontOfQueue ? ' an die Spitze' : ''} der Queue hinzugefügt!${extraMsg}`);
+      await interaction.editReply(`Ab gehts! **${firstSong.title}** wurde${addToFrontOfQueue ? ' an die Spitze' : ''} der Queue hinzugefügt!${extraMsg}`);
     } else {
-      await interaction.editReply(`Ab geht\'s! **${firstSong.title}** und ${newSongs.length - 1} andere Songs wurden zur Queue hinzugefügt!${extraMsg}`);
+      await interaction.editReply(`Ab gehts! **${firstSong.title}** und ${newSongs.length - 1} andere Songs wurden zur Queue hinzugefügt!${extraMsg}`);
     }
   }
 }
