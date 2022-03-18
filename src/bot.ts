@@ -162,8 +162,7 @@ export default class {
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
     this.client.on('guildUpdate', handleGuildUpdate);
 
-    this.client.user.setPresence({activities: [{name: 'Walgesängen zu.', type: 'LISTENING'}], status: 'idle'});
-    this.client.user.setStatus('idle');
+    this.client.user.setPresence({activities: [{name: 'Walgesängen zu.', type: 'LISTENING'}]});
 
     await this.client.login(this.token);
   }
