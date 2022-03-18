@@ -555,10 +555,4 @@ export default class {
       resolve(returnedStream);
     });
   }
-
-  private nowPlaying(currentSong: string): void {
-    if (!currentSong) {
-      throw new Error('Du musst erst neues Zeug zum Spielen reinpacken!')
-    }
-  }
 }
