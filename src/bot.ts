@@ -152,9 +152,6 @@ export default class {
       spinner.text = '📡 updating permissions...';
       await Promise.all(this.client.guilds.cache.map(async guild => updatePermissionsForGuild(guild)));
 
-      this.client.user.setPresence({status: 'idle'});
-      this.client.user.setActivity('den Anfragen zu.', { type: 'LISTENING'});
-
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700288`);
     });
 
@@ -165,6 +162,14 @@ export default class {
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
     this.client.on('guildUpdate', handleGuildUpdate);
 
+    this.client.user.setPresence({
+      activities: [{
+        name: 'Walgesängen zu.',
+        type: 'LISTENING',
+      }],
+      status: 'idle'
+    });
+    
     await this.client.login(this.token);
   }
 }
