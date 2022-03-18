@@ -123,11 +123,11 @@ export default class {
       debug(generateDependencyReport());
 
       this.client.user.setPresence({
-        status: 'available',
+        status: 'online',
         activity: {
           name: 'with depression',
-          type: 'PLAYING'
-        }
+          type: 'PLAYING',
+        },
       });
 
       // Update commands
