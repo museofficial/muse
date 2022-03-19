@@ -23,13 +23,13 @@ export default class implements Command {
       .setRequired(true))
     .addBooleanOption(option => option
       .setName('immediate')
-      .setDescription('Fügt den Song ganz an die Spitze.'))
+      .setDescription('Fügt den Song ganz an die Spitze'))
     .addBooleanOption(option => option
       .setName('shuffle')
-      .setDescription('Lass mich entscheiden was zuerst kommt, wenn du mehrere Songs hinzufügst.'))
+      .setDescription('Lass mich entscheiden was zuerst kommt, wenn du mehrere Songs hinzufügst'))
     .addBooleanOption(option => option
       .setName('split')
-      .setDescription('Splittet den Song wenn er mehrere Kapitel hat.'));
+      .setDescription('Splittet den Song wenn er mehrere Kapitel hat'));
 
   public requiresVC = true;
 

@@ -54,7 +54,7 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
-    throw new Error('Es gibt nichts zum spielen!');
+    throw new Error('Es gibt nichts zum abspielen!');
   }
 
   const {artist, thumbnailUrl, requestedBy} = currentlyPlaying;
@@ -65,7 +65,7 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
     .setTitle(player.status === STATUS.PLAYING ? 'Aktuell wird gespielt:' : 'Pausiert')
     .setDescription(`
       **${getSongTitle(currentlyPlaying)}**
-      Gefordert von: <@${requestedBy}>\n
+      Gefordert von: <@${requestedBy}>
 	  Beschwert euch bei der Person!\n
       ${getPlayerUI(player)}
     `)

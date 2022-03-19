@@ -15,7 +15,7 @@ export default async (oldState: VoiceState, _: VoiceState): Promise<void> => {
     const settings = await prisma.setting.findUnique({where: {guildId: player.guildId}});
 
     if (!settings) {
-      throw new Error('Could not find settings for guild');
+      throw new Error('Keine gesetzten Einstellungen gefunden!');
     }
 
     const {leaveIfNoListeners} = settings;

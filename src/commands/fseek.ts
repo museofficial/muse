@@ -41,13 +41,13 @@ export default class implements Command {
     const seekValue = interaction.options.getString('value');
 
     if (!seekValue) {
-      throw new Error('Was willst du von mir? Wo soll ich hinspringen wenn du mir nicht sagst wo?');
+      throw new Error('Wo soll ich hinspringen wenn du mir nicht sagst wo?');
     }
 
     const seekTime = durationStringToSeconds(seekValue);
 
     if (seekTime + player.getPosition() > currentSong.length) {
-      throw new Error('Ey, soweit kann ich nicht gehen! Da ist der Song schon zuende!');
+      throw new Error('Ey, so weit kann ich nicht gehen! Da ist der Song schon zuende!');
     }
 
     await Promise.all([

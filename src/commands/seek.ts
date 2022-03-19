@@ -50,7 +50,7 @@ export default class implements Command {
     }
 
     if (seekTime > currentSong.length) {
-      throw new Error('Ey, soweit kann ich nicht gehen! Da ist der Song schon zuende!');
+      throw new Error('Ey, so weit kann ich nicht gehen! Da ist der Song schon zuende!');
     }
 
     await Promise.all([

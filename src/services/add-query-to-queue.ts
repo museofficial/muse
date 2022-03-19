@@ -36,7 +36,7 @@ export default class AddQueryToQueue {
     const settings = await prisma.setting.findUnique({where: {guildId}});
 
     if (!settings) {
-      throw new Error('Could not find settings for guild');
+      throw new Error('Keine gesetzten Einstellungen gefunden!');
     }
 
     const {playlistLimit} = settings;
@@ -135,7 +135,7 @@ export default class AddQueryToQueue {
       await player.play();
 
       if (wasPlayingSong) {
-        statusMsg = 'resuming playback';
+        statusMsg = 'Okaaaay... let\'s go!';
       }
 
       await interaction.editReply({

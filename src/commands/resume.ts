@@ -39,7 +39,7 @@ export default class implements Command {
     await player.play();
 
     await interaction.reply({
-      content: 'Okaaaay... let\'s gooo!',
+      content: 'Okaaaay... let\'s go!',
       embeds: [buildPlayingMessageEmbed(player)],
     });
   }

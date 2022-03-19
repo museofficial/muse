@@ -33,11 +33,11 @@ export default class implements Command {
     const range = interaction.options.getInteger('range') ?? 1;
 
     if (position < 1) {
-      throw new Error('Die Position muss mindestens 1 sein, komm schon!');
+      throw new Error('Ich kann nichts entfernen wo nichts ist!');
     }
 
     if (range < 1) {
-      throw new Error('Die Range muss mindestens 1 Song umfassen, komm schon!');
+      throw new Error('Die Range muss mindestens 1 Song umfassen!');
     }
 
     player.removeFromQueue(position, range);
