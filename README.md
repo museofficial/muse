@@ -78,7 +78,7 @@ services:
 ### Node.js
 
 **Prerequisites**:
-* Node.js 16.x (16.x is recommended because of LTS. 17.x seems to make problems)
+* Node.js (16.x is recommended because it's the current LTS version)
 * ffmpeg
 
 1. `git clone https://github.com/codetheweb/muse.git && cd muse`
