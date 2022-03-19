@@ -19,7 +19,7 @@ export default class implements Command {
       option.setName('to')
         .setDescription('position to move the song to')
         .setRequired(true));
-    
+
   private readonly playerManager: PlayerManager;
 
   constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
@@ -37,7 +37,7 @@ export default class implements Command {
     }
 
     if (to < 1) {
-      throw new Error('position must be at least 1')
+      throw new Error('position must be at least 1');
     }
 
     player.move(from, to);

@@ -21,7 +21,7 @@ import Config from './commands/config.js';
 import Disconnect from './commands/disconnect.js';
 import Favorites from './commands/favorites.js';
 import ForwardSeek from './commands/fseek.js';
-import Move from './commands/move.js'
+import Move from './commands/move.js';
 import NowPlaying from './commands/now-playing.js';
 import Pause from './commands/pause.js';
 import Play from './commands/play.js';
