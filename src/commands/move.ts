@@ -42,6 +42,6 @@ export default class implements Command {
 
     player.move(from, to);
 
-    await interaction.reply('${player.queue[$to]} wurde zu {$to} verschoben! Zufrieden?');
+    await interaction.reply('Verschoben! Zufrieden?');
   }
 }
