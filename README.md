@@ -77,7 +77,9 @@ services:
 
 ### Node.js
 
-**Prerequisites**: Node.js, ffmpeg
+**Prerequisites**:
+* Node.js (16.x is recommended because it's the current LTS version)
+* ffmpeg
 
 1. `git clone https://github.com/codetheweb/muse.git && cd muse`
 2. Copy `.env.example` to `.env` and populate with values
