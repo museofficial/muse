@@ -61,8 +61,8 @@ export default class {
   public status = STATUS.PAUSED;
   public guildId: string;
 
-  private queue: QueuedSong[] = [];
-  private queuePosition = 0;
+  public queue: QueuedSong[] = [];
+  public queuePosition = 0;
   private audioPlayer: AudioPlayer | null = null;
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
