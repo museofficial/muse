@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added a `/move` command to change position of tracks
 - Added a `/now-playing` command to show the current track without the full queue embed
 
 ## [1.6.2] - 2022-03-17
