@@ -113,7 +113,7 @@ export default class AddQueryToQueue {
     }
 
     if (newSongs.length === 0) {
-      throw new Error('Es gibt keine Songs!');
+      throw new Error('Du hast keine Songs hinzugefügt!');
     }
 
     if (shuffleAdditions) {
