@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2022-03-19
+### Added
+- `/move` command to change position of tracks
+
 ## [1.6.2] - 2022-03-17
 ### Fixed
 - There are no longer FFMPEG orphan processes after listening to a livestream
