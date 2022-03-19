@@ -555,13 +555,13 @@ export default class {
     });
   }
 
-  move(fromindex: number, toindex: number): void {
+  move(from: number, to: number): void {
 
-    if (fromindex > this.queueSize() || toindex > this.queueSize()){
+    if (from > this.queueSize() || to > this.queueSize()){
       throw new Error('Move index is outside the range of the queue.' )
     }
 
-    this.queue.splice( this.queuePosition + toindex ,0, this.queue.splice(this.queuePosition + fromindex, 1)[0]);
+    this.queue.splice( this.queuePosition + to ,0, this.queue.splice(this.queuePosition + from, 1)[0]);
   }
 
 }
