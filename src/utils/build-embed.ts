@@ -32,7 +32,7 @@ const getQueueInfo = (player: Player) => {
     return '-';
   }
 
-  return queueSize === 1 ? '1 song' : `${queueSize} songs`;
+  return queueSize === 1 ? '1 Song' : `${queueSize} Songs`;
 };
 
 const getPlayerUI = (player: Player) => {
@@ -54,7 +54,7 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
-    throw new Error('No playing song found');
+    throw new Error('Es gibt nichts zum spielen!');
   }
 
   const {artist, thumbnailUrl, requestedBy} = currentlyPlaying;
@@ -62,10 +62,11 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
 
   message
     .setColor(player.status === STATUS.PLAYING ? 'DARK_GREEN' : 'DARK_RED')
-    .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Paused')
+    .setTitle(player.status === STATUS.PLAYING ? 'Aktuell wird gespielt:' : 'Pausiert')
     .setDescription(`
       **${getSongTitle(currentlyPlaying)}**
-      Requested by: <@${requestedBy}>\n
+      Gefordert von: <@${requestedBy}>\n
+	  Beschwert euch bei der Person!\n
       ${getPlayerUI(player)}
     `)
     .setFooter({text: `Source: ${artist}`});
@@ -81,14 +82,14 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
-    throw new Error('queue is empty');
+    throw new Error('Die Queue ist leer, gib mir Arbeit!');
   }
 
   const queueSize = player.queueSize();
   const maxQueuePage = Math.ceil((queueSize + 1) / PAGE_SIZE);
 
   if (page > maxQueuePage) {
-    throw new Error('the queue isn\'t that big');
+    throw new Error('So groß ist die Queue jetzt auch wieder nicht!');
   }
 
   const queuePageBegin = (page - 1) * PAGE_SIZE;
@@ -111,16 +112,16 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
   const message = new MessageEmbed();
 
   let description = `**${getSongTitle(currentlyPlaying)}**\n`;
-  description += `Requested by: <@${requestedBy}>\n\n`;
+  description += `Gefordert von: <@${requestedBy}>\nBeschwert euch bei der Person!\n`;
   description += `${getPlayerUI(player)}\n\n`;
 
   if (player.getQueue().length > 0) {
-    description += '**Up next:**\n';
+    description += '**Als nächstes:**\n';
     description += queuedSongs;
   }
 
   message
-    .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Queued songs')
+    .setTitle(player.status === STATUS.PLAYING ? 'Aktuell wird gespielt:' : 'Gequeute Songs:')
     .setColor(player.status === STATUS.PLAYING ? 'DARK_GREEN' : 'NOT_QUITE_BLACK')
     .setDescription(description)
     .addField('In queue', getQueueInfo(player), true)
