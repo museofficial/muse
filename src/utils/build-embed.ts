@@ -61,8 +61,8 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
   const message = new MessageEmbed();
 
   message
-    .setColor('DARK_GREEN')
-    .setTitle('Now Playing')
+    .setColor(player.status === STATUS.PLAYING ? 'DARK_GREEN' : 'DARK_RED')
+    .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Paused')
     .setDescription(`
       **${getSongTitle(currentlyPlaying)}**
       Requested by: <@${requestedBy}>\n

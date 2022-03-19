@@ -78,7 +78,7 @@ services:
 ### Node.js
 
 **Prerequisites**:
-* Node.js 16.x (16.x is recommended because of LTS. 17.x seems to make problems)
+* Node.js (16.x is recommended because it's the current LTS version)
 * ffmpeg
 
 1. `git clone https://github.com/codetheweb/muse.git && cd muse`
@@ -86,7 +86,6 @@ services:
 3. I recommend checking out a tagged release with `git checkout v[latest release]`
 4. `yarn install` (or `npm i`)
 5. `yarn start` (or `npm run start`)
-	* `(npm run start&)` to run the bot 24/7 on a server
 
 **Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/codetheweb/muse/issues/345) for details.
 

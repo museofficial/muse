@@ -379,6 +379,14 @@ export default class {
     this.queue = [];
   }
 
+  move(from: number, to: number): void {
+    if (from > this.queueSize() || to > this.queueSize()) {
+      throw new Error('Move index is outside the range of the queue.');
+    }
+
+    this.queue.splice(this.queuePosition + to, 0, this.queue.splice(this.queuePosition + from, 1)[0]);
+  }
+
   private getHashForCache(url: string): string {
     return hasha(url);
   }
