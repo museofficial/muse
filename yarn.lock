@@ -278,10 +278,10 @@
   resolved "https://registry.yarnpkg.com/@prisma/engines/-/engines-3.11.0-48.b371888aaf8f51357c7457d836b86d12da91658b.tgz#4c1093f7b24c433a9cef2e60f13f57f7c89b5cfa"
   integrity sha512-m9iZd5F5vP6A2IvKWfHpOO/qK8OOO9nbsV/pdyEkF/1WNe0E8SIWFBKb+HcMLkG9OFbDDBy8QItXmp/mIULuwQ==
 
-"@release-it/keep-a-changelog@^2.3.0":
-  version "2.3.0"
-  resolved "https://registry.yarnpkg.com/@release-it/keep-a-changelog/-/keep-a-changelog-2.3.0.tgz#dfe888f97604a13c161e78f67509b296fb91ebc5"
-  integrity sha512-W3rzUsfT1BeDx9KDPJvpos7aQ+fModusP9X90VWYxOc/+tl5UUrH3Sjh2bemtG0okCtEFY/qnU3abbR5MK1wbg==
+"@release-it/keep-a-changelog@^2.4.0":
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/@release-it/keep-a-changelog/-/keep-a-changelog-2.4.0.tgz#f44cf3d138d9e1e305c16a18865dab9fee93daf4"
+  integrity sha512-exD8tz222MHItTujsD/gEO/ydOwFD4VYxiRj+F6mKxK0ZsqYHz4BkrAw/P0pm84ANjgDTmdqK5C06FxYvitQ9Q==
   dependencies:
     detect-newline "^3.1.0"
 

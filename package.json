@@ -28,7 +28,7 @@
     "release": "release-it"
   },
   "devDependencies": {
-    "@release-it/keep-a-changelog": "^2.3.0",
+    "@release-it/keep-a-changelog": "^2.4.0",
     "@types/bluebird": "^3.5.35",
     "@types/debug": "^4.1.5",
     "@types/fluent-ffmpeg": "^2.1.17",
