@@ -9,39 +9,39 @@ import Command from './index.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('config')
-    .setDescription('configure bot settings')
+    .setDescription('Hier kannst du die Bot Einstellungen anpassen.')
     .addSubcommand(subcommand => subcommand
       .setName('set-playlist-limit')
-      .setDescription('set the maximum number of tracks that can be added from a playlist')
+      .setDescription('Setzt die maximale Anzahl an Songs die von einer Playlist hinzugefügt werden können.')
       .addIntegerOption(option => option
         .setName('limit')
-        .setDescription('maximum number of tracks')
+        .setDescription('Maximale Anzahl an Songs')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-role')
-      .setDescription('set the role that is allowed to use the bot')
+      .setDescription('Setzt die Rolle, welcher es erlaubt ist den Bot zu bedienen.')
       .addRoleOption(option => option
         .setName('role')
-        .setDescription('allowed role')
+        .setDescription('Erlaubte Rolle')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-wait-after-queue-empties')
-      .setDescription('set the time to wait before leaving the voice channel when queue empties')
+      .setDescription('Setzt die Zeit die der Bot warten soll bis er den Channel verlässt, wenn die Queue leer ist.')
       .addIntegerOption(option => option
         .setName('delay')
-        .setDescription('delay in seconds (set to 0 to never leave)')
+        .setDescription('Zeit in Sekunden (auf 0 setzen wenn er drin bleiben soll)')
         .setRequired(true)
         .setMinValue(0)))
     .addSubcommand(subcommand => subcommand
       .setName('set-leave-if-no-listeners')
-      .setDescription('set whether to leave when all other participants leave')
+      .setDescription('Setzt den Befehl das der Bot den Channel verlassen soll, wenn kein anderer User mehr da ist.')
       .addBooleanOption(option => option
         .setName('value')
-        .setDescription('whether to leave when everyone else leaves')
+        .setDescription('Soll er den Channel verlassen wenn alle weg sind?')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('get')
-      .setDescription('show all settings'));
+      .setDescription('Zeigt alle gesetzten Einstellungen.'));
 
   async execute(interaction: CommandInteraction) {
     switch (interaction.options.getSubcommand()) {
@@ -49,7 +49,7 @@ export default class implements Command {
         const limit = interaction.options.getInteger('limit')!;
 
         if (limit < 1) {
-          throw new Error('invalid limit');
+          throw new Error('0 ist keine Möglichkeit!');
         }
 
         await prisma.setting.update({
@@ -61,7 +61,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 limit updated');
+        await interaction.reply('👍 Limit gesetzt.');
 
         break;
       }
@@ -80,7 +80,7 @@ export default class implements Command {
 
         await updatePermissionsForGuild(interaction.guild!);
 
-        await interaction.reply('👍 role updated');
+        await interaction.reply('👍 Rolle gesetzt.');
 
         break;
       }
@@ -97,7 +97,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 wait delay updated');
+        await interaction.reply('👍 Wartezeit aktualisiert.');
 
         break;
       }
@@ -114,7 +114,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 leave setting updated');
+        await interaction.reply('👍 Verlassenzeit aktualisiert.');
 
         break;
       }
@@ -125,16 +125,16 @@ export default class implements Command {
         const config = await prisma.setting.findUnique({where: {guildId: interaction.guild!.id}});
 
         if (!config) {
-          throw new Error('no config found');
+          throw new Error('Keine gesetzten Einstellungen gefunden!');
         }
 
         const settingsToShow = {
-          'Playlist Limit': config.playlistLimit,
-          Role: config.roleId ? `<@&${config.roleId}>` : 'not set',
-          'Wait before leaving after queue empty': config.secondsToWaitAfterQueueEmpties === 0
-            ? 'never leave'
+          'Playlist Song Limit': config.playlistLimit,
+          Role: config.roleId ? `<@&${config.roleId}>` : 'Nicht gesetzt.',
+          'Zeit zum warten bevor ich den Channel verlasse': config.secondsToWaitAfterQueueEmpties === 0
+            ? 'Niemals den Channel verlassen.'
             : `${config.secondsToWaitAfterQueueEmpties}s`,
-          'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
+          'Verlassen wenn keiner mehr da ist?': config.leaveIfNoListeners ? 'Ja' : 'Nein',
         };
 
         let description = '';
@@ -150,7 +150,7 @@ export default class implements Command {
       }
 
       default:
-        throw new Error('unknown subcommand');
+        throw new Error('Unbekannter Befehl!');
     }
   }
 }

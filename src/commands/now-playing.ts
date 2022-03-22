@@ -10,7 +10,7 @@ import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('now-playing')
-    .setDescription('shows the currently played song');
+    .setDescription('Zeigt an was gespielt wird.');
 
   private readonly playerManager: PlayerManager;
 
@@ -22,7 +22,7 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.getCurrent()) {
-      throw new Error('nothing is currently playing');
+      throw new Error('Gib mir erstmal Arbeit bevor du das machst!');
     }
 
     await interaction.reply({

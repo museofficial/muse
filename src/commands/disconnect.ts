@@ -9,7 +9,7 @@ import Command from '.';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('disconnect')
-    .setDescription('pause and disconnect Muse');
+    .setDescription('Beleidigt den Bot auf das übelste.');
 
   public requiresVC = true;
 
@@ -23,11 +23,11 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.voiceConnection) {
-      throw new Error('not connected');
+      throw new Error('Geh wem anders auf die Nerven, ich bin nicht anwesend!');
     }
 
     player.disconnect();
 
-    await interaction.reply('u betcha');
+    await interaction.reply('Danke für\'s disconnecten! Wir sehen uns bei der nächsten Party. Hier ein :cookie: für dich! :slight_smile:');
   }
 }

@@ -11,10 +11,10 @@ import durationStringToSeconds from '../utils/duration-string-to-seconds.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('fseek')
-    .setDescription('seek forward in the current song')
+    .setDescription('Springt zu einer Position nach vorne vom jetzigen Zeitpunkt.')
     .addStringOption(option => option
       .setName('time')
-      .setDescription('an interval expression or number of seconds (1m, 30s, 100)')
+      .setDescription('Ein Zeitraum in Sekunden (1m, 30s, 100)')
       .setRequired(true));
 
   public requiresVC = true;
@@ -31,23 +31,23 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      throw new Error('nothing is playing');
+      throw new Error('Gib mir erstmal Arbeit bevor du das machst!');
     }
 
     if (currentSong.isLive) {
-      throw new Error('can\'t seek in a livestream');
+      throw new Error('Dass das live ist weißt du schon, ne?');
     }
 
     const seekValue = interaction.options.getString('value');
 
     if (!seekValue) {
-      throw new Error('missing seek value');
+      throw new Error('Wo soll ich hinspringen wenn du mir nicht sagst wo?');
     }
 
     const seekTime = durationStringToSeconds(seekValue);
 
     if (seekTime + player.getPosition() > currentSong.length) {
-      throw new Error('can\'t seek past the end of the song');
+      throw new Error('Ey, so weit kann ich nicht gehen! Da ist der Song schon zuende!');
     }
 
     await Promise.all([
@@ -55,6 +55,6 @@ export default class implements Command {
       interaction.deferReply(),
     ]);
 
-    await interaction.editReply(`👍 seeked to ${prettyTime(player.getPosition())}`);
+    await interaction.editReply(`👍 Wir sind bei ${prettyTime(player.getPosition())} angekommen, zufrieden?`);
   }
 }

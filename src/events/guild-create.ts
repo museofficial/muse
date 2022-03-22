@@ -16,7 +16,7 @@ export default async (guild: Guild): Promise<void> => {
   } catch {}
 
   if (!invitedBy) {
-    console.warn(`Could not find user who invited Muse to ${guild.name} from the audit logs.`);
+    console.warn(`Ich kann den User nicht finden der mich zu ${guild.name} hinzugefügt hat!`);
   }
 
   await prisma.setting.upsert({
@@ -50,9 +50,9 @@ export default async (guild: Guild): Promise<void> => {
   await updatePermissionsForGuild(guild);
 
   if (invitedBy) {
-    await invitedBy.send('👋 Hi! You just invited me to a server. I can\'t be used by your server members until you complete setup by running /config set-role in your server.');
+    await invitedBy.send('👋 Hi! Du hast mich in diesen Server gebracht! Ich kann aber erst richtig genutzt werden, wenn du /config set-role in dem Server benutzt und richtig einstellst!');
   } else {
     const owner = await guild.fetchOwner();
-    await owner.send('👋 Hi! Someone (probably you) just invited me to a server you own. I can\'t be used by your server members until you complete setup by running /config set-role in your server.');
+    await owner.send('👋 Hi! Irgendwer (womöglich du) hat mich in den Server eingeladen den du besitzt! Ich kann aber erst richtig genutzt werden, wenn du /config set-role in dem Server benutzt und richtig einstellst!');
   }
 };

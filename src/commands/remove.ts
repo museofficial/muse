@@ -9,15 +9,15 @@ import {SlashCommandBuilder} from '@discordjs/builders';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('remove')
-    .setDescription('remove songs from the queue')
+    .setDescription('Entfernt Songs aus der Wiedergabeliste.')
     .addIntegerOption(option =>
       option.setName('position')
-        .setDescription('position of the song to remove [default: 1]')
+        .setDescription('Position des zu entfernenden Songs [Standard: 1]')
         .setRequired(false),
     )
     .addIntegerOption(option =>
       option.setName('range')
-        .setDescription('number of songs to remove [default: 1]')
+        .setDescription('Anzahl der zu entfernenden Songs [Standard: 1]')
         .setRequired(false));
 
   private readonly playerManager: PlayerManager;
@@ -33,15 +33,15 @@ export default class implements Command {
     const range = interaction.options.getInteger('range') ?? 1;
 
     if (position < 1) {
-      throw new Error('position must be at least 1');
+      throw new Error('Ich kann nichts entfernen wo nichts ist!');
     }
 
     if (range < 1) {
-      throw new Error('range must be at least 1');
+      throw new Error('Die Range muss mindestens 1 Song umfassen!');
     }
 
     player.removeFromQueue(position, range);
 
-    await interaction.reply(':wastebasket: removed');
+    await interaction.reply(':wastebasket: weg damit!');
   }
 }

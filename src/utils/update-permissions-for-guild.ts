@@ -11,7 +11,7 @@ const updatePermissionsForGuild = async (guild: Guild) => {
   });
 
   if (!settings) {
-    throw new Error('could not find settings for guild');
+    throw new Error('Ich kann die Servereinstellungen nicht finden!');
   }
 
   const permissions: ApplicationCommandPermissionData[] = [

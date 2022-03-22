@@ -62,7 +62,7 @@ export default class {
     }
 
     if (!firstVideo) {
-      throw new Error('No video found.');
+      throw new Error('Kein Video gefunden!');
     }
 
     return this.getVideo(firstVideo.id, shouldSplitChapters);
