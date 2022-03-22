@@ -95,6 +95,27 @@ services:
 
 By default, Muse limits the total cache size to around 2 GB. If you want to change this, set the environment variable `CACHE_LIMIT`. For example, `CACHE_LIMIT=512MB` or `CACHE_LIMIT=10GB`.
 
+### Custom Bot Status
+
+In the default state, Muse has the status "Online" and the text "Listening to Music". You can change it trough the environment variables.
+
+- `BOT_STATUS=` This one is the same like your online Status. You can change it to the following states:
+  - `online` (Online)
+  - `idle` ("Away")
+  - `dnd` (Do not Disturb)
+
+- `BOT_ACTIVITY_TYPE=` This setting is to change what the bot is doing. You can put it in the following states:
+  - `PLAYING` (Playing XYZ)
+  - `LISTENING` (Listening to XYZ)
+  - `WATCHING` (Watching XYZ)
+
+- `BOT_ACTIVITY=` The last setting is the "thing" you do, here you can put any text in you want to.
+
+An example: If you want to change the status so Muse is watching a movie and is DND, you configure it like this:
+- `BOT_STATUS=dnd`
+- `BOT_ACTIVITY_TYPE=WATCHING`
+- `BOT_ACTIVITY=a movie`
+
 ### Bot-wide commands
 
 If you have Muse running in a lot of guilds (10+) you may want to switch to registering commands bot-wide rather than for each guild. (The downside to this is that command updates can take up to an hour to propagate.) To do this, set the environment variable `REGISTER_COMMANDS_ON_BOT` to `true`.
