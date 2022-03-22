@@ -17,6 +17,9 @@ const CONFIG_MAP = {
   DATA_DIR,
   CACHE_DIR: path.join(DATA_DIR, 'cache'),
   CACHE_LIMIT_IN_BYTES: xbytes.parseSize(process.env.CACHE_LIMIT ?? '2GB'),
+  BOT_STATUS: process.env.BOT_STATUS ?? 'online',
+  BOT_ACTIVITY_TYPE: process.env.BOT_ACTIVITY_TYPE ?? 'LISTENING',
+  BOT_ACTIVITY: process.env.BOT_ACTIVITY ?? 'music',
 } as const;
 
 @injectable()
@@ -29,6 +32,9 @@ export default class Config {
   readonly DATA_DIR!: string;
   readonly CACHE_DIR!: string;
   readonly CACHE_LIMIT_IN_BYTES!: number;
+  readonly BOT_STATUS!: string;
+  readonly BOT_ACTIVITY_TYPE!: string;
+  readonly BOT_ACTIVITY!: string;
 
   constructor() {
     for (const [key, value] of Object.entries(CONFIG_MAP)) {
