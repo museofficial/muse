@@ -69,7 +69,7 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
 	  Beschwert euch bei der Person!\n
       ${getPlayerUI(player)}
     `)
-    .setFooter({text: `Source: ${artist}`});
+    .setFooter({text: `Quelle: ${artist}`});
 
   if (thumbnailUrl) {
     message.setThumbnail(thumbnailUrl);
@@ -122,12 +122,12 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
 
   message
     .setTitle(player.status === STATUS.PLAYING ? 'Aktuell wird gespielt:' : 'Gequeute Songs:')
-    .setColor(player.status === STATUS.PLAYING ? 'DARK_GREEN' : 'NOT_QUITE_BLACK')
+    .setColor(player.status === STATUS.PLAYING ? 'DARK_GREEN' : 'DARK_RED')
     .setDescription(description)
-    .addField('In queue', getQueueInfo(player), true)
-    .addField('Total length', `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, true)
-    .addField('Page', `${page} out of ${maxQueuePage}`, true)
-    .setFooter({text: `Source: ${artist} ${playlistTitle}`});
+    .addField('In der Queue', getQueueInfo(player), true)
+    .addField('Gesamte Laufzeit', `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, true)
+    .addField('Seite', `${page} von ${maxQueuePage}`, true)
+    .setFooter({text: `Quelle: ${artist} ${playlistTitle}`});
 
   if (thumbnailUrl) {
     message.setThumbnail(thumbnailUrl);
