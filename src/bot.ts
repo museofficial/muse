@@ -23,6 +23,9 @@ export default class {
   private readonly shouldRegisterCommandsOnBot: boolean;
   private readonly commandsByName!: Collection<string, Command>;
   private readonly commandsByButtonId!: Collection<string, Command>;
+  private readonly cbot_status: string;
+  private readonly cbot_act_type: string;
+  private readonly cbot_act: string;
 
   constructor(
   @inject(TYPES.Client) client: Client,
@@ -33,6 +36,9 @@ export default class {
     this.shouldRegisterCommandsOnBot = config.REGISTER_COMMANDS_ON_BOT;
     this.commandsByName = new Collection();
     this.commandsByButtonId = new Collection();
+    this.cbot_status = config.BOT_STATUS;
+    this.cbot_act_type = config.BOT_ACTIVITY_TYPE;
+    this.cbot_act = config.BOT_ACTIVITY;
   }
 
   public async register(): Promise<void> {
@@ -148,7 +154,7 @@ export default class {
         );
       }
 
-      this.client.user!.setPresence({activities: [{name: 'with discord.js'}], status: 'online'});
+      this.client.user!.setPresence({activities: [{name: this.cbot_act, type: this.cbot_act_type}], status: this.cbot_status});
 
       // Update permissions
       spinner.text = '📡 updating permissions...';
