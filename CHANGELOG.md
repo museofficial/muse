@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Added a configurable Bot Status with user defined Activities
+- Added a configurable bot status with user defined activities
 
 ## [1.7.0] - 2022-03-19
 ### Added
