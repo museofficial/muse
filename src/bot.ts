@@ -148,6 +148,8 @@ export default class {
         );
       }
 
+      this.client.user!.setPresence({activities: [{name: 'with discord.js'}], status: 'online'});
+
       // Update permissions
       spinner.text = '📡 updating permissions...';
       await Promise.all(this.client.guilds.cache.map(async guild => updatePermissionsForGuild(guild)));
