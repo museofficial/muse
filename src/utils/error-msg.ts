@@ -1,5 +1,5 @@
 export default (error?: string | Error): string => {
-  let str = '🚫ope: unknown error';
+  let str = 'unknown error';
 
   if (error) {
     if (typeof error === 'string') {
