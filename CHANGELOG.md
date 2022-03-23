@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
-- Error messages show as `🚫 error` rather than `🚫 ope: error`
+- Error messages consistently show as `🚫 ope: error`
 
 ## [1.6.2] - 2022-03-17
 ### Fixed
