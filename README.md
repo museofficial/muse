@@ -97,29 +97,31 @@ By default, Muse limits the total cache size to around 2 GB. If you want to chan
 
 ### Custom Bot Status
 
-In the default state, Muse has the status "Online" and the text "Listening to Music". You can change it trough the environment variables.
+In the default state, Muse has the status "Online" and the text "Listening to Music". You can change the status through environment variables:
 
-- `BOT_STATUS=` This one is the same like your online Status. You can change it to the following states:
+- `BOT_STATUS`:
   - `online` (Online)
-  - `idle` ("Away")
+  - `idle` (Away)
   - `dnd` (Do not Disturb)
 
-- `BOT_ACTIVITY_TYPE=` This setting is to change what the bot is doing. You can put it in the following states:
+- `BOT_ACTIVITY_TYPE`:
   - `PLAYING` (Playing XYZ)
   - `LISTENING` (Listening to XYZ)
   - `WATCHING` (Watching XYZ)
   - `STREAMING` (Streaming XYZ)
 
-- `BOT_ACTIVITY_URL=` If you use `STREAMING` you MUST set this variable, otherwise it will not work! Here you write a regular YouTube or Twitch Stream URL.
+- `BOT_ACTIVITY`: the text that follows the activity type
 
-- `BOT_ACTIVITY=` The last setting is the "thing" you do, here you can put any text in you want to.
+- `BOT_ACTIVITY_URL` If you use `STREAMING` you MUST set this variable, otherwise it will not work! Here you write a regular YouTube or Twitch Stream URL.
 
-An example: If you want to change the status so Muse is watching a movie and is DND, you configure it like this:
+#### Examples
+
+**Muse is watching a movie and is DND**:
 - `BOT_STATUS=dnd`
 - `BOT_ACTIVITY_TYPE=WATCHING`
 - `BOT_ACTIVITY=a movie`
 
-Another example: If you want to change the status so Muse is streaming Monstercat, you configure it like this:
+**Muse is streaming Monstercat**:
 - `BOT_STATUS=online`
 - `BOT_ACTIVITY_TYPE=STREAMING`
 - `BOT_ACTIVITY_URL=https://www.twitch.tv/monstercat`
