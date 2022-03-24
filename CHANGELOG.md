@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added a configurable bot status with user defined activities
+### Fixed
+- Error messages consistently show as `🚫 ope: error`
 
 ## [1.7.0] - 2022-03-19
 ### Added
