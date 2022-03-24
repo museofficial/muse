@@ -1,4 +1,4 @@
-import {Client, Collection, User} from 'discord.js';
+import {Client, Collection, ExcludeEnum, PresenceStatusData, User} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import ora from 'ora';
 import {TYPES} from './types.js';
@@ -15,10 +15,12 @@ import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v9';
 import updatePermissionsForGuild from './utils/update-permissions-for-guild.js';
+import {ActivityTypes} from 'discord.js/typings/enums';
 
 @injectable()
 export default class {
   private readonly client: Client;
+  private readonly config: Config;
   private readonly token: string;
   private readonly shouldRegisterCommandsOnBot: boolean;
   private readonly commandsByName!: Collection<string, Command>;
@@ -29,6 +31,7 @@ export default class {
     @inject(TYPES.Config) config: Config,
   ) {
     this.client = client;
+    this.config = config;
     this.token = config.DISCORD_TOKEN;
     this.shouldRegisterCommandsOnBot = config.REGISTER_COMMANDS_ON_BOT;
     this.commandsByName = new Collection();
@@ -147,6 +150,17 @@ export default class {
         ],
         );
       }
+
+      this.client.user!.setPresence({
+        activities: [
+          {
+            name: this.config.BOT_ACTIVITY,
+            type: this.config.BOT_ACTIVITY_TYPE as unknown as ExcludeEnum<typeof ActivityTypes, 'CUSTOM'>,
+            url: this.config.BOT_ACTIVITY_URL === '' ? undefined : this.config.BOT_ACTIVITY_URL,
+          },
+        ],
+        status: this.config.BOT_STATUS as PresenceStatusData,
+      });
 
       // Update permissions
       spinner.text = '📡 updating permissions...';
