@@ -150,7 +150,11 @@ export default class {
         );
       }
 
-      this.client.user!.setPresence({activities: [{name: this.config.BOT_ACTIVITY, type: this.config.BOT_ACTIVITY_TYPE}], status: this.config.BOT_STATUS});
+      if (this.config.BOT_ACTIVITY_URL !== '') {
+        this.client.user!.setPresence({activities: [{name: this.config.BOT_ACTIVITY, type: this.config.BOT_ACTIVITY_TYPE, url: this.config.BOT_ACTIVITY_URL}], status: this.config.BOT_STATUS});
+      } else {
+        this.client.user!.setPresence({activities: [{name: this.config.BOT_ACTIVITY, type: this.config.BOT_ACTIVITY_TYPE}], status: this.config.BOT_STATUS});
+      }
 
       // Update permissions
       spinner.text = '📡 updating permissions...';

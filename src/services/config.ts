@@ -19,6 +19,7 @@ const CONFIG_MAP = {
   CACHE_LIMIT_IN_BYTES: xbytes.parseSize(process.env.CACHE_LIMIT ?? '2GB'),
   BOT_STATUS: process.env.BOT_STATUS ?? 'online',
   BOT_ACTIVITY_TYPE: process.env.BOT_ACTIVITY_TYPE ?? 'LISTENING',
+  BOT_ACTIVITY_URL: process.env.BOT_ACTIVITY_URL ?? '',
   BOT_ACTIVITY: process.env.BOT_ACTIVITY ?? 'music',
 } as const;
 
@@ -34,6 +35,7 @@ export default class Config {
   readonly CACHE_LIMIT_IN_BYTES!: number;
   readonly BOT_STATUS!: string;
   readonly BOT_ACTIVITY_TYPE!: string;
+  readonly BOT_ACTIVITY_URL!: string;
   readonly BOT_ACTIVITY!: string;
 
   constructor() {

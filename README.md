@@ -108,6 +108,9 @@ In the default state, Muse has the status "Online" and the text "Listening to Mu
   - `PLAYING` (Playing XYZ)
   - `LISTENING` (Listening to XYZ)
   - `WATCHING` (Watching XYZ)
+  - `STREAMING` (Streaming XYZ)
+
+- `BOT_ACTIVITY_URL=` If you use `STREAMING` you MUST set this variable, otherwise it will not work! Here you write a regular YouTube or Twitch Stream URL.
 
 - `BOT_ACTIVITY=` The last setting is the "thing" you do, here you can put any text in you want to.
 
@@ -115,6 +118,12 @@ An example: If you want to change the status so Muse is watching a movie and is 
 - `BOT_STATUS=dnd`
 - `BOT_ACTIVITY_TYPE=WATCHING`
 - `BOT_ACTIVITY=a movie`
+
+Another example: If you want to change the status so Muse is streaming Monstercat, you configure it like this:
+- `BOT_STATUS=online`
+- `BOT_ACTIVITY_TYPE=STREAMING`
+- `BOT_ACTIVITY_URL=https://www.twitch.tv/monstercat`
+- `BOT_ACTIVITY=Monstercat`
 
 ### Bot-wide commands
 
