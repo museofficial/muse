@@ -1,6 +1,6 @@
 name: PR Workflow
 
-on: pull_request
+on: pull_request_target
 
 jobs:
   release-snapshot:
@@ -23,6 +23,8 @@ jobs:
         uses: docker/setup-buildx-action@v1
 
       - name: Cache Docker layers
+        # AWS data transfer is pricy
+        if: ${{ matrix.runner-platform != 'self-hosted' }}
         uses: actions/cache@v2
         with:
           path: /tmp/.buildx-cache
