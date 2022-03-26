@@ -27,10 +27,11 @@ COPY . .
 RUN yarn prisma generate
 
 ARG COMMIT_HASH=unknown
+ARG BUILD_DATE=unknown
 
 ENV DATA_DIR /data
 ENV NODE_ENV production
-ENV BUILD_DATE $(date)
 ENV COMMIT_HASH $COMMIT_HASH
+ENV BUILD_DATE $BUILD_DATE
 
 CMD ["yarn", "start"]
