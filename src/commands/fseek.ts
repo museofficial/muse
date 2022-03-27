@@ -38,7 +38,7 @@ export default class implements Command {
       throw new Error('can\'t seek in a livestream');
     }
 
-    const seekValue = interaction.options.getString('value');
+    const seekValue = interaction.options.getString('time');
 
     if (!seekValue) {
       throw new Error('missing seek value');
