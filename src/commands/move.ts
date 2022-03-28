@@ -40,8 +40,8 @@ export default class implements Command {
       throw new Error('position must be at least 1');
     }
 
-    player.move(from, to);
+    let title : string = player.move(from, to);
 
-    await interaction.reply('moved');
+    await interaction.reply('moved **'+title+'** to position **'+to+'**');
   }
 }
