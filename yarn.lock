@@ -2509,7 +2509,7 @@ mimic-response@^3.1.0:
   resolved "https://registry.yarnpkg.com/mimic-response/-/mimic-response-3.1.0.tgz#2d1d59af9c1b129815accc2c46a022a5ce1fa3c9"
   integrity sha512-z0yWI+4FDrrweS8Zmt4Ej5HdJmky15+L2e6Wgn3+iK5fWzb6T3fhNFq2+MeTRb064c6Wr4N/wv0DzQTjNzHNGQ==
 
-miniget@^4.0.0, miniget@^4.2.1, miniget@^4.2.2:
+miniget@^4.2.1, miniget@^4.2.2:
   version "4.2.2"
   resolved "https://registry.yarnpkg.com/miniget/-/miniget-4.2.2.tgz#db20320f265efdc4c1826a0be431d56753074475"
   integrity sha512-a7voNL1N5lDMxvTMExOkg+Fq89jM2vY8pAi9ZEWzZtfNmdfP6RXkvUtFnCAXoCv2T9k1v/fUJVaAEuepGcvLYA==
@@ -3804,13 +3804,13 @@ yocto-queue@^1.0.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-1.0.0.tgz#7f816433fb2cbc511ec8bf7d263c3b58a1a3c251"
   integrity sha512-9bnSc/HEW2uRy67wc+T8UwauLuPJVn28jb+GtJY16iiKWyvmYJRXVT4UamsAEGQfPohgr2q4Tq0sQbQlxTfi1g==
 
-youtube.ts@^0.2.5:
-  version "0.2.5"
-  resolved "https://registry.yarnpkg.com/youtube.ts/-/youtube.ts-0.2.5.tgz#392e8d037ade0287afd9373bb56cb6aa783ec5a3"
-  integrity sha512-C0UAVLk8NRJEw378sKkQPzjN2C3n/UpjXJbVQr498pLs2xv/yjPO/qzkHlApeR/B3rKZFgGxGBmRUsk/Ovbd4w==
+youtube.ts@^0.2.8:
+  version "0.2.8"
+  resolved "https://registry.yarnpkg.com/youtube.ts/-/youtube.ts-0.2.8.tgz#c915a080d4c0a161036bb12401080c3b6da3c1bc"
+  integrity sha512-LMmS+BJYzaKoWIKoL82Bu+IAfRZMZ9fh5YJ0EbCsX+zBTMt9VeGGZYjyary748USLWFerkyTuc3cQu/u0nk5Eg==
   dependencies:
     axios "^0.19.0"
-    ytdl-core "^4.9.1"
+    ytdl-core "^4.11.0"
 
 ytdl-core@^4.11.0:
   version "4.11.0"
@@ -3819,15 +3819,6 @@ ytdl-core@^4.11.0:
   dependencies:
     m3u8stream "^0.8.6"
     miniget "^4.2.2"
-    sax "^1.1.3"
-
-ytdl-core@^4.9.1:
-  version "4.10.1"
-  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.10.1.tgz#6648d65faca787919181b2cee1be470b2ef9fdcb"
-  integrity sha512-idBhW+e7HCzs5fR5cqp7Ci+mJhEch41YAaWabYlneQFCL6IGf6Hycv99yVx01Zl1Ci0t/70faOelMSrXaQTE/A==
-  dependencies:
-    m3u8stream "^0.8.6"
-    miniget "^4.0.0"
     sax "^1.1.3"
 
 ytsr@^3.6.0:

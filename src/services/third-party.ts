@@ -1,6 +1,6 @@
 import {inject, injectable} from 'inversify';
 import SpotifyWebApi from 'spotify-web-api-node';
-import Youtube from 'youtube.ts/dist/youtube.js';
+import Youtube from 'youtube.ts';
 import {TYPES} from '../types.js';
 import Config from './config.js';
 
