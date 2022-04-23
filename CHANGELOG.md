@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed a case-sensitive import issue
 
+### Added
+- Added a `/next` alias for `/skip`
+
 ## [1.8.2] - 2022-03-27
 ### Fixed
 - `/fseek` now works again
