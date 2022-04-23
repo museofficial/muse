@@ -31,6 +31,7 @@ import Resume from './commands/resume.js';
 import Seek from './commands/seek.js';
 import Shuffle from './commands/shuffle.js';
 import Skip from './commands/skip.js';
+import Next from './commands/next.js';
 import Stop from './commands/stop.js';
 import Unskip from './commands/unskip.js';
 import ThirdParty from './services/third-party.js';
@@ -77,6 +78,7 @@ container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingleton
   Seek,
   Shuffle,
   Skip,
+  Next,
   Stop,
   Unskip,
 ].forEach(command => {
