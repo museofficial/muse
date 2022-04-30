@@ -11,7 +11,7 @@ const COMMANDS_TO_LIMIT_TO_GUILD_OWNER = ['config'];
 const updatePermissionsForGuild = async (guild: Guild) => {
   const client = container.get<Client>(TYPES.Client);
   const token = container.get<Token>(TYPES.Managers.Token).getBearerToken();
-  const rest = new REST({version: '10', authPrefix: 'Bearer'}).setToken(token);
+  const rest = new REST({version: '10', authPrefix: 'Bearer', retries: 10}).setToken(token);
 
   const settings = await prisma.setting.findUnique({
     where: {

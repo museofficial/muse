@@ -28,11 +28,7 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 
 - `DISCORD_TOKEN`, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` can be acquired [here](https://discordapp.com/developers/applications) by creating a 'New Application', 
   - "Bot" Menu -> "Reset Token" and "Copy" for new `DISCORD_TOKEN`
-  - "OAuth2" Menu 
-    - Copy "Client ID" and "Client Secret", 
-    - Set "Authorization Method" to "In-App Authorization" and activate both "bot" and "applications.command" 
-    - Activate "View AuditLog", "Connect", "Speak", "Use Voice Activity"
-    - Save Changes
+  - "OAuth2" Menu  -> Copy "Client ID" and "Client Secret"
 - can be acquired [here](https://discordapp.com/developers/applications) by creating a 'New Application', then going to 'Bot'.
 - `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` can be acquired [here](https://developer.spotify.com/dashboard/applications) with 'Create a Client ID'.
 - `YOUTUBE_API_KEY` can be acquired by [creating a new project](https://console.developers.google.com) in Google's Developer Console, enabling the YouTube API, and creating an API key under credentials.

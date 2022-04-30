@@ -15,8 +15,8 @@ export default class {
   getBearerToken(): string {
     const data = {
       grant_type: 'client_credentials',
-      scope: 'bot applications.commands.update applications.commands.permissions.update',
-      permissions: '8',
+      scope: 'bot applications.commands applications.commands.update applications.commands.permissions.update',
+      permissions: '36700288',
       client_id: this.config.DISCORD_CLIENT_ID,
       client_secret: this.config.DISCORD_CLIENT_SECRET,
     };
