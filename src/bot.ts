@@ -1,4 +1,4 @@
-import {Client, Collection, ExcludeEnum, PresenceStatusData, User} from 'discord.js';
+import {Client, Collection, PresenceStatusData, User} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import ora from 'ora';
 import {TYPES} from './types.js';
@@ -13,9 +13,9 @@ import {isUserInVoice} from './utils/channels.js';
 import Config from './services/config.js';
 import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
-import {Routes} from 'discord-api-types/v9';
+import {Routes, ActivityType} from 'discord-api-types/v10';
 import updatePermissionsForGuild from './utils/update-permissions-for-guild.js';
-import {ActivityTypes} from 'discord.js/typings/enums';
+import Token from './managers/token';
 
 @injectable()
 export default class {
@@ -25,17 +25,21 @@ export default class {
   private readonly shouldRegisterCommandsOnBot: boolean;
   private readonly commandsByName!: Collection<string, Command>;
   private readonly commandsByButtonId!: Collection<string, Command>;
+  private readonly bearerToken!: string;
 
   constructor(
   @inject(TYPES.Client) client: Client,
     @inject(TYPES.Config) config: Config,
+    @inject(TYPES.Managers.Token) tokenManager: Token,
   ) {
     this.client = client;
     this.config = config;
-    this.token = config.DISCORD_TOKEN;
+    this.token = this.config.DISCORD_TOKEN;
+    this.client.token = this.token;
     this.shouldRegisterCommandsOnBot = config.REGISTER_COMMANDS_ON_BOT;
     this.commandsByName = new Collection();
     this.commandsByButtonId = new Collection();
+    this.bearerToken = tokenManager.getBearerToken();
   }
 
   public async register(): Promise<void> {
@@ -61,6 +65,7 @@ export default class {
     }
 
     // Register event handlers
+    // eslint-disable-next-line complexity
     this.client.on('interactionCreate', async interaction => {
       try {
         if (interaction.isCommand()) {
@@ -75,15 +80,16 @@ export default class {
             return;
           }
 
-          const requiresVC = command.requiresVC instanceof Function ? command.requiresVC(interaction) : command.requiresVC;
+          if (interaction.isChatInputCommand()) {
+            const requiresVC = command.requiresVC instanceof Function ? command.requiresVC(interaction) : command.requiresVC;
+            if (requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
+              await interaction.reply({content: errorMsg('gotta be in a voice channel'), ephemeral: true});
+              return;
+            }
 
-          if (requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
-            await interaction.reply({content: errorMsg('gotta be in a voice channel'), ephemeral: true});
-            return;
-          }
-
-          if (command.execute) {
-            await command.execute(interaction);
+            if (command.execute) {
+              await command.execute(interaction);
+            }
           }
         } else if (interaction.isButton()) {
           const command = this.commandsByButtonId.get(interaction.customId);
@@ -111,9 +117,9 @@ export default class {
 
         // This can fail if the message was deleted, and we don't want to crash the whole bot
         try {
-          if ((interaction.isApplicationCommand() || interaction.isButton()) && (interaction.replied || interaction.deferred)) {
+          if ((interaction.isCommand() || interaction.isButton()) && (interaction.replied || interaction.deferred)) {
             await interaction.editReply(errorMsg(error as Error));
-          } else if (interaction.isApplicationCommand() || interaction.isButton()) {
+          } else if (interaction.isCommand() || interaction.isButton()) {
             await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
           }
         } catch {}
@@ -126,11 +132,9 @@ export default class {
       debug(generateDependencyReport());
 
       // Update commands
-      const rest = new REST({version: '9'}).setToken(this.token);
-
+      const rest = new REST({version: '10', authPrefix: 'Bearer'}).setToken(this.bearerToken);
       if (this.shouldRegisterCommandsOnBot) {
         spinner.text = '📡 updating commands on bot...';
-
         await rest.put(
           Routes.applicationCommands(this.client.user!.id),
           {body: this.commandsByName.map(command => command.slashCommand.toJSON())},
@@ -155,7 +159,7 @@ export default class {
         activities: [
           {
             name: this.config.BOT_ACTIVITY,
-            type: this.config.BOT_ACTIVITY_TYPE as unknown as ExcludeEnum<typeof ActivityTypes, 'CUSTOM'>,
+            type: this.config.BOT_ACTIVITY_TYPE as unknown as Exclude<ActivityType, ActivityType.Custom>,
             url: this.config.BOT_ACTIVITY_URL === '' ? undefined : this.config.BOT_ACTIVITY_URL,
           },
         ],
@@ -175,7 +179,6 @@ export default class {
     this.client.on('guildCreate', handleGuildCreate);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
     this.client.on('guildUpdate', handleGuildUpdate);
-
-    await this.client.login(this.token);
+    await this.client.login();
   }
 }

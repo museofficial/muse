@@ -1,4 +1,4 @@
-import {AutocompleteInteraction, CommandInteraction} from 'discord.js';
+import {AutocompleteInteraction, ChatInputCommandInteraction} from 'discord.js';
 import {URL} from 'url';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {inject, injectable} from 'inversify';
@@ -43,8 +43,7 @@ export default class implements Command {
     this.addQueryToQueue = addQueryToQueue;
   }
 
-  // eslint-disable-next-line complexity
-  public async execute(interaction: CommandInteraction): Promise<void> {
+  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const query = interaction.options.getString('query')!;
 
     await this.addQueryToQueue.addToQueue({

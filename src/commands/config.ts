@@ -1,5 +1,5 @@
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {CommandInteraction, MessageEmbed} from 'discord.js';
+import {ChatInputCommandInteraction, EmbedBuilder} from 'discord.js';
 import {injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
 import updatePermissionsForGuild from '../utils/update-permissions-for-guild.js';
@@ -43,10 +43,11 @@ export default class implements Command {
       .setName('get')
       .setDescription('show all settings'));
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
+    console.error(interaction);
     switch (interaction.options.getSubcommand()) {
       case 'set-playlist-limit': {
-        const limit = interaction.options.getInteger('limit')!;
+        const limit: number = interaction.options.getInteger('limit')!;
 
         if (limit < 1) {
           throw new Error('invalid limit');
@@ -120,7 +121,7 @@ export default class implements Command {
       }
 
       case 'get': {
-        const embed = new MessageEmbed().setTitle('Config');
+        const embed = new EmbedBuilder().setTitle('Config');
 
         const config = await prisma.setting.findUnique({where: {guildId: interaction.guild!.id}});
 

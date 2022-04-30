@@ -2,11 +2,12 @@ import 'reflect-metadata';
 import {Container} from 'inversify';
 import {TYPES} from './types.js';
 import Bot from './bot.js';
-import {Client, Intents} from 'discord.js';
+import {Client, GatewayIntentBits} from 'discord.js';
 import ConfigProvider from './services/config.js';
 
 // Managers
 import PlayerManager from './managers/player.js';
+import TokenManager from './managers/token.js';
 
 // Services
 import AddQueryToQueue from './services/add-query-to-queue.js';
@@ -41,12 +42,12 @@ import KeyValueCacheProvider from './services/key-value-cache.js';
 const container = new Container();
 
 // Intents
-const intents = new Intents();
-intents.add(Intents.FLAGS.GUILDS); // To listen for guildCreate event
-intents.add(Intents.FLAGS.GUILD_MESSAGES); // To listen for messages (messageCreate event)
-intents.add(Intents.FLAGS.DIRECT_MESSAGE_REACTIONS); // To listen for message reactions (messageReactionAdd event)
-intents.add(Intents.FLAGS.DIRECT_MESSAGES); // To receive the prefix message
-intents.add(Intents.FLAGS.GUILD_VOICE_STATES); // To listen for voice state changes (voiceStateUpdate event)
+const intents: GatewayIntentBits[] = [];
+intents.push(GatewayIntentBits.Guilds); // To listen for guildCreate event
+intents.push(GatewayIntentBits.GuildMessages); // To listen for messages (messageCreate event)
+intents.push(GatewayIntentBits.GuildMessageReactions); // To listen for message reactions (messageReactionAdd event)
+intents.push(GatewayIntentBits.DirectMessages); // To receive the prefix message
+intents.push(GatewayIntentBits.GuildVoiceStates); // To listen for voice state changes (voiceStateUpdate event)
 
 // Bot
 container.bind<Bot>(TYPES.Bot).to(Bot).inSingletonScope();
@@ -54,6 +55,7 @@ container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
 
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
+container.bind<TokenManager>(TYPES.Managers.Token).to(TokenManager).inSingletonScope();
 
 // Services
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();

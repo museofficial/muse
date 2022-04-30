@@ -9,6 +9,7 @@ export const TYPES = {
   Managers: {
     Player: Symbol('PlayerManager'),
     UpdatingQueueEmbed: Symbol('UpdatingQueueEmbed'),
+    Token: Symbol('TokenManager'),
   },
   Services: {
     AddQueryToQueue: Symbol('AddQueryToQueue'),

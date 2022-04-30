@@ -1,17 +1,18 @@
-import {Guild, Client} from 'discord.js';
+import {AuditLogEvent, Client, Guild} from 'discord.js';
 import container from '../inversify.config.js';
 import Command from '../commands';
 import {TYPES} from '../types.js';
 import Config from '../services/config.js';
 import {prisma} from '../utils/db.js';
 import {REST} from '@discordjs/rest';
-import {Routes} from 'discord-api-types/v9';
+import {Routes} from 'discord-api-types/v10';
 import updatePermissionsForGuild from '../utils/update-permissions-for-guild.js';
+import Token from '../managers/token';
 
 export default async (guild: Guild): Promise<void> => {
   let invitedBy;
   try {
-    const logs = await guild.fetchAuditLogs({type: 'BOT_ADD'});
+    const logs = await guild.fetchAuditLogs({type: AuditLogEvent.BotAdd});
     invitedBy = logs.entries.find(entry => entry.target?.id === guild.client.user?.id)?.executor;
   } catch {}
 
@@ -36,10 +37,10 @@ export default async (guild: Guild): Promise<void> => {
 
   // Setup slash commands
   if (!config.REGISTER_COMMANDS_ON_BOT) {
-    const token = container.get<Config>(TYPES.Config).DISCORD_TOKEN;
+    const token = container.get<Token>(TYPES.Managers.Token).getBearerToken();
     const client = container.get<Client>(TYPES.Client);
 
-    const rest = new REST({version: '9'}).setToken(token);
+    const rest = new REST({version: '10', authPrefix: 'Bearer'}).setToken(token);
 
     await rest.put(
       Routes.applicationGuildCommands(client.user!.id, guild.id),
