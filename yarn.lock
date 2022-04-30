@@ -95,17 +95,17 @@
     node-fetch "^2.6.7"
     tslib "^2.3.1"
 
-"@discordjs/voice@^0.8.0":
-  version "0.8.0"
-  resolved "https://registry.yarnpkg.com/@discordjs/voice/-/voice-0.8.0.tgz#5d790fc25b883698f6eb7762efe1af00b6440947"
-  integrity sha512-o0JfVLMs3eLjUzPf6oxMydEeum40I7xzfUc66SLN+RrKpSAsTbngf5qnCF53nm+KDNSvrwg1AZqNm4LEAdxJIA==
+"@discordjs/voice@0.10.0-dev.1651147759-679dcda":
+  version "0.10.0-dev.1651147759-679dcda"
+  resolved "https://registry.yarnpkg.com/@discordjs/voice/-/voice-0.10.0-dev.1651147759-679dcda.tgz#de71dc7b70a6ec2a1fa0280686d316c4c228cc99"
+  integrity sha512-kB0ZCxD/1P9ehL5JiaDJlFx11igU4PQ1NU/K6a9yJtLBBamODQGeAD7+oF6J+fZI33wHyfBBeqOzawAGSicjmA==
   dependencies:
-    "@types/ws" "^8.2.0"
-    discord-api-types "^0.26.1"
+    "@types/ws" "^8.5.3"
+    discord-api-types "^0.29.0"
     prism-media "^1.3.2"
     tiny-typed-emitter "^2.1.0"
     tslib "^2.3.1"
-    ws "^8.4.2"
+    ws "^8.5.0"
 
 "@eslint/eslintrc@^0.4.3":
   version "0.4.3"
@@ -452,7 +452,7 @@
   resolved "https://registry.yarnpkg.com/@types/validator/-/validator-13.7.2.tgz#a2114225d9be743fb154b06c29b8257aaca42922"
   integrity sha512-KFcchQ3h0OPQgFirBRPZr5F/sVjxZsOrQHedj3zi8AH3Zv/hOLx2OLR4hxR5HcfoU+33n69ZuOfzthKVdMoTiw==
 
-"@types/ws@^8.2.0", "@types/ws@^8.2.2", "@types/ws@^8.5.3":
+"@types/ws@^8.2.2", "@types/ws@^8.5.3":
   version "8.5.3"
   resolved "https://registry.yarnpkg.com/@types/ws/-/ws-8.5.3.tgz#7d25a1ffbecd3c4f2d35068d0b283c037003274d"
   integrity sha512-6YOoWjruKj1uLf3INHH7D3qTXwFfEsg1kf3c0uDdSBJwfa/llkwIjrAGV7j7mVgGNbzTQ3HiHKKDXl6bJPD97w==
@@ -4391,7 +4391,7 @@ write-file-atomic@^3.0.0:
     signal-exit "^3.0.2"
     typedarray-to-buffer "^3.1.5"
 
-ws@^8.4.2, ws@^8.5.0:
+ws@^8.5.0:
   version "8.5.0"
   resolved "https://registry.yarnpkg.com/ws/-/ws-8.5.0.tgz#bfb4be96600757fe5382de12c670dab984a1ed4f"
   integrity sha512-BWX0SWVgLPzYwF8lTzEy1egjhS4S4OEAHfsO8o65WOVsrnSRGaSiUaa9e0ggGlkMTtBlmOpEXiie9RUcBO86qg==

@@ -73,6 +73,8 @@ services:
       - ./muse:/data
     environment:
       - DISCORD_TOKEN=
+      - DISCORD_CLIENT_ID=
+      - DISCORD_CLIENT_SECRET=
       - YOUTUBE_API_KEY=
       - SPOTIFY_CLIENT_ID=
       - SPOTIFY_CLIENT_SECRET=

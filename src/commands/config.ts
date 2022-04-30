@@ -44,7 +44,6 @@ export default class implements Command {
       .setDescription('show all settings'));
 
   async execute(interaction: ChatInputCommandInteraction) {
-    console.error(interaction);
     switch (interaction.options.getSubcommand()) {
       case 'set-playlist-limit': {
         const limit: number = interaction.options.getInteger('limit')!;

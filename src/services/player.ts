@@ -10,7 +10,7 @@ import {
   AudioPlayerState,
   AudioPlayerStatus,
   createAudioPlayer,
-  createAudioResource,
+  createAudioResource, DiscordGatewayAdapterCreator,
   joinVoiceChannel,
   StreamType,
   VoiceConnection,
@@ -82,7 +82,7 @@ export default class {
     this.voiceConnection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
-      adapterCreator: channel.guild.voiceAdapterCreator,
+      adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
   }
 

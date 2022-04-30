@@ -4,6 +4,13 @@ import Config from '../services/config.js';
 // @ts-expect-error  no typing available for sync-fetch
 import fetch from 'sync-fetch';
 
+interface OAuth2Request {
+  grant_type: string;
+  scope: string;
+  permissions: string;
+  client_id: string;
+  client_secret: string;
+}
 @injectable()
 export default class {
   private readonly config: Config;
@@ -13,14 +20,14 @@ export default class {
   }
 
   getBearerToken(): string {
-    const data = {
+    const data: OAuth2Request = {
       grant_type: 'client_credentials',
       scope: 'bot applications.commands applications.commands.update applications.commands.permissions.update',
       permissions: '36700288',
       client_id: this.config.DISCORD_CLIENT_ID,
       client_secret: this.config.DISCORD_CLIENT_SECRET,
     };
-    const formBody = Object.keys(data).map(key => encodeURIComponent(key) + '=' + encodeURIComponent(data[key])).join('&');
+    const formBody = Object.keys(data).map(key => encodeURIComponent(key) + '=' + encodeURIComponent(data[key as keyof OAuth2Request])).join('&');
 
     const headers = {
       'Content-Type': 'application/x-www-form-urlencoded',
