@@ -167,7 +167,7 @@ export default class {
       });
 
       // Update permissions
-      spinner.text = '📡 updating permissions...';
+      spinner.text = '📡 updating permissions... This may take a while.';
       await Promise.all(this.client.guilds.cache.map(async guild => updatePermissionsForGuild(guild)));
 
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700288`);

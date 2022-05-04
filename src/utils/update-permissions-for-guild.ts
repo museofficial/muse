@@ -5,6 +5,8 @@ import container from '../inversify.config';
 import {TYPES} from '../types';
 import Token from '../managers/token';
 import {Routes} from 'discord-api-types/v10';
+import {createGuildSettings, getInvitedByUser} from '../events/guild-create';
+import {Setting} from '.prisma/client';
 
 const COMMANDS_TO_LIMIT_TO_GUILD_OWNER = ['config'];
 
@@ -12,15 +14,17 @@ const updatePermissionsForGuild = async (guild: Guild) => {
   const client = container.get<Client>(TYPES.Client);
   const token = container.get<Token>(TYPES.Managers.Token).getBearerToken();
   const rest = new REST({version: '10', authPrefix: 'Bearer', retries: 10}).setToken(token);
+  let settings: Setting | null;
 
-  const settings = await prisma.setting.findUnique({
+  settings = await prisma.setting.findUnique({
     where: {
       guildId: guild.id,
     },
   });
-
   if (!settings) {
-    throw new Error('could not find settings for guild');
+    console.warn('Settings for guild not found, creating new settings. Permission will be reset to default.');
+    const invitedBy = await getInvitedByUser(guild);
+    settings = await createGuildSettings(guild, invitedBy);
   }
 
   const permissions: ApplicationCommandPermissionData[] = [
@@ -50,7 +54,7 @@ const updatePermissionsForGuild = async (guild: Guild) => {
       body: {
         permissions: COMMANDS_TO_LIMIT_TO_GUILD_OWNER.includes(command.name) ? permissions : [
           ...permissions,
-          ...(settings.roleId ? [{
+          ...(settings?.roleId ? [{
             id: settings.roleId,
             type: ApplicationCommandPermissionType.Role as const,
             permission: true,

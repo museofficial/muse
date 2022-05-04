@@ -41,6 +41,8 @@ export default class {
     });
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (!response.ok) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
+      console.error(response.json());
       throw new Error('Bearer token couldn\'t be retrieved. Please make sure to set correct DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET');
     }
 

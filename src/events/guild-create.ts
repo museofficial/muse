@@ -1,4 +1,4 @@
-import {AuditLogEvent, Client, Guild} from 'discord.js';
+import {AuditLogEvent, Client, Guild, User} from 'discord.js';
 import container from '../inversify.config.js';
 import Command from '../commands';
 import {TYPES} from '../types.js';
@@ -8,8 +8,9 @@ import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v10';
 import updatePermissionsForGuild from '../utils/update-permissions-for-guild.js';
 import Token from '../managers/token';
+import {Prisma, Setting} from '.prisma/client';
 
-export default async (guild: Guild): Promise<void> => {
+export async function getInvitedByUser(guild: Guild): Promise<User | null | undefined> {
   let invitedBy;
   try {
     const logs = await guild.fetchAuditLogs({type: AuditLogEvent.BotAdd});
@@ -20,7 +21,11 @@ export default async (guild: Guild): Promise<void> => {
     console.warn(`Could not find user who invited Muse to ${guild.name} from the audit logs.`);
   }
 
-  await prisma.setting.upsert({
+  return invitedBy;
+}
+
+export async function createGuildSettings(guild: Guild, invitedBy: User | null | undefined): Promise<Prisma.Prisma__SettingClient<Setting>> {
+  return prisma.setting.upsert({
     where: {
       guildId: guild.id,
     },
@@ -32,6 +37,12 @@ export default async (guild: Guild): Promise<void> => {
       invitedByUserId: invitedBy?.id,
     },
   });
+}
+
+export default async (guild: Guild): Promise<void> => {
+  const invitedBy = await getInvitedByUser(guild);
+
+  await createGuildSettings(guild, invitedBy);
 
   const config = container.get<Config>(TYPES.Config);
 
