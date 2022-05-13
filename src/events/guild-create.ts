@@ -6,7 +6,6 @@ import Config from '../services/config.js';
 import {prisma} from '../utils/db.js';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v10';
-import updatePermissionsForGuild from '../utils/update-permissions-for-guild.js';
 import Token from '../managers/token';
 import {Prisma, Setting} from '.prisma/client';
 
@@ -58,8 +57,6 @@ export default async (guild: Guild): Promise<void> => {
       {body: container.getAll<Command>(TYPES.Command).map(command => command.slashCommand.toJSON())},
     );
   }
-
-  await updatePermissionsForGuild(guild);
 
   if (invitedBy) {
     await invitedBy.send('👋 Hi! You just invited me to a server. I can\'t be used by your server members until you complete setup by running /config set-role in your server.');

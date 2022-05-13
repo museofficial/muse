@@ -1,8 +1,7 @@
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {ChatInputCommandInteraction, EmbedBuilder} from 'discord.js';
+import {ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from 'discord.js';
 import {injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
-import updatePermissionsForGuild from '../utils/update-permissions-for-guild.js';
 import Command from './index.js';
 
 @injectable()
@@ -10,6 +9,7 @@ export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('config')
     .setDescription('configure bot settings')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString())
     .addSubcommand(subcommand => subcommand
       .setName('set-playlist-limit')
       .setDescription('set the maximum number of tracks that can be added from a playlist')
@@ -77,8 +77,6 @@ export default class implements Command {
             roleId: role.id,
           },
         });
-
-        await updatePermissionsForGuild(interaction.guild!);
 
         await interaction.reply('👍 role updated');
 

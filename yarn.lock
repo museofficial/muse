@@ -30,16 +30,17 @@
     chalk "^2.0.0"
     js-tokens "^4.0.0"
 
-"@discordjs/builders@^0.12.0":
-  version "0.12.0"
-  resolved "https://registry.yarnpkg.com/@discordjs/builders/-/builders-0.12.0.tgz#5f6d95d1b231fa975a7e28ca3f8098e517676887"
-  integrity sha512-Vx2MjUZd6QVo1uS2uWt708Fd6cHWGFblAvbpL5EBO+kLl0BADmPwwvts+YJ/VfSywed6Vsk6K2cEooR/Ytjhjw==
+"@discordjs/builders@0.14.0-dev.1652443433-d522320":
+  version "0.14.0-dev.1652443433-d522320"
+  resolved "https://registry.yarnpkg.com/@discordjs/builders/-/builders-0.14.0-dev.1652443433-d522320.tgz#40f97b6f5900dcaab0235178e83d9ccd4c152687"
+  integrity sha512-s1wQvAuLXfEwSUNf3w+0ZZhYa9XCE+duQIslWAPQIbXdB9ORhMwCVQzCwuB4ktGwH5l3dcf8a5uYyfcp1F1B7w==
   dependencies:
-    "@sindresorhus/is" "^4.3.0"
-    discord-api-types "^0.26.1"
-    ts-mixer "^6.0.0"
+    "@sapphire/shapeshift" "^3.0.0"
+    "@sindresorhus/is" "^4.6.0"
+    discord-api-types "^0.31.1"
+    fast-deep-equal "^3.1.3"
+    ts-mixer "^6.0.1"
     tslib "^2.3.1"
-    zod "^3.11.6"
 
 "@discordjs/builders@^0.14.0-dev":
   version "0.14.0-dev.1651147747-679dcda"
@@ -298,6 +299,11 @@
   resolved "https://registry.yarnpkg.com/@sapphire/shapeshift/-/shapeshift-2.2.0.tgz#9c1221b538fd0f966766158176c686a3a5c98490"
   integrity sha512-UEnKgMlQyI0yY/q+lCMX0VJft9y86IsesgbIQj6e62FBYSaMVr+IaMNpi4z45Q14VnuMACbK0yrbHISNqgUYcQ==
 
+"@sapphire/shapeshift@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@sapphire/shapeshift/-/shapeshift-3.0.0.tgz#53a35bedcacbc9d4c566c12610598d27b51d04e1"
+  integrity sha512-LTVj/a70UDzjOFaViMGpVzSzKYD2pBk0TmZIHnBf4vnytV7TK/L6XVN6hslq7R+qwRZyL/mzIldu6mAV6r7vzA==
+
 "@sapphire/snowflake@^3.2.1":
   version "3.2.2"
   resolved "https://registry.yarnpkg.com/@sapphire/snowflake/-/snowflake-3.2.2.tgz#faacdc1b5f7c43145a71eddba917de2b707ef780"
@@ -308,7 +314,7 @@
   resolved "https://registry.yarnpkg.com/@sindresorhus/is/-/is-0.14.0.tgz#9fb3a3cf3132328151f353de4632e01e52102bea"
   integrity sha512-9NET910DNaIPngYnLLPeg+Ogzqsi9uM4mSboU5y6p8S5DzMTVEsJZrawi+BoDNUVBa2DhJqQYUFvMDfgU062LQ==
 
-"@sindresorhus/is@^4.3.0", "@sindresorhus/is@^4.6.0":
+"@sindresorhus/is@^4.6.0":
   version "4.6.0"
   resolved "https://registry.yarnpkg.com/@sindresorhus/is/-/is-4.6.0.tgz#3c7c9c46e678feefe7a2e5bb609d3dbd665ffb3f"
   integrity sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==
@@ -1199,10 +1205,10 @@ dir-glob@^3.0.1:
   dependencies:
     path-type "^4.0.0"
 
-discord-api-types@^0.26.1:
-  version "0.26.1"
-  resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.26.1.tgz#726f766ddc37d60da95740991d22cb6ef2ed787b"
-  integrity sha512-T5PdMQ+Y1MEECYMV5wmyi9VEYPagEDEi4S0amgsszpWY0VB9JJ/hEvM6BgLhbdnKky4gfmZEXtEEtojN8ZKJQQ==
+discord-api-types@0.32.1:
+  version "0.32.1"
+  resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.32.1.tgz#c468ec31a1ac2565673619ba1e0d35f01d339a65"
+  integrity sha512-/ewl0CPYT5xjOC+SJ7wADJKjtpZfiiUaYXOP/Ns54lnBcv4Xqa4iKSqRF/w1fjiUvWTYN9W8UuOiyCHtmu5fJw==
 
 discord-api-types@^0.29.0:
   version "0.29.0"
@@ -1214,15 +1220,10 @@ discord-api-types@^0.31.1:
   resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.31.2.tgz#8d131e25340bd695815af3bb77128a6993c1b516"
   integrity sha512-gpzXTvFVg7AjKVVJFH0oJGC0q0tO34iJGSHZNz9u3aqLxlD6LfxEs9wWVVikJqn9gra940oUTaPFizCkRDcEiA==
 
-discord-api-types@^0.32.0:
-  version "0.32.0"
-  resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.32.0.tgz#e3880d6695372070b7ddbbd2899b2ed6ffd9dea0"
-  integrity sha512-i6HyCwWRocvtIcM7hamI3eQTCxLN/UvWtm/JktaXRSWDmASfhHam2juhej+e4U/Q/Fni1uUlyloMCBTL04Dl6Q==
-
-discord.js@14.0.0-dev.1651147765-679dcda:
-  version "14.0.0-dev.1651147765-679dcda"
-  resolved "https://registry.yarnpkg.com/discord.js/-/discord.js-14.0.0-dev.1651147765-679dcda.tgz#4b9da52e0e431165f077f7b0924aebe50cbdfd58"
-  integrity sha512-hsD9/oS9nqMNO2JluSxeVQhFiQUpOZeX+Sr5L3Xa8Lth5P16dgWwm29hpPfWBzumU0QJcWKXhv1NtyJ7kXyAug==
+discord.js@14.0.0-dev.1652443445-d522320:
+  version "14.0.0-dev.1652443445-d522320"
+  resolved "https://registry.yarnpkg.com/discord.js/-/discord.js-14.0.0-dev.1652443445-d522320.tgz#6d26cf739eaf91b63a71936ff4b26ff54fd7a27a"
+  integrity sha512-K4Yt1ZZv94irpKkjrd9ZGGbTyZk/QY/oKwQTxSmVKceTA7YqfFCFkhVb9NGh6JJ9Ima0moRp5nJPlhEs1QVG1w==
   dependencies:
     "@discordjs/builders" "^0.14.0-dev"
     "@discordjs/collection" "^0.7.0-dev"
@@ -1233,7 +1234,7 @@ discord.js@14.0.0-dev.1651147765-679dcda:
     fast-deep-equal "^3.1.3"
     lodash.snakecase "^4.1.1"
     tslib "^2.3.1"
-    undici "^4.16.0"
+    undici "^5.2.0"
     ws "^8.5.0"
 
 doctrine@^3.0.0:
@@ -4096,7 +4097,7 @@ tr46@~0.0.3:
   resolved "https://registry.yarnpkg.com/tr46/-/tr46-0.0.3.tgz#8184fd347dac9cdc185992f3a6622e14b9d9ab6a"
   integrity sha1-gYT9NH2snNwYWZLzpmIuFLnZq2o=
 
-ts-mixer@^6.0.0, ts-mixer@^6.0.1:
+ts-mixer@^6.0.1:
   version "6.0.1"
   resolved "https://registry.yarnpkg.com/ts-mixer/-/ts-mixer-6.0.1.tgz#7c2627fb98047eb5f3c7f2fee39d1521d18fe87a"
   integrity sha512-hvE+ZYXuINrx6Ei6D6hz+PTim0Uf++dYbK9FFifLNwQj+RwKquhQpn868yZsCtJYiclZF1u8l6WZxxKi+vv7Rg==
@@ -4189,10 +4190,10 @@ undefsafe@^2.0.5:
   resolved "https://registry.yarnpkg.com/undefsafe/-/undefsafe-2.0.5.tgz#38733b9327bdcd226db889fb723a6efd162e6e2c"
   integrity sha512-WxONCrssBM8TSPRqN5EmsjVrsv4A8X12J4ArBiiayv3DyyG3ZlIg6yysuuSYdZsVz3TKcTg2fd//Ujd4CHV1iA==
 
-undici@^4.16.0:
-  version "4.16.0"
-  resolved "https://registry.yarnpkg.com/undici/-/undici-4.16.0.tgz#469bb87b3b918818d3d7843d91a1d08da357d5ff"
-  integrity sha512-tkZSECUYi+/T1i4u+4+lwZmQgLXd4BLGlrc7KZPcLIW7Jpq99+Xpc30ONv7nS6F5UNOxp/HBZSSL9MafUrvJbw==
+undici@^5.2.0:
+  version "5.2.0"
+  resolved "https://registry.yarnpkg.com/undici/-/undici-5.2.0.tgz#18c5bd59f8f1b1ed8dcc9dca2f754c44ec994059"
+  integrity sha512-XY6+NS3WH9b3TKOHeNz2CjR+qrVz/k4fO9g3etPpLozRvULoQmZ1+dk9JbIz40ehn27xzFk4jYVU2MU3Nle62A==
 
 unique-string@^2.0.0:
   version "2.0.0"
@@ -4464,8 +4465,3 @@ ytsr@^3.6.0:
   integrity sha512-R+RfYXvBBMAr2e4OxrQ5SBv5x/Mdhmcj1Q8TH0f2HK5d2jbhHOtK4BdzPvLriA6MDoMwqqX04GD8Rpf9UNtSTg==
   dependencies:
     miniget "^4.2.2"
-
-zod@^3.11.6:
-  version "3.14.4"
-  resolved "https://registry.yarnpkg.com/zod/-/zod-3.14.4.tgz#e678fe9e5469f4663165a5c35c8f3dc66334a5d6"
-  integrity sha512-U9BFLb2GO34Sfo9IUYp0w3wJLlmcyGoMd75qU9yf+DrdGA4kEx6e+l9KOkAlyUO0PSQzZCa3TR4qVlcmwqSDuw==
