@@ -47,17 +47,7 @@ export default class {
       items.push(...tracksResponse.items.map(playlistItem => playlistItem.track));
     }
 
-    const filtedItems: SpotifyApi.TrackObjectSimplified[] = [];
-
-    items.reduce((result, playlistItem) => {
-      if (playlistItem !== null) {
-        result.push(playlistItem);
-      }
-
-      return result;
-    }, items);
-
-    const tracks = this.limitTracks(filtedItems, playlistLimit).map(this.toSpotifyTrack);
+    const tracks = this.limitTracks(items.filter(i => i !== null) as SpotifyApi.TrackObjectSimplified[], playlistLimit).map(this.toSpotifyTrack);
 
     return [tracks, playlist];
   }
