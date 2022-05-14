@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.0.0] - 2022-05-13
 ### Changed
 - Migrated to the v10 API
 - Command permissions are now configured differently: you can now configure permissions in Discord's UI rather than through the bot. See the [wiki page](https://github.com/codetheweb/muse/wiki/Configuring-Bot-Permissions) for details.
@@ -154,7 +156,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/codetheweb/muse/compare/v1.9.0...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/codetheweb/muse/compare/v1.9.0...v2.0.0
 [1.9.0]: https://github.com/codetheweb/muse/compare/v1.8.2...v1.9.0
 [1.8.2]: https://github.com/codetheweb/muse/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/codetheweb/muse/compare/v1.8.0...v1.8.1
