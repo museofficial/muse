@@ -7,7 +7,6 @@ import ConfigProvider from './services/config.js';
 
 // Managers
 import PlayerManager from './managers/player.js';
-import TokenManager from './managers/token.js';
 
 // Services
 import AddQueryToQueue from './services/add-query-to-queue.js';
@@ -55,7 +54,6 @@ container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
 
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
-container.bind<TokenManager>(TYPES.Managers.Token).to(TokenManager).inSingletonScope();
 
 // Services
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();

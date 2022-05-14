@@ -6,7 +6,6 @@ import Config from '../services/config.js';
 import {prisma} from '../utils/db.js';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v10';
-import Token from '../managers/token';
 import {Prisma, Setting} from '.prisma/client';
 
 export async function getInvitedByUser(guild: Guild): Promise<User | null | undefined> {
@@ -47,10 +46,9 @@ export default async (guild: Guild): Promise<void> => {
 
   // Setup slash commands
   if (!config.REGISTER_COMMANDS_ON_BOT) {
-    const token = container.get<Token>(TYPES.Managers.Token).getBearerToken();
     const client = container.get<Client>(TYPES.Client);
 
-    const rest = new REST({version: '10', authPrefix: 'Bearer'}).setToken(token);
+    const rest = new REST({version: '10'}).setToken(config.DISCORD_TOKEN);
 
     await rest.put(
       Routes.applicationGuildCommands(client.user!.id, guild.id),

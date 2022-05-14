@@ -13,7 +13,6 @@ import Config from './services/config.js';
 import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
 import {Routes, ActivityType} from 'discord-api-types/v10';
-import Token from './managers/token';
 
 @injectable()
 export default class {
@@ -23,13 +22,10 @@ export default class {
   private readonly shouldRegisterCommandsOnBot: boolean;
   private readonly commandsByName!: Collection<string, Command>;
   private readonly commandsByButtonId!: Collection<string, Command>;
-  private readonly bearerToken!: string;
 
   constructor(
   @inject(TYPES.Client) client: Client,
-    @inject(TYPES.Config) config: Config,
-    @inject(TYPES.Managers.Token) tokenManager: Token,
-  ) {
+    @inject(TYPES.Config) config: Config) {
     this.client = client;
     this.config = config;
     this.token = this.config.DISCORD_TOKEN;
@@ -37,7 +33,6 @@ export default class {
     this.shouldRegisterCommandsOnBot = config.REGISTER_COMMANDS_ON_BOT;
     this.commandsByName = new Collection();
     this.commandsByButtonId = new Collection();
-    this.bearerToken = tokenManager.getBearerToken();
   }
 
   public async register(): Promise<void> {
@@ -130,7 +125,7 @@ export default class {
       debug(generateDependencyReport());
 
       // Update commands
-      const rest = new REST({version: '10', authPrefix: 'Bearer'}).setToken(this.bearerToken);
+      const rest = new REST({version: '10'}).setToken(this.config.DISCORD_TOKEN);
       if (this.shouldRegisterCommandsOnBot) {
         spinner.text = '📡 updating commands on bot...';
         await rest.put(
