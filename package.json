@@ -78,7 +78,7 @@
     "@discordjs/opus": "^0.7.0",
     "@discordjs/rest": "0.5.0-dev.1651147752-679dcda",
     "@discordjs/voice": "0.10.0-dev.1651147759-679dcda",
-    "@prisma/client": "^3.11.0",
+    "@prisma/client": "^3.14.0",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
     "debug": "^4.3.3",
