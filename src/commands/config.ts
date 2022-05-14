@@ -18,13 +18,6 @@ export default class implements Command {
         .setDescription('maximum number of tracks')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
-      .setName('set-role')
-      .setDescription('set the role that is allowed to use the bot')
-      .addRoleOption(option => option
-        .setName('role')
-        .setDescription('allowed role')
-        .setRequired(true)))
-    .addSubcommand(subcommand => subcommand
       .setName('set-wait-after-queue-empties')
       .setDescription('set the time to wait before leaving the voice channel when queue empties')
       .addIntegerOption(option => option
@@ -111,7 +104,6 @@ export default class implements Command {
 
         const settingsToShow = {
           'Playlist Limit': config.playlistLimit,
-          Role: config.roleId ? `<@&${config.roleId}>` : 'not set',
           'Wait before leaving after queue empty': config.secondsToWaitAfterQueueEmpties === 0
             ? 'never leave'
             : `${config.secondsToWaitAfterQueueEmpties}s`,
