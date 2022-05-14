@@ -5,8 +5,8 @@ import {TYPES} from '../types.js';
 import Config from '../services/config.js';
 import {prisma} from '../utils/db.js';
 import {REST} from '@discordjs/rest';
-import {Routes} from 'discord-api-types/v10';
 import {Prisma, Setting} from '.prisma/client';
+import registerCommandsOnGuild from '../utils/register-commands-on-guild.js';
 
 export async function getInvitedByUser(guild: Guild): Promise<User | null | undefined> {
   let invitedBy;
@@ -50,10 +50,12 @@ export default async (guild: Guild): Promise<void> => {
 
     const rest = new REST({version: '10'}).setToken(config.DISCORD_TOKEN);
 
-    await rest.put(
-      Routes.applicationGuildCommands(client.user!.id, guild.id),
-      {body: container.getAll<Command>(TYPES.Command).map(command => command.slashCommand.toJSON())},
-    );
+    await registerCommandsOnGuild({
+      rest,
+      applicationId: client.user!.id,
+      guildId: guild.id,
+      commands: container.getAll<Command>(TYPES.Command).map(command => command.slashCommand),
+    });
   }
 
   if (invitedBy) {
