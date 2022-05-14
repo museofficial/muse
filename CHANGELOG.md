@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Migrated to the v10 API
+- Command permissions are now configured differently: you can now configure permissions in Discord's UI rather than through the bot. See the [wiki page](https://github.com/codetheweb/muse/wiki/Configuring-Bot-Permissions) for details.
+- 🚨 when you upgrade to this version, the role you manually set with `/config set-role` will no longer be respected. Check the above link for how to re-configure permissions.
 
 ## [1.9.0] - 2022-04-23
 ### Changed

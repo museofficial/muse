@@ -1,9 +1,9 @@
-import {Guild, VoiceChannel, User, GuildMember} from 'discord.js';
+import {ChannelType, Guild, GuildMember, User, VoiceChannel} from 'discord.js';
 
 export const isUserInVoice = (guild: Guild, user: User): boolean => {
   let inVoice = false;
 
-  guild.channels.cache.filter(channel => channel.type === 'GUILD_VOICE').forEach(channel => {
+  guild.channels.cache.filter(channel => channel.type === ChannelType.GuildVoice).forEach(channel => {
     if ((channel as VoiceChannel).members.find(member => member.id === user.id)) {
       inVoice = true;
     }
@@ -22,7 +22,7 @@ export const getSizeWithoutBots = (channel: VoiceChannel): number => channel.mem
 
 export const getMemberVoiceChannel = (member?: GuildMember): [VoiceChannel, number] | null => {
   const channel = member?.voice?.channel;
-  if (channel && channel.type === 'GUILD_VOICE') {
+  if (channel && channel.type === ChannelType.GuildVoice) {
     return [
       channel,
       getSizeWithoutBots(channel),
@@ -41,7 +41,7 @@ export const getMostPopularVoiceChannel = (guild: Guild): [VoiceChannel, number]
   const voiceChannels: PopularResult[] = [];
 
   for (const [_, channel] of guild.channels.cache) {
-    if (channel.type === 'GUILD_VOICE') {
+    if (channel.type === ChannelType.GuildVoice) {
       const size = getSizeWithoutBots(channel);
 
       voiceChannels.push({

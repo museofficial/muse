@@ -49,7 +49,7 @@
     "prisma": "^3.11.0",
     "release-it": "^14.11.8",
     "type-fest": "^2.12.0",
-    "typescript": "^4.6.2"
+    "typescript": "^4.6.4"
   },
   "eslintConfig": {
     "extends": [
@@ -74,17 +74,17 @@
     }
   },
   "dependencies": {
-    "@discordjs/builders": "^0.12.0",
+    "@discordjs/builders": "0.14.0-dev.1652443433-d522320",
     "@discordjs/opus": "^0.7.0",
-    "@discordjs/rest": "^0.3.0",
-    "@discordjs/voice": "^0.8.0",
+    "@discordjs/rest": "0.5.0-dev.1651147752-679dcda",
+    "@discordjs/voice": "0.10.0-dev.1651147759-679dcda",
     "@prisma/client": "^3.11.0",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
     "debug": "^4.3.3",
     "delay": "^5.0.0",
-    "discord-api-types": "^0.29.0",
-    "discord.js": "^13.6.0",
+    "discord-api-types": "0.32.1",
+    "discord.js": "14.0.0-dev.1652443445-d522320",
     "dotenv": "^16.0.0",
     "esmo": "0.14.1",
     "execa": "^6.1.0",
@@ -108,6 +108,7 @@
     "reflect-metadata": "^0.1.13",
     "spotify-uri": "^2.2.0",
     "spotify-web-api-node": "^5.0.2",
+    "sync-fetch": "^0.3.1",
     "xbytes": "^1.7.0",
     "youtube.ts": "^0.2.8",
     "ytdl-core": "^4.11.0",

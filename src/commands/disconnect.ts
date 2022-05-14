@@ -1,4 +1,4 @@
-import {CommandInteraction} from 'discord.js';
+import {ChatInputCommandInteraction} from 'discord.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
@@ -19,7 +19,7 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async execute(interaction: CommandInteraction) {
+  public async execute(interaction: ChatInputCommandInteraction) {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.voiceConnection) {

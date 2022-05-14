@@ -6,7 +6,7 @@ import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
-import {CommandInteraction, GuildMember} from 'discord.js';
+import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
 
 @injectable()
 export default class implements Command {
@@ -22,8 +22,7 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  // eslint-disable-next-line complexity
-  public async execute(interaction: CommandInteraction): Promise<void> {
+  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const player = this.playerManager.get(interaction.guild!.id);
     const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
     if (player.status === STATUS.PLAYING) {

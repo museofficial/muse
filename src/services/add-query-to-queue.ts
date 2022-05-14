@@ -1,5 +1,5 @@
 /* eslint-disable complexity */
-import {CommandInteraction, GuildMember} from 'discord.js';
+import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import shuffle from 'array-shuffle';
 import {TYPES} from '../types.js';
@@ -12,7 +12,8 @@ import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channe
 
 @injectable()
 export default class AddQueryToQueue {
-  constructor(@inject(TYPES.Services.GetSongs) private readonly getSongs: GetSongs, @inject(TYPES.Managers.Player) private readonly playerManager: PlayerManager) {}
+  constructor(@inject(TYPES.Services.GetSongs) private readonly getSongs: GetSongs, @inject(TYPES.Managers.Player) private readonly playerManager: PlayerManager) {
+  }
 
   public async addToQueue({
     query,
@@ -25,7 +26,7 @@ export default class AddQueryToQueue {
     addToFrontOfQueue: boolean;
     shuffleAdditions: boolean;
     shouldSplitChapters: boolean;
-    interaction: CommandInteraction;
+    interaction: ChatInputCommandInteraction;
   }): Promise<void> {
     const guildId = interaction.guild!.id;
     const player = this.playerManager.get(guildId);
@@ -121,7 +122,11 @@ export default class AddQueryToQueue {
     }
 
     newSongs.forEach(song => {
-      player.add({...song, addedInChannelId: interaction.channel!.id, requestedBy: interaction.member!.user.id}, {immediate: addToFrontOfQueue ?? false});
+      player.add({
+        ...song,
+        addedInChannelId: interaction.channel!.id,
+        requestedBy: interaction.member!.user.id,
+      }, {immediate: addToFrontOfQueue ?? false});
     });
 
     const firstSong = newSongs[0];

@@ -1,4 +1,4 @@
-import {CommandInteraction} from 'discord.js';
+import {ChatInputCommandInteraction} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
@@ -20,7 +20,7 @@ export default class implements Command {
     this.playerManager = playerManager;
   }
 
-  public async execute(interaction: CommandInteraction): Promise<void> {
+  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const player = this.playerManager.get(interaction.guild!.id);
 
     try {

@@ -1,5 +1,5 @@
 import getYouTubeID from 'get-youtube-id';
-import {MessageEmbed} from 'discord.js';
+import {EmbedBuilder} from 'discord.js';
 import Player, {MediaSource, QueuedSong, STATUS} from '../services/player.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
@@ -50,7 +50,7 @@ const getPlayerUI = (player: Player) => {
   return `${button} ${progressBar} \`[${elapsedTime}]\` 🔉`;
 };
 
-export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
+export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
@@ -58,10 +58,9 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
   }
 
   const {artist, thumbnailUrl, requestedBy} = currentlyPlaying;
-  const message = new MessageEmbed();
-
+  const message = new EmbedBuilder();
   message
-    .setColor(player.status === STATUS.PLAYING ? 'DARK_GREEN' : 'DARK_RED')
+    .setColor(player.status === STATUS.PLAYING ? 'DarkGreen' : 'DarkRed')
     .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Paused')
     .setDescription(`
       **${getSongTitle(currentlyPlaying)}**
@@ -77,7 +76,7 @@ export const buildPlayingMessageEmbed = (player: Player): MessageEmbed => {
   return message;
 };
 
-export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
+export const buildQueueEmbed = (player: Player, page: number): EmbedBuilder => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
@@ -108,7 +107,7 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
   const playlistTitle = playlist ? `(${playlist.title})` : '';
   const totalLength = player.getQueue().reduce((accumulator, current) => accumulator + current.length, 0);
 
-  const message = new MessageEmbed();
+  const message = new EmbedBuilder();
 
   let description = `**${getSongTitle(currentlyPlaying)}**\n`;
   description += `Requested by: <@${requestedBy}>\n\n`;
@@ -121,11 +120,11 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
 
   message
     .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Queued songs')
-    .setColor(player.status === STATUS.PLAYING ? 'DARK_GREEN' : 'NOT_QUITE_BLACK')
+    .setColor(player.status === STATUS.PLAYING ? 'DarkGreen' : 'NotQuiteBlack')
     .setDescription(description)
-    .addField('In queue', getQueueInfo(player), true)
-    .addField('Total length', `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, true)
-    .addField('Page', `${page} out of ${maxQueuePage}`, true)
+    .addFields([{name: 'In queue', value: getQueueInfo(player), inline: true}, {
+      name: 'Total length', value: `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, inline: true,
+    }, {name: 'Page', value: `${page} out of ${maxQueuePage}`, inline: true}])
     .setFooter({text: `Source: ${artist} ${playlistTitle}`});
 
   if (thumbnailUrl) {
@@ -134,3 +133,4 @@ export const buildQueueEmbed = (player: Player, page: number): MessageEmbed => {
 
   return message;
 };
+

@@ -1,8 +1,7 @@
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {CommandInteraction, MessageEmbed} from 'discord.js';
+import {ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from 'discord.js';
 import {injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
-import updatePermissionsForGuild from '../utils/update-permissions-for-guild.js';
 import Command from './index.js';
 
 @injectable()
@@ -10,6 +9,7 @@ export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('config')
     .setDescription('configure bot settings')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString() as any)
     .addSubcommand(subcommand => subcommand
       .setName('set-playlist-limit')
       .setDescription('set the maximum number of tracks that can be added from a playlist')
@@ -43,10 +43,10 @@ export default class implements Command {
       .setName('get')
       .setDescription('show all settings'));
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     switch (interaction.options.getSubcommand()) {
       case 'set-playlist-limit': {
-        const limit = interaction.options.getInteger('limit')!;
+        const limit: number = interaction.options.getInteger('limit')!;
 
         if (limit < 1) {
           throw new Error('invalid limit');
@@ -62,25 +62,6 @@ export default class implements Command {
         });
 
         await interaction.reply('👍 limit updated');
-
-        break;
-      }
-
-      case 'set-role': {
-        const role = interaction.options.getRole('role')!;
-
-        await prisma.setting.update({
-          where: {
-            guildId: interaction.guild!.id,
-          },
-          data: {
-            roleId: role.id,
-          },
-        });
-
-        await updatePermissionsForGuild(interaction.guild!);
-
-        await interaction.reply('👍 role updated');
 
         break;
       }
@@ -120,7 +101,7 @@ export default class implements Command {
       }
 
       case 'get': {
-        const embed = new MessageEmbed().setTitle('Config');
+        const embed = new EmbedBuilder().setTitle('Config');
 
         const config = await prisma.setting.findUnique({where: {guildId: interaction.guild!.id}});
 

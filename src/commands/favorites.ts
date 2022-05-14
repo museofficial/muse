@@ -1,5 +1,5 @@
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {AutocompleteInteraction, CommandInteraction, MessageEmbed} from 'discord.js';
+import {AutocompleteInteraction, ChatInputCommandInteraction, EmbedBuilder} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import Command from '.';
 import AddQueryToQueue from '../services/add-query-to-queue.js';
@@ -56,9 +56,9 @@ export default class implements Command {
 
   constructor(@inject(TYPES.Services.AddQueryToQueue) private readonly addQueryToQueue: AddQueryToQueue) {}
 
-  requiresVC = (interaction: CommandInteraction) => interaction.options.getSubcommand() === 'use';
+  requiresVC = (interaction: ChatInputCommandInteraction) => interaction.options.getSubcommand() === 'use';
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     switch (interaction.options.getSubcommand()) {
       case 'use':
         await this.use(interaction);
@@ -100,7 +100,7 @@ export default class implements Command {
     })));
   }
 
-  private async use(interaction: CommandInteraction) {
+  private async use(interaction: ChatInputCommandInteraction) {
     const name = interaction.options.getString('name')!.trim();
 
     const favorite = await prisma.favoriteQuery.findFirst({
@@ -123,7 +123,7 @@ export default class implements Command {
     });
   }
 
-  private async list(interaction: CommandInteraction) {
+  private async list(interaction: ChatInputCommandInteraction) {
     const favorites = await prisma.favoriteQuery.findMany({
       where: {
         guildId: interaction.guild!.id,
@@ -135,7 +135,7 @@ export default class implements Command {
       return;
     }
 
-    const embed = new MessageEmbed().setTitle('Favorites');
+    const embed = new EmbedBuilder().setTitle('Favorites');
 
     let description = '';
     for (const favorite of favorites) {
@@ -149,7 +149,7 @@ export default class implements Command {
     });
   }
 
-  private async create(interaction: CommandInteraction) {
+  private async create(interaction: ChatInputCommandInteraction) {
     const name = interaction.options.getString('name')!.trim();
     const query = interaction.options.getString('query')!.trim();
 
@@ -174,7 +174,7 @@ export default class implements Command {
     await interaction.reply('👍 favorite created');
   }
 
-  private async remove(interaction: CommandInteraction) {
+  private async remove(interaction: ChatInputCommandInteraction) {
     const name = interaction.options.getString('name')!.trim();
 
     const favorite = await prisma.favoriteQuery.findFirst({where: {
