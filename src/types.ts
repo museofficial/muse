@@ -8,8 +8,6 @@ export const TYPES = {
   ThirdParty: Symbol('ThirdParty'),
   Managers: {
     Player: Symbol('PlayerManager'),
-    UpdatingQueueEmbed: Symbol('UpdatingQueueEmbed'),
-    Token: Symbol('TokenManager'),
   },
   Services: {
     AddQueryToQueue: Symbol('AddQueryToQueue'),

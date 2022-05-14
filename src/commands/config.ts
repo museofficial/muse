@@ -66,23 +66,6 @@ export default class implements Command {
         break;
       }
 
-      case 'set-role': {
-        const role = interaction.options.getRole('role')!;
-
-        await prisma.setting.update({
-          where: {
-            guildId: interaction.guild!.id,
-          },
-          data: {
-            roleId: role.id,
-          },
-        });
-
-        await interaction.reply('👍 role updated');
-
-        break;
-      }
-
       case 'set-wait-after-queue-empties': {
         const delay = interaction.options.getInteger('delay')!;
 
