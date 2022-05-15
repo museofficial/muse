@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Bumped dependencies
+- Add tini to Docker image to reap zombie processes
 
 ## [2.0.2] - 2022-05-14
 ### Changed
