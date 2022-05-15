@@ -9,7 +9,7 @@ export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('config')
     .setDescription('configure bot settings')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString() as any)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString())
     .addSubcommand(subcommand => subcommand
       .setName('set-playlist-limit')
       .setDescription('set the maximum number of tracks that can be added from a playlist')
