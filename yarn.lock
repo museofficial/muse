@@ -2607,10 +2607,10 @@ isexe@^2.0.0:
   resolved "https://registry.yarnpkg.com/isexe/-/isexe-2.0.0.tgz#e8fbf374dc556ff8947a10dcb0572d633f2cfa10"
   integrity sha1-6PvzdNxVb/iUehDcsFctYz8s+hA=
 
-iso8601-duration@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/iso8601-duration/-/iso8601-duration-1.3.0.tgz#29d7b69e0574e4acdee50c5e5e09adab4137ba5a"
-  integrity sha512-K4CiUBzo3YeWk76FuET/dQPH03WE04R94feo5TSKQCXpoXQt9E4yx2CnY737QZnSAI3PI4WlKo/zfqizGx52QQ==
+iso8601-duration@^2.1.1:
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/iso8601-duration/-/iso8601-duration-2.1.1.tgz#88d9e481525b50e57840bc93fb8a1727a7d849d2"
+  integrity sha512-VGGpW30/R57FpG1J7RqqKBAaK7lIiudlZkQ5tRoO9hNlKYQNnhs60DQpXlPFBmp6I+kJ61PHkI3f/T7cR4wfbw==
 
 iterate-iterator@^1.0.1:
   version "1.0.2"
