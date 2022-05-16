@@ -1,6 +1,6 @@
 import {URL} from 'url';
 import {inject, injectable} from 'inversify';
-import spotifyURI from 'spotify-uri';
+import * as spotifyURI from 'spotify-uri';
 import Spotify from 'spotify-web-api-node';
 import {TYPES} from '../types.js';
 import ThirdParty from './third-party.js';

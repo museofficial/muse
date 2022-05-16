@@ -1,5 +1,5 @@
 import {inject, injectable} from 'inversify';
-import spotifyURI from 'spotify-uri';
+import * as spotifyURI from 'spotify-uri';
 import {SongMetadata, QueuedPlaylist, MediaSource} from '../services/player.js';
 import {TYPES} from '../types.js';
 import ffmpeg from 'fluent-ffmpeg';
