@@ -96,13 +96,13 @@
     node-fetch "^2.6.7"
     tslib "^2.3.1"
 
-"@discordjs/voice@0.10.0-dev.1651147759-679dcda":
-  version "0.10.0-dev.1651147759-679dcda"
-  resolved "https://registry.yarnpkg.com/@discordjs/voice/-/voice-0.10.0-dev.1651147759-679dcda.tgz#de71dc7b70a6ec2a1fa0280686d316c4c228cc99"
-  integrity sha512-kB0ZCxD/1P9ehL5JiaDJlFx11igU4PQ1NU/K6a9yJtLBBamODQGeAD7+oF6J+fZI33wHyfBBeqOzawAGSicjmA==
+"@discordjs/voice@0.10.0-dev.1652702622-5e9b757":
+  version "0.10.0-dev.1652702622-5e9b757"
+  resolved "https://registry.yarnpkg.com/@discordjs/voice/-/voice-0.10.0-dev.1652702622-5e9b757.tgz#05d61102a61596f82cb99de20f61eac115d29abf"
+  integrity sha512-GYRr1C/7IgH14hqRT08USYSgo4VgopEHXSeWZ15y1XQzZ/TimbagxwznhWKUFCT5HySEurqqDI5n/OWeWfflaw==
   dependencies:
     "@types/ws" "^8.5.3"
-    discord-api-types "^0.29.0"
+    discord-api-types "^0.32.1"
     prism-media "^1.3.2"
     tiny-typed-emitter "^2.1.0"
     tslib "^2.3.1"
