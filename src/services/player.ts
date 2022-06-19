@@ -60,6 +60,7 @@ export default class {
   public voiceConnection: VoiceConnection | null = null;
   public status = STATUS.PAUSED;
   public guildId: string;
+  public loopCurrentSong = false;
 
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
@@ -67,7 +68,6 @@ export default class {
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
-  private loopCurrentSong = false;
 
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
@@ -92,24 +92,13 @@ export default class {
         this.pause();
       }
 
+      this.loopCurrentSong = false;
       this.voiceConnection.destroy();
       this.audioPlayer?.stop();
 
       this.voiceConnection = null;
       this.audioPlayer = null;
     }
-  }
-
-  loop(): void {
-    if (this.status === STATUS.PLAYING) {
-      this.loopCurrentSong = !this.loopCurrentSong;
-    } else {
-      throw new Error('Not currently playing song');
-    }
-  }
-
-  isLoopingSong() {
-    return this.loopCurrentSong;
   }
 
   async seek(positionSeconds: number): Promise<void> {

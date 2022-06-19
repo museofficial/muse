@@ -27,8 +27,8 @@ export default class implements Command {
       throw new Error('no song to loop!');
     }
 
-    player.loop();
+    player.loopCurrentSong = !player.loopCurrentSong;
 
-    await interaction.reply((player.isLoopingSong() ? 'looped :)' : 'stopped looping :('));
+    await interaction.reply((player.loopCurrentSong ? 'looped :)' : 'stopped looping :('));
   }
 }
