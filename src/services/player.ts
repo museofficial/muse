@@ -67,9 +67,9 @@ export default class {
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
+  private loopCurrentSong = false;
 
   private positionInSeconds = 0;
-
   private readonly fileCache: FileCacheProvider;
   private disconnectTimer: NodeJS.Timeout | null = null;
 
@@ -98,6 +98,18 @@ export default class {
       this.voiceConnection = null;
       this.audioPlayer = null;
     }
+  }
+
+  loop(): void {
+    if (this.status === STATUS.PLAYING) {
+      this.loopCurrentSong = !this.loopCurrentSong;
+    } else {
+      throw new Error('Not currently playing song');
+    }
+  }
+
+  isLoopingSong() {
+    return this.loopCurrentSong;
   }
 
   async seek(positionSeconds: number): Promise<void> {
@@ -523,6 +535,11 @@ export default class {
 
   private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
     // Automatically advance queued song at end
+    if (this.loopCurrentSong && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
+      await this.seek(0);
+      return;
+    }
+
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
     }
