@@ -84,7 +84,7 @@
     "debug": "^4.3.3",
     "delay": "^5.0.0",
     "discord-api-types": "0.32.1",
-    "discord.js": "14.0.0-dev.1652443445-d522320",
+    "discord.js": "14.0.0-dev.1655640259-358c3f4",
     "dotenv": "^16.0.0",
     "esmo": "0.14.1",
     "execa": "^6.1.0",
