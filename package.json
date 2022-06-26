@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "2.0.4",
+  "version": "2.1.0",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "repository": "git@github.com:codetheweb/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
@@ -84,7 +84,7 @@
     "debug": "^4.3.3",
     "delay": "^5.0.0",
     "discord-api-types": "0.32.1",
-    "discord.js": "14.0.0-dev.1652443445-d522320",
+    "discord.js": "14.0.0-dev.1656158629-c4653f9",
     "dotenv": "^16.0.0",
     "esmo": "0.14.1",
     "execa": "^6.1.0",
