@@ -46,8 +46,8 @@ const getPlayerUI = (player: Player) => {
   const button = player.status === STATUS.PLAYING ? '⏹️' : '▶️';
   const progressBar = getProgressBar(15, position / song.length);
   const elapsedTime = song.isLive ? 'live' : `${prettyTime(position)}/${prettyTime(song.length)}`;
-
-  return `${button} ${progressBar} \`[${elapsedTime}]\` 🔉`;
+  const loop = player.loopCurrentSong ? '🔁' : '';
+  return `${button} ${progressBar} \`[${elapsedTime}]\` 🔉 ${loop}`;
 };
 
 export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
@@ -119,7 +119,7 @@ export const buildQueueEmbed = (player: Player, page: number): EmbedBuilder => {
   }
 
   message
-    .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Queued songs')
+    .setTitle(player.status === STATUS.PLAYING ? `Now Playing ${player.loopCurrentSong ? '(loop on)' : ''}` : 'Queued songs')
     .setColor(player.status === STATUS.PLAYING ? 'DarkGreen' : 'NotQuiteBlack')
     .setDescription(description)
     .addFields([{name: 'In queue', value: getQueueInfo(player), inline: true}, {
