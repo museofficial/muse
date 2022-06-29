@@ -35,3 +35,4 @@ I'm running Muse:
 - Muse:
 - Docker (if applicable):
 - OS:
+- ffmpeg: (if running outside the Docker container, 4.1 or later is required)
