@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Retry refreshing Spotify access token if a request fails (should fix https://github.com/codetheweb/muse/issues/719)
 
 ## [2.1.0] - 2022-06-25
 - `/loop` command that plays the current song on loop

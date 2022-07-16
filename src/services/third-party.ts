@@ -1,6 +1,7 @@
 import {inject, injectable} from 'inversify';
 import SpotifyWebApi from 'spotify-web-api-node';
 import Youtube from 'youtube.ts';
+import pRetry from 'p-retry';
 import {TYPES} from '../types.js';
 import Config from './config.js';
 
@@ -30,9 +31,10 @@ export default class ThirdParty {
   }
 
   private async refreshSpotifyToken() {
-    const auth = await this.spotify.clientCredentialsGrant();
-    this.spotify.setAccessToken(auth.body.access_token);
-
-    this.spotifyTokenTimerId = setTimeout(this.refreshSpotifyToken.bind(this), (auth.body.expires_in / 2) * 1000);
+    await pRetry(async () => {
+      const auth = await this.spotify.clientCredentialsGrant();
+      this.spotify.setAccessToken(auth.body.access_token);
+      this.spotifyTokenTimerId = setTimeout(this.refreshSpotifyToken.bind(this), (auth.body.expires_in / 2) * 1000);
+    }, {retries: 5});
   }
 }
