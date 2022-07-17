@@ -35,4 +35,5 @@ I'm running Muse:
 - Muse:
 - Docker (if applicable):
 - OS:
+- Node.js: (if running outside the Docker container)
 - ffmpeg: (if running outside the Docker container, 4.1 or later is required)
