@@ -1,4 +1,4 @@
-import {Client, Collection, PresenceStatusData, User} from 'discord.js';
+import {Client, Collection, User} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import ora from 'ora';
 import {TYPES} from './types.js';
@@ -12,7 +12,7 @@ import {isUserInVoice} from './utils/channels.js';
 import Config from './services/config.js';
 import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
-import {Routes, ActivityType} from 'discord-api-types/v10';
+import {Routes} from 'discord-api-types/v10';
 import registerCommandsOnGuild from './utils/register-commands-on-guild.js';
 
 @injectable()
@@ -150,11 +150,11 @@ export default class {
         activities: [
           {
             name: this.config.BOT_ACTIVITY,
-            type: this.config.BOT_ACTIVITY_TYPE as unknown as Exclude<ActivityType, ActivityType.Custom>,
+            type: this.config.BOT_ACTIVITY_TYPE,
             url: this.config.BOT_ACTIVITY_URL === '' ? undefined : this.config.BOT_ACTIVITY_URL,
           },
         ],
-        status: this.config.BOT_STATUS as PresenceStatusData,
+        status: this.config.BOT_STATUS,
       });
 
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700160`);
