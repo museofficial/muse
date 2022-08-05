@@ -17,6 +17,7 @@
   "scripts": {
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
+    "typecheck": "tsc --noEmit",
     "test": "npm run lint",
     "start": "npm run env:set-database-url -- esmo src/scripts/migrate-and-start.ts",
     "cache:clear-key-value": "npm run env:set-database-url esmo src/scripts/cache-clear-key-value.ts",
@@ -74,17 +75,17 @@
     }
   },
   "dependencies": {
-    "@discordjs/builders": "0.14.0-dev.1652573539-7ce641d",
-    "@discordjs/opus": "^0.7.0",
-    "@discordjs/rest": "0.5.0-dev.1651147752-679dcda",
-    "@discordjs/voice": "0.10.0-dev.1651147759-679dcda",
-    "@prisma/client": "^3.14.0",
+    "@discordjs/builders": "1.1.0",
+    "@discordjs/opus": "^0.8.0",
+    "@discordjs/rest": "1.0.1",
+    "@discordjs/voice": "0.11.0",
+    "@prisma/client": "^4.1.1",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
     "debug": "^4.3.3",
     "delay": "^5.0.0",
     "discord-api-types": "0.32.1",
-    "discord.js": "14.0.0-dev.1652443445-d522320",
+    "discord.js": "14.1.2",
     "dotenv": "^16.0.0",
     "esmo": "0.14.1",
     "execa": "^6.1.0",
@@ -110,9 +111,9 @@
     "spotify-uri": "^3.0.2",
     "spotify-web-api-node": "^5.0.2",
     "sync-fetch": "^0.3.1",
-    "xbytes": "^1.7.0",
-    "youtube.ts": "^0.2.8",
+    "xbytes": "^1.8.0",
+    "youtube.ts": "^0.2.9",
     "ytdl-core": "^4.11.0",
-    "ytsr": "^3.6.0"
+    "ytsr": "^3.8.0"
   }
 }
