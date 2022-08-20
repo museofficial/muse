@@ -1810,10 +1810,10 @@ formidable@^1.2.2:
   resolved "https://registry.yarnpkg.com/formidable/-/formidable-1.2.6.tgz#d2a51d60162bbc9b4a055d8457a7c75315d1a168"
   integrity sha512-KcpbcpuLNOwrEjnbpMC0gS+X8ciDoZE1kkqzat4a8vrprf+s9pKNQ/QIwWfbfs4ltgmFl3MD177SNTkve3BwGQ==
 
-fs-capacitor@^7.0.1:
-  version "7.0.1"
-  resolved "https://registry.yarnpkg.com/fs-capacitor/-/fs-capacitor-7.0.1.tgz#351fa0224d74ae5ee17fdd165055082426ac60a3"
-  integrity sha512-YjxAAorsFA/pK3PTLuYJO+FlZ7wvGTIwGPbpGzVAJ+DUp6uof0zZjG6dcYsrGX864BMeUCj9R6lmkYZ5uY5lWQ==
+fs-capacitor@^8.0.0:
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/fs-capacitor/-/fs-capacitor-8.0.0.tgz#a95cbcf58dd50750fe718a03ec051961ef4e61f4"
+  integrity sha512-+Lk6iSKajdGw+7XYxUkwIzreJ2G1JFlYOdnKJv5PzwFLVsoJYBpCuS7WPIUSNT1IbQaEWT1nhYU63Ud03DyzLA==
 
 fs-extra@^8.1.0:
   version "8.1.0"
