@@ -19,13 +19,13 @@
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "typecheck": "tsc --noEmit",
     "test": "npm run lint",
-    "start": "npm run env:set-database-url -- esmo src/scripts/migrate-and-start.ts",
-    "cache:clear-key-value": "npm run env:set-database-url esmo src/scripts/cache-clear-key-value.ts",
-    "dev": "nodemon",
+    "start": "npm run env:set-database-url -- tsx src/scripts/migrate-and-start.ts",
+    "cache:clear-key-value": "npm run env:set-database-url tsx src/scripts/cache-clear-key-value.ts",
+    "dev": "npm run env:set-database-url -- tsx watch src/scripts/start.ts",
     "migrations:generate": "npm run prisma:with-env migrate dev",
     "migrations:run": "npm run prisma:with-env migrate deploy",
     "prisma:with-env": "npm run env:set-database-url prisma",
-    "env:set-database-url": "esmo src/scripts/run-with-database-url.ts",
+    "env:set-database-url": "tsx src/scripts/run-with-database-url.ts",
     "release": "release-it"
   },
   "devDependencies": {
@@ -46,7 +46,6 @@
     "eslint-config-xo": "^0.39.0",
     "eslint-config-xo-typescript": "^0.44.0",
     "husky": "^4.3.8",
-    "nodemon": "^2.0.7",
     "prisma": "^3.14.0",
     "release-it": "^14.11.8",
     "type-fest": "^2.12.0",
@@ -87,7 +86,6 @@
     "discord-api-types": "0.32.1",
     "discord.js": "14.1.2",
     "dotenv": "^16.0.0",
-    "esmo": "0.14.1",
     "execa": "^6.1.0",
     "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^7.0.1",
@@ -111,9 +109,10 @@
     "spotify-uri": "^3.0.2",
     "spotify-web-api-node": "^5.0.2",
     "sync-fetch": "^0.3.1",
+    "tsx": "3.8.2",
     "xbytes": "^1.7.0",
     "youtube.ts": "^0.2.9",
-    "ytdl-core": "^4.11.0",
+    "ytdl-core": "^4.10.0",
     "ytsr": "^3.8.0"
   }
 }
