@@ -1,4 +1,4 @@
-FROM node:16.13.0 AS base
+FROM node:18.7.0 AS base
 
 # Install ffmpeg
 RUN apt-get update && \
@@ -35,4 +35,3 @@ ENV COMMIT_HASH $COMMIT_HASH
 ENV BUILD_DATE $BUILD_DATE
 
 CMD ["tini", "--", "yarn", "start"]
-
