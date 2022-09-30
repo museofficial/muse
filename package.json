@@ -85,7 +85,7 @@
     "delay": "^5.0.0",
     "discord-api-types": "0.32.1",
     "discord.js": "14.1.2",
-    "dotenv": "^16.0.0",
+    "dotenv": "^16.0.3",
     "execa": "^6.1.0",
     "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^7.0.1",
