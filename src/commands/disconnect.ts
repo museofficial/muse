@@ -28,6 +28,6 @@ export default class implements Command {
 
     player.disconnect();
 
-    await interaction.reply('u betcha');
+    await interaction.reply('u betcha, disconnected');
   }
 }
