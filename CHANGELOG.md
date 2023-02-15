@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.1.9] - 2023-02-14
 ### Fixed
 - Queueing a YouTube playlist sometimes resulted in an infinite loop
 
@@ -213,7 +215,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/codetheweb/muse/compare/v2.1.8...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.1.9...HEAD
+[2.1.9]: https://github.com/codetheweb/muse/compare/v2.1.8...v2.1.9
 [2.1.8]: https://github.com/codetheweb/muse/compare/v2.1.7...v2.1.8
 [2.1.7]: https://github.com/codetheweb/muse/compare/v2.1.6...v2.1.7
 [2.1.6]: https://github.com/codetheweb/muse/compare/v2.1.5...v2.1.6
