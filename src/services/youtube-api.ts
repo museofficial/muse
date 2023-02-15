@@ -96,7 +96,7 @@ export default class {
 
     let nextToken: string | undefined;
 
-    while (playlistVideos.length !== playlist.contentDetails.itemCount) {
+    while (playlistVideos.length < playlist.contentDetails.itemCount) {
       // eslint-disable-next-line no-await-in-loop
       const {items, nextPageToken} = await this.cache.wrap(
         this.youtube.playlists.items,
