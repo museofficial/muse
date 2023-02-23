@@ -28,7 +28,7 @@ export default class implements Command {
     }
 
     if (player.status !== STATUS.PLAYING) {
-      throw new Error('derzeit nicht spielend');
+      throw new Error('derzeit wird nichts abgespielt');
     }
 
     player.stop();

@@ -24,7 +24,7 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (player.status === STATUS.IDLE) {
-      throw new Error('kein Song zu loopen');
+      throw new Error('kein Song vorhanden');
     }
 
     player.loopCurrentSong = !player.loopCurrentSong;

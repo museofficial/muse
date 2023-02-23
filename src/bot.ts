@@ -73,7 +73,7 @@ export default class {
 
           const requiresVC = command.requiresVC instanceof Function ? command.requiresVC(interaction) : command.requiresVC;
           if (requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
-            await interaction.reply({content: errorMsg('musst in einem Sprachkanal sein'), ephemeral: true});
+            await interaction.reply({content: errorMsg('Du musst in einem Sprachkanal sein'), ephemeral: true});
             return;
           }
 

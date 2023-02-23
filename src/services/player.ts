@@ -111,7 +111,7 @@ export default class {
     const currentSong = this.getCurrent();
 
     if (!currentSong) {
-      throw new Error('Derzeit wird nicht abgespielt.');
+      throw new Error('Derzeit wird nichts abgespielt.');
     }
 
     if (positionSeconds > currentSong.length) {
@@ -234,7 +234,7 @@ export default class {
 
   pause(): void {
     if (this.status !== STATUS.PLAYING) {
-      throw new Error('Derzeit wird nicht abgespielt.');
+      throw new Error('Derzeit wird nichts abgespielt.');
     }
 
     this.status = STATUS.PAUSED;

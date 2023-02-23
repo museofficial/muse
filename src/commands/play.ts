@@ -15,7 +15,7 @@ import AddQueryToQueue from '../services/add-query-to-queue.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('play')
-    .setDescription('einen Song spielen')
+    .setDescription('einen Song abspielen')
     .addStringOption(option => option
       .setName('query')
       .setDescription('YouTube URL, Spotify URL oder Suchanfrage')

@@ -8,7 +8,7 @@ import Command from './index.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('config')
-    .setDescription('Konfigurieren der Bot-Einstellungen')
+    .setDescription('Bot-Einstellungen bearbeiten')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString())
     .addSubcommand(subcommand => subcommand
       .setName('set-playlist-limit')
@@ -22,7 +22,7 @@ export default class implements Command {
       .setDescription('die Zeit einstellen, die gewartet werden soll, bevor der Sprachkanal bei leerer Warteschlange verlassen wird')
       .addIntegerOption(option => option
         .setName('delay')
-        .setDescription('Verzögerung in Sekunden (auf 0 setzen, um nie zu gehen)')
+        .setDescription('Verzögerung in Sekunden (auf 0 setzen, um diese Funktion zu deaktivieren)')
         .setRequired(true)
         .setMinValue(0)))
     .addSubcommand(subcommand => subcommand
@@ -30,7 +30,7 @@ export default class implements Command {
       .setDescription('festlegen ob der Bot gehen soll, wenn alle anderen Benutzer gehen')
       .addBooleanOption(option => option
         .setName('value')
-        .setDescription('ob der Bot geht, wenn alle anderen gehen')
+        .setDescription('ob der Bot einen leeren Kanal verlassen soll')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('get')
@@ -71,7 +71,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 Verzögerung aktualisiert');
+        await interaction.reply('👍 Wartezeit aktualisiert');
 
         break;
       }
@@ -88,7 +88,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 Einstellung aktualisiert lassen');
+        await interaction.reply('👍 Einstellungen aktualisiert');
 
         break;
       }
@@ -104,10 +104,10 @@ export default class implements Command {
 
         const settingsToShow = {
           'Playlist Limit': config.playlistLimit,
-          'Wartezeit vor disconnect, wenn die Warteschlange leer ist.': config.secondsToWaitAfterQueueEmpties === 0
+          'Wartezeit bis der Bot bei leerer Warteschlange die Verbindung trennt.': config.secondsToWaitAfterQueueEmpties === 0
             ? 'nie verlassen'
             : `${config.secondsToWaitAfterQueueEmpties}s`,
-          'Leave if there are no listeners': config.leaveIfNoListeners ? 'ja' : 'nein',
+          'Verlassen falls es keine Zuhörer mehr gibt': config.leaveIfNoListeners ? 'ja' : 'nein',
         };
 
         let description = '';

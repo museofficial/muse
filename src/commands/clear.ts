@@ -9,7 +9,7 @@ import Command from '.';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('clear')
-    .setDescription('Löscht alle Lieder in der Warteschlange außer dem aktuell gespielten Lied');
+    .setDescription('Löscht alle Lieder in der Warteschlange, außer den aktuell gespielten Song');
 
   public requiresVC = true;
 

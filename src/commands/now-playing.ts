@@ -10,7 +10,7 @@ import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('now-playing')
-    .setDescription('zeigt den aktuell gespielten Song an');
+    .setDescription('zeigt den aktuell laufenden Song an');
 
   private readonly playerManager: PlayerManager;
 

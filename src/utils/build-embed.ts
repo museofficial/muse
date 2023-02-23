@@ -119,7 +119,7 @@ export const buildQueueEmbed = (player: Player, page: number): EmbedBuilder => {
   }
 
   message
-    .setTitle(player.status === STATUS.PLAYING ? `Now Playing ${player.loopCurrentSong ? '(loop on)' : ''}` : 'Lieder in der Warteschlange')
+    .setTitle(player.status === STATUS.PLAYING ? `Now Playing ${player.loopCurrentSong ? '(loop on)' : ''}` : 'Songs in der Warteschlange')
     .setColor(player.status === STATUS.PLAYING ? 'DarkGreen' : 'NotQuiteBlack')
     .setDescription(description)
     .addFields([{name: 'In der Warteschlange', value: getQueueInfo(player), inline: true}, {
