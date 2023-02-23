@@ -11,10 +11,10 @@ import durationStringToSeconds from '../utils/duration-string-to-seconds.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('fseek')
-    .setDescription('seek forward in the current song')
+    .setDescription('im laufenden Song vorspulen')
     .addStringOption(option => option
       .setName('time')
-      .setDescription('an interval expression or number of seconds (1m, 30s, 100)')
+      .setDescription('ein Intervall oder eine Anzahl von Sekunden (1m, 30s, 100)')
       .setRequired(true));
 
   public requiresVC = true;
@@ -31,23 +31,23 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      throw new Error('nothing is playing');
+      throw new Error('es wird nichts abgespielt');
     }
 
     if (currentSong.isLive) {
-      throw new Error('can\'t seek in a livestream');
+      throw new Error('ich kann in einem Livestream nicht vorspulen');
     }
 
     const seekValue = interaction.options.getString('time');
 
     if (!seekValue) {
-      throw new Error('missing seek value');
+      throw new Error('fehlender Suchwert');
     }
 
     const seekTime = durationStringToSeconds(seekValue);
 
     if (seekTime + player.getPosition() > currentSong.length) {
-      throw new Error('can\'t seek past the end of the song');
+      throw new Error('ich kann nicht über das Ende des Liedes hinaus spulen');
     }
 
     await Promise.all([
@@ -55,6 +55,6 @@ export default class implements Command {
       interaction.deferReply(),
     ]);
 
-    await interaction.editReply(`👍 seeked to ${prettyTime(player.getPosition())}`);
+    await interaction.editReply(`👍 nach ${prettyTime(player.getPosition())} gespult`);
   }
 }
