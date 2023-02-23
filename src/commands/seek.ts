@@ -11,10 +11,10 @@ import durationStringToSeconds from '../utils/duration-string-to-seconds.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('seek')
-    .setDescription('seek to a position from beginning of song')
+    .setDescription('an eine Stelle spulen (von Beginn des Songs)')
     .addStringOption(option =>
       option.setName('time')
-        .setDescription('an interval expression or number of seconds (1m, 30s, 100)')
+        .setDescription('ein Intervall oder eine Anzahl von Sekunden (1m, 30s, 100)')
         .setRequired(true),
     );
 
@@ -32,11 +32,11 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      throw new Error('nothing is playing');
+      throw new Error('es wird nichts abgespielt');
     }
 
     if (currentSong.isLive) {
-      throw new Error('can\'t seek in a livestream');
+      throw new Error('ich kann in einem Livestream nicht vorspulen');
     }
 
     const time = interaction.options.getString('time')!;
@@ -50,7 +50,7 @@ export default class implements Command {
     }
 
     if (seekTime > currentSong.length) {
-      throw new Error('can\'t seek past the end of the song');
+      throw new Error('ich kann nicht über das Ende des Liedes hinaus spulen');
     }
 
     await Promise.all([
@@ -58,6 +58,6 @@ export default class implements Command {
       interaction.deferReply(),
     ]);
 
-    await interaction.editReply(`👍 seeked to ${prettyTime(player.getPosition())}`);
+    await interaction.editReply(`👍 nach ${prettyTime(player.getPosition())} gespult`);
   }
 }

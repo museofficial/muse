@@ -32,7 +32,7 @@ const getQueueInfo = (player: Player) => {
     return '-';
   }
 
-  return queueSize === 1 ? '1 song' : `${queueSize} songs`;
+  return queueSize === 1 ? '1 Song' : `${queueSize} Songs`;
 };
 
 const getPlayerUI = (player: Player) => {
@@ -54,14 +54,14 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
-    throw new Error('No playing song found');
+    throw new Error('Kein laufender Song gefunden');
   }
 
   const {artist, thumbnailUrl, requestedBy} = currentlyPlaying;
   const message = new EmbedBuilder();
   message
     .setColor(player.status === STATUS.PLAYING ? 'DarkGreen' : 'DarkRed')
-    .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Paused')
+    .setTitle(player.status === STATUS.PLAYING ? 'Spielt jetzt' : 'Pausiert')
     .setDescription(`
       **${getSongTitle(currentlyPlaying)}**
       Requested by: <@${requestedBy}>\n
@@ -80,14 +80,14 @@ export const buildQueueEmbed = (player: Player, page: number): EmbedBuilder => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
-    throw new Error('queue is empty');
+    throw new Error('die Warteschlange ist leer');
   }
 
   const queueSize = player.queueSize();
   const maxQueuePage = Math.ceil((queueSize + 1) / PAGE_SIZE);
 
   if (page > maxQueuePage) {
-    throw new Error('the queue isn\'t that big');
+    throw new Error('die Warteschlange ist nicht so lang');
   }
 
   const queuePageBegin = (page - 1) * PAGE_SIZE;
@@ -110,22 +110,22 @@ export const buildQueueEmbed = (player: Player, page: number): EmbedBuilder => {
   const message = new EmbedBuilder();
 
   let description = `**${getSongTitle(currentlyPlaying)}**\n`;
-  description += `Requested by: <@${requestedBy}>\n\n`;
+  description += `Gewünscht von: <@${requestedBy}>\n\n`;
   description += `${getPlayerUI(player)}\n\n`;
 
   if (player.getQueue().length > 0) {
-    description += '**Up next:**\n';
+    description += '**Als nächstes:**\n';
     description += queuedSongs;
   }
 
   message
-    .setTitle(player.status === STATUS.PLAYING ? `Now Playing ${player.loopCurrentSong ? '(loop on)' : ''}` : 'Queued songs')
+    .setTitle(player.status === STATUS.PLAYING ? `Now Playing ${player.loopCurrentSong ? '(loop on)' : ''}` : 'Lieder in der Warteschlange')
     .setColor(player.status === STATUS.PLAYING ? 'DarkGreen' : 'NotQuiteBlack')
     .setDescription(description)
-    .addFields([{name: 'In queue', value: getQueueInfo(player), inline: true}, {
-      name: 'Total length', value: `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, inline: true,
-    }, {name: 'Page', value: `${page} out of ${maxQueuePage}`, inline: true}])
-    .setFooter({text: `Source: ${artist} ${playlistTitle}`});
+    .addFields([{name: 'In der Warteschlange', value: getQueueInfo(player), inline: true}, {
+      name: 'Gesamtdauer', value: `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, inline: true,
+    }, {name: 'Seite', value: `${page} von ${maxQueuePage}`, inline: true}])
+    .setFooter({text: `Quelle: ${artist} ${playlistTitle}`});
 
   if (thumbnailUrl) {
     message.setThumbnail(thumbnailUrl);

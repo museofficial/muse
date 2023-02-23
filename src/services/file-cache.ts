@@ -30,7 +30,7 @@ export default class FileCacheProvider {
     });
 
     if (!model) {
-      throw new Error('File is not cached');
+      throw new Error('Datei wird nicht gecached');
     }
 
     const resolvedPath = path.join(this.config.CACHE_DIR, hash);
@@ -44,7 +44,7 @@ export default class FileCacheProvider {
         },
       });
 
-      throw new Error('File is not cached');
+      throw new Error('Datei wird nicht gecached');
     }
 
     await prisma.fileCache.update({
@@ -87,7 +87,7 @@ export default class FileCacheProvider {
             },
           });
         } catch (error) {
-          debug('Errored when moving a finished cache file:', error);
+          debug('Fehler beim Verschieben einer fertigen Cache Datei:', error);
         }
       }
 
@@ -114,7 +114,7 @@ export default class FileCacheProvider {
   }
 
   private async evictOldest() {
-    debug('Evicting oldest files...');
+    debug('Auslagern der ältesten Dateien');
 
     let totalSizeBytes = await this.getDiskUsageInBytes();
     let numOfEvictedFiles = 0;
@@ -135,7 +135,7 @@ export default class FileCacheProvider {
           },
         });
         await fs.unlink(path.join(this.config.CACHE_DIR, oldest.hash));
-        debug(`${oldest.hash} has been evicted`);
+        debug(`${oldest.hash} wurde ausgelagert`);
         numOfEvictedFiles++;
       }
 
@@ -144,9 +144,9 @@ export default class FileCacheProvider {
     /* eslint-enable no-await-in-loop */
 
     if (numOfEvictedFiles > 0) {
-      debug(`${numOfEvictedFiles} files have been evicted`);
+      debug(`${numOfEvictedFiles} Dateien wurden ausgelagert`);
     } else {
-      debug(`No files needed to be evicted. Total size of the cache is currently ${totalSizeBytes} bytes, and the cache limit is ${this.config.CACHE_LIMIT_IN_BYTES} bytes.`);
+      debug(`Es mussten keine Dateien ausgelagert werden. Die Gesamtgröße des Cache beträgt derzeit ${totalSizeBytes} Bytes, und das Cache Limit beträgt ${this.config.CACHE_LIMIT_IN_BYTES} Bytes.`);
     }
   }
 
@@ -161,7 +161,7 @@ export default class FileCacheProvider {
         });
 
         if (!model) {
-          debug(`${dirent.name} was present on disk but was not in the database. Removing from disk.`);
+          debug(`${dirent.name} war auf der Festplatte vorhanden, aber nicht in der Datenbank. Wird entfernt.`);
           await fs.unlink(path.join(this.config.CACHE_DIR, dirent.name));
         }
       }
@@ -174,7 +174,7 @@ export default class FileCacheProvider {
       try {
         await fs.access(filePath);
       } catch {
-        debug(`${model.hash} was present in database but was not on disk. Removing from database.`);
+        debug(`${model.hash} war in der Datenbank vorhanden, aber nicht auf der Festplatte. Wird entfernt.`);
         await prisma.fileCache.delete({
           where: {
             hash: model.hash,

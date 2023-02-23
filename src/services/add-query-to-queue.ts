@@ -37,7 +37,7 @@ export default class AddQueryToQueue {
     const settings = await prisma.setting.findUnique({where: {guildId}});
 
     if (!settings) {
-      throw new Error('Could not find settings for guild');
+      throw new Error('keine Einstellungen für den Server gefunden');
     }
 
     const {playlistLimit} = settings;
@@ -70,14 +70,14 @@ export default class AddQueryToQueue {
           if (songs) {
             newSongs.push(...songs);
           } else {
-            throw new Error('that doesn\'t exist');
+            throw new Error('das existiert nicht');
           }
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
         const [convertedSongs, nSongsNotFound, totalSongs] = await this.getSongs.spotifySource(query, playlistLimit, shouldSplitChapters);
 
         if (totalSongs > playlistLimit) {
-          extraMsg = `a random sample of ${playlistLimit} songs was taken`;
+          extraMsg = `eine zufällige Auswahl von ${playlistLimit} Liedern wurde genommen`;
         }
 
         if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
@@ -86,9 +86,9 @@ export default class AddQueryToQueue {
 
         if (nSongsNotFound !== 0) {
           if (nSongsNotFound === 1) {
-            extraMsg += '1 song was not found';
+            extraMsg += '1 Song konnte nicht gefunden werden';
           } else {
-            extraMsg += `${nSongsNotFound.toString()} songs were not found`;
+            extraMsg += `${nSongsNotFound.toString()} Songs konnten nicht gefunden werden`;
           }
         }
 
@@ -99,7 +99,7 @@ export default class AddQueryToQueue {
         if (song) {
           newSongs.push(song);
         } else {
-          throw new Error('that doesn\'t exist');
+          throw new Error('das existiert nicht');
         }
       }
     } catch (_: unknown) {
@@ -109,12 +109,12 @@ export default class AddQueryToQueue {
       if (songs) {
         newSongs.push(...songs);
       } else {
-        throw new Error('that doesn\'t exist');
+        throw new Error('das existiert nicht');
       }
     }
 
     if (newSongs.length === 0) {
-      throw new Error('no songs found');
+      throw new Error('keine Songs gefunden');
     }
 
     if (shuffleAdditions) {
@@ -140,7 +140,7 @@ export default class AddQueryToQueue {
       await player.play();
 
       if (wasPlayingSong) {
-        statusMsg = 'resuming playback';
+        statusMsg = 'Wiedergabe fortsetzen';
       }
 
       await interaction.editReply({
@@ -165,9 +165,9 @@ export default class AddQueryToQueue {
     }
 
     if (newSongs.length === 1) {
-      await interaction.editReply(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
+      await interaction.editReply(`Alles klar, **${firstSong.title}** hinzugefügt zu der${addToFrontOfQueue ? ' vor der' : ''} Warteschlange${extraMsg}`);
     } else {
-      await interaction.editReply(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
+      await interaction.editReply(`Alles klar, **${firstSong.title}** und ${newSongs.length - 1} andere Songs wurden zur Warteschlange hinzugefügt${extraMsg}`);
     }
   }
 }

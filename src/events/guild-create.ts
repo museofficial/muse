@@ -40,5 +40,5 @@ export default async (guild: Guild): Promise<void> => {
   }
 
   const owner = await guild.fetchOwner();
-  await owner.send('👋 Hi! Someone (probably you) just invited me to a server you own. By default, I\'m usable by all guild member in all guild channels. To change this, check out the wiki page on permissions: https://github.com/codetheweb/muse/wiki/Configuring-Bot-Permissions.');
+  await owner.send('👋 Hi! Jemand (wahrscheinlich du) hat mich gerade auf einen deiner Server eingeladen. Standardmäßig kann ich von allen Mitgliedern in allen Kanälen benutzt werden. Um dies zu ändern, sieh dir die Wiki-Seite zu Berechtigungen an: https://github.com/codetheweb/muse/wiki/Configuring-Bot-Permissions.');
 };

@@ -9,15 +9,15 @@ import {SlashCommandBuilder} from '@discordjs/builders';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('move')
-    .setDescription('move songs within the queue')
+    .setDescription('verschiebe Songs innerhalb der Warteschlange')
     .addIntegerOption(option =>
       option.setName('from')
-        .setDescription('position of the song to move')
+        .setDescription('Position des zu verschiebenden Songs')
         .setRequired(true),
     )
     .addIntegerOption(option =>
       option.setName('to')
-        .setDescription('position to move the song to')
+        .setDescription('Position, an die der Song verschoben werden soll')
         .setRequired(true));
 
   private readonly playerManager: PlayerManager;
@@ -33,15 +33,15 @@ export default class implements Command {
     const to = interaction.options.getInteger('to') ?? 1;
 
     if (from < 1) {
-      throw new Error('position must be at least 1');
+      throw new Error('Position muss mindestens 1 sein');
     }
 
     if (to < 1) {
-      throw new Error('position must be at least 1');
+      throw new Error('Position muss mindestens 1 sein');
     }
 
     const {title} = player.move(from, to);
 
-    await interaction.reply('moved **' + title + '** to position **' + String(to) + '**');
+    await interaction.reply('verschiebe **' + title + '** an Position **' + String(to) + '**');
   }
 }

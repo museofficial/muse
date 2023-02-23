@@ -10,7 +10,7 @@ import Command from '.';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('stop')
-    .setDescription('stop playback, disconnect, and clear all songs in the queue');
+    .setDescription('die Wiedergabe anhalten, Verbindung trennen und alle Titel in der Warteschlange löschen');
 
   public requiresVC = true;
 
@@ -24,14 +24,14 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.voiceConnection) {
-      throw new Error('not connected');
+      throw new Error('nicht verbunden');
     }
 
     if (player.status !== STATUS.PLAYING) {
-      throw new Error('not currently playing');
+      throw new Error('derzeit nicht spielend');
     }
 
     player.stop();
-    await interaction.reply('u betcha, stopped');
+    await interaction.reply('Bin dann mal weg');
   }
 }

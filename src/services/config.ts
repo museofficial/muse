@@ -49,7 +49,7 @@ export default class Config {
   constructor() {
     for (const [key, value] of Object.entries(CONFIG_MAP)) {
       if (typeof value === 'undefined') {
-        console.error(`Missing environment variable for ${key}`);
+        console.error(`fehlende Umgebungsvariable für ${key}`);
         process.exit(1);
       }
 
@@ -66,7 +66,7 @@ export default class Config {
       } else if (typeof value === 'boolean') {
         this[key as ConditionalKeys<typeof CONFIG_MAP, boolean>] = value;
       } else {
-        throw new Error(`Unsupported type for ${key}`);
+        throw new Error(`Ununterstützter Typ für ${key}`);
       }
     }
   }

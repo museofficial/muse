@@ -105,17 +105,17 @@ export default class {
     this.status = STATUS.PAUSED;
 
     if (this.voiceConnection === null) {
-      throw new Error('Not connected to a voice channel.');
+      throw new Error('Keine Verbindung zu einem Sprachkanal.');
     }
 
     const currentSong = this.getCurrent();
 
     if (!currentSong) {
-      throw new Error('No song currently playing');
+      throw new Error('Derzeit wird nicht abgespielt.');
     }
 
     if (positionSeconds > currentSong.length) {
-      throw new Error('Seek position is outside the range of the song.');
+      throw new Error('Position liegt außerhalb des Bereichs des Songs.');
     }
 
     let realPositionSeconds = positionSeconds;
@@ -152,13 +152,13 @@ export default class {
 
   async play(): Promise<void> {
     if (this.voiceConnection === null) {
-      throw new Error('Not connected to a voice channel.');
+      throw new Error('Keine Verbindung zu einem Sprachkanal.');
     }
 
     const currentSong = this.getCurrent();
 
     if (!currentSong) {
-      throw new Error('Queue empty.');
+      throw new Error('Warteschlange leer.');
     }
 
     // Cancel any pending idle disconnection
@@ -223,7 +223,7 @@ export default class {
         const channelId = currentSong.addedInChannelId;
 
         if (channelId) {
-          debug(`${currentSong.title} is unavailable`);
+          debug(`${currentSong.title} ist nicht verfügbar`);
           return;
         }
       }
@@ -234,7 +234,7 @@ export default class {
 
   pause(): void {
     if (this.status !== STATUS.PLAYING) {
-      throw new Error('Not currently playing.');
+      throw new Error('Derzeit wird nicht abgespielt.');
     }
 
     this.status = STATUS.PAUSED;
@@ -259,7 +259,7 @@ export default class {
         const settings = await prisma.setting.findUnique({where: {guildId: this.guildId}});
 
         if (!settings) {
-          throw new Error('Could not find settings for guild');
+          throw new Error('Einstellungen für den Server nicht gefunden');
         }
 
         const {secondsToWaitAfterQueueEmpties} = settings;
@@ -289,7 +289,7 @@ export default class {
       this.positionInSeconds = 0;
       this.stopTrackingPosition();
     } else {
-      throw new Error('No songs in queue to forward to.');
+      throw new Error('Keine Songs zum vorspulen gefunden.');
     }
   }
 
@@ -307,7 +307,7 @@ export default class {
         await this.play();
       }
     } else {
-      throw new Error('No songs in queue to go back to.');
+      throw new Error('Keine Songs zum zurückspulen gefunden.');
     }
   }
 
@@ -382,7 +382,7 @@ export default class {
 
   move(from: number, to: number): QueuedSong {
     if (from > this.queueSize() || to > this.queueSize()) {
-      throw new Error('Move index is outside the range of the queue.');
+      throw new Error('Index liegt außerhalb des Bereichs der Warteschlange.');
     }
 
     this.queue.splice(this.queuePosition + to, 0, this.queue.splice(this.queuePosition + from, 1)[0]);
@@ -449,7 +449,7 @@ export default class {
 
         if (!format) {
           // If still no format is found, throw
-          throw new Error('Can\'t find suitable format.');
+          throw new Error('Kein geeignetes Format gefunden.');
         }
       }
 
@@ -557,7 +557,7 @@ export default class {
           }
         })
         .on('start', command => {
-          debug(`Spawned ffmpeg with ${command as string}`);
+          debug(`ffmpeg erstellt mit ${command as string}`);
         });
 
       stream.pipe(capacitor);

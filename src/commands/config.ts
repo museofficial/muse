@@ -8,33 +8,33 @@ import Command from './index.js';
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('config')
-    .setDescription('configure bot settings')
+    .setDescription('Konfigurieren der Bot-Einstellungen')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString())
     .addSubcommand(subcommand => subcommand
       .setName('set-playlist-limit')
-      .setDescription('set the maximum number of tracks that can be added from a playlist')
+      .setDescription('die maximale Anzahl der Songs festlegen, die aus einer Wiedergabeliste hinzugefügt werden können')
       .addIntegerOption(option => option
         .setName('limit')
-        .setDescription('maximum number of tracks')
+        .setDescription('maximale Anzahl von Songs')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-wait-after-queue-empties')
-      .setDescription('set the time to wait before leaving the voice channel when queue empties')
+      .setDescription('die Zeit einstellen, die gewartet werden soll, bevor der Sprachkanal bei leerer Warteschlange verlassen wird')
       .addIntegerOption(option => option
         .setName('delay')
-        .setDescription('delay in seconds (set to 0 to never leave)')
+        .setDescription('Verzögerung in Sekunden (auf 0 setzen, um nie zu gehen)')
         .setRequired(true)
         .setMinValue(0)))
     .addSubcommand(subcommand => subcommand
       .setName('set-leave-if-no-listeners')
-      .setDescription('set whether to leave when all other participants leave')
+      .setDescription('festlegen ob der Bot gehen soll, wenn alle anderen Benutzer gehen')
       .addBooleanOption(option => option
         .setName('value')
-        .setDescription('whether to leave when everyone else leaves')
+        .setDescription('ob der Bot geht, wenn alle anderen gehen')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('get')
-      .setDescription('show all settings'));
+      .setDescription('alle Einstellungen anzeigen'));
 
   async execute(interaction: ChatInputCommandInteraction) {
     switch (interaction.options.getSubcommand()) {
@@ -42,7 +42,7 @@ export default class implements Command {
         const limit: number = interaction.options.getInteger('limit')!;
 
         if (limit < 1) {
-          throw new Error('invalid limit');
+          throw new Error('ungültiges Limit');
         }
 
         await prisma.setting.update({
@@ -54,7 +54,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 limit updated');
+        await interaction.reply('👍 Limit aktualisiert');
 
         break;
       }
@@ -71,7 +71,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 wait delay updated');
+        await interaction.reply('👍 Verzögerung aktualisiert');
 
         break;
       }
@@ -88,7 +88,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 leave setting updated');
+        await interaction.reply('👍 Einstellung aktualisiert lassen');
 
         break;
       }
@@ -99,15 +99,15 @@ export default class implements Command {
         const config = await prisma.setting.findUnique({where: {guildId: interaction.guild!.id}});
 
         if (!config) {
-          throw new Error('no config found');
+          throw new Error('keine Konfiguration gefunden');
         }
 
         const settingsToShow = {
           'Playlist Limit': config.playlistLimit,
-          'Wait before leaving after queue empty': config.secondsToWaitAfterQueueEmpties === 0
-            ? 'never leave'
+          'Wartezeit vor disconnect, wenn die Warteschlange leer ist.': config.secondsToWaitAfterQueueEmpties === 0
+            ? 'nie verlassen'
             : `${config.secondsToWaitAfterQueueEmpties}s`,
-          'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
+          'Leave if there are no listeners': config.leaveIfNoListeners ? 'ja' : 'nein',
         };
 
         let description = '';

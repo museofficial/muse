@@ -15,7 +15,7 @@ const futureTimeToDate = (time: Seconds) => new Date(new Date().getTime() + (tim
 export default class KeyValueCacheProvider {
   async wrap<T extends [...any[], Options], F>(func: (...options: any) => Promise<F>, ...options: T): Promise<F> {
     if (options.length === 0) {
-      throw new Error('Missing cache options');
+      throw new Error('Cache Optionen fehlen');
     }
 
     const functionArgs = options.slice(0, options.length - 1);
@@ -26,7 +26,7 @@ export default class KeyValueCacheProvider {
     } = options[options.length - 1] as Options;
 
     if (key.length < 4) {
-      throw new Error(`Cache key ${key} is too short.`);
+      throw new Error(`Cache Schlüssel ${key} ist zu kurz.`);
     }
 
     const cachedResult = await prisma.keyValueCache.findUnique({
@@ -48,7 +48,7 @@ export default class KeyValueCacheProvider {
       });
     }
 
-    debug(`Cache miss: ${key}`);
+    debug(`Cache fehlt: ${key}`);
 
     const result = await func(...options as any[]);
 
