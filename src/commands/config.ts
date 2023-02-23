@@ -12,17 +12,17 @@ export default class implements Command {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString())
     .addSubcommand(subcommand => subcommand
       .setName('set-playlist-limit')
-      .setDescription('die maximale Anzahl der Songs festlegen, die aus einer Wiedergabeliste hinzugefügt werden können')
+      .setDescription('die maximale Anzahl der Songs festlegen die aus einer Wiedergabeliste hinzugefügt werden können')
       .addIntegerOption(option => option
         .setName('limit')
         .setDescription('maximale Anzahl von Songs')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-wait-after-queue-empties')
-      .setDescription('die Zeit einstellen, die gewartet werden soll, bevor der Sprachkanal bei leerer Warteschlange verlassen wird')
+      .setDescription('die Wartezeit einstellen, bevor der Sprachkanal bei leerer Warteschlange verlassen wird')
       .addIntegerOption(option => option
         .setName('delay')
-        .setDescription('Verzögerung in Sekunden (auf 0 setzen, um diese Funktion zu deaktivieren)')
+        .setDescription('Verzögerung in Sekunden. Auf 0 setzen, um diese Funktion zu deaktivieren')
         .setRequired(true)
         .setMinValue(0)))
     .addSubcommand(subcommand => subcommand
