@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added a '/replay' to restart the current song. Alias for '/seek time: 0'
-
+- test
 
 ## [2.1.9] - 2023-02-14
 ### Fixed
