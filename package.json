@@ -46,7 +46,7 @@
     "eslint-config-xo": "^0.39.0",
     "eslint-config-xo-typescript": "^0.44.0",
     "husky": "^4.3.8",
-    "prisma": "^3.14.0",
+    "prisma": "^4.11.0",
     "release-it": "^14.11.8",
     "type-fest": "^2.12.0",
     "typescript": "^4.6.4"
