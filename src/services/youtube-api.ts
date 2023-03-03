@@ -1,8 +1,7 @@
 import {inject, injectable} from 'inversify';
 import {toSeconds, parse} from 'iso8601-duration';
-import got from 'got';
+import got, {Got} from 'got';
 import ytsr, {Video} from 'ytsr';
-// Import YouTube, {YoutubePlaylistItem, YoutubeVideo} from 'youtube.ts';
 import PQueue from 'p-queue';
 import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
@@ -11,8 +10,6 @@ import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
 import {parseTime} from '../utils/time.js';
 import getYouTubeID from 'get-youtube-id';
-
-const YT_BASE_URL = 'https://www.googleapis.com/youtube/v3/';
 
 interface VideoDetailsResponse {
   id: string;
@@ -57,19 +54,25 @@ interface PlaylistItem {
 
 @injectable()
 export default class {
-  // Private readonly youtube: YouTube;
   private readonly youtubeKey: string;
   private readonly cache: KeyValueCacheProvider;
-
   private readonly ytsrQueue: PQueue;
+  private readonly got: Got;
 
   constructor(
   @inject(TYPES.Config) config: Config,
     @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
     this.youtubeKey = config.YOUTUBE_API_KEY;
     this.cache = cache;
-
     this.ytsrQueue = new PQueue({concurrency: 4});
+
+    this.got = got.extend({
+      prefixUrl: 'https://www.googleapis.com/youtube/v3/',
+      searchParams: {
+        key: this.youtubeKey,
+        responseType: 'json',
+      },
+    });
   }
 
   async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
@@ -112,12 +115,10 @@ export default class {
       searchParams: {
         part: 'id, snippet, contentDetails',
         id: listId,
-        key: this.youtubeKey,
-        responseType: 'json',
       },
     };
     const {items: playlists} = await this.cache.wrap(
-      async () => got(YT_BASE_URL + 'playlists', playlistParams).json() as Promise<{items: PlaylistResponse[]}>,
+      async () => this.got('playlists', playlistParams).json() as Promise<{items: PlaylistResponse[]}>,
       playlistParams,
       {
         expiresIn: ONE_MINUTE_IN_SECONDS,
@@ -138,8 +139,6 @@ export default class {
         searchParams: {
           part: 'id, contentDetails',
           playlistId: listId,
-          key: this.youtubeKey,
-          responseType: 'json',
           maxResults: '50',
           pageToken: nextToken,
         },
@@ -148,7 +147,7 @@ export default class {
       console.log(`Get playlist items ${listId}`);
       // eslint-disable-next-line no-await-in-loop
       const {items, nextPageToken} = await this.cache.wrap(
-        async () => got(YT_BASE_URL + 'playlistItems', playlistItemsParams).json() as Promise<PlaylistItemsResponse>,
+        async () => this.got('playlistItems', playlistItemsParams).json() as Promise<PlaylistItemsResponse>,
         playlistItemsParams,
         {
           expiresIn: ONE_MINUTE_IN_SECONDS,
@@ -280,13 +279,11 @@ export default class {
       searchParams: {
         part: 'id, snippet, contentDetails',
         id: videoIDs.join(','),
-        key: this.youtubeKey,
-        responseType: 'json',
       },
     };
 
     const {items: videos} = await this.cache.wrap(
-      async () => got(YT_BASE_URL + 'videos', p).json() as Promise<{items: VideoDetailsResponse[]}>,
+      async () => this.got('videos', p).json() as Promise<{items: VideoDetailsResponse[]}>,
       p,
       {
         expiresIn: ONE_HOUR_IN_SECONDS,
