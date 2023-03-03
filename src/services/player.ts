@@ -87,16 +87,18 @@ export default class {
 
     // Workaround to disable keepAlive
     this.voiceConnection.on('stateChange', (oldState, newState) => {
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
       const oldNetworking = Reflect.get(oldState, 'networking');
       const newNetworking = Reflect.get(newState, 'networking');
-    
-      const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
+
+      const networkStateChangeHandler = (_: any, newNetworkState: any) => {
         const newUdp = Reflect.get(newNetworkState, 'udp');
         clearInterval(newUdp?.keepAliveInterval);
-      }
-    
+      };
+
       oldNetworking?.off('stateChange', networkStateChangeHandler);
       newNetworking?.on('stateChange', networkStateChangeHandler);
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
     });
   }
 
