@@ -18,7 +18,7 @@ import {
 } from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
-import {prisma} from '../utils/db.js';
+import {getGuildSettings} from '../utils/get-guild-settings';
 
 export enum MediaSource {
   Youtube,
@@ -272,11 +272,7 @@ export default class {
         this.audioPlayer?.stop();
         this.status = STATUS.IDLE;
 
-        const settings = await prisma.setting.findUnique({where: {guildId: this.guildId}});
-
-        if (!settings) {
-          throw new Error('Could not find settings for guild');
-        }
+        const settings = await getGuildSettings(this.guildId);
 
         const {secondsToWaitAfterQueueEmpties} = settings;
         if (secondsToWaitAfterQueueEmpties !== 0) {
