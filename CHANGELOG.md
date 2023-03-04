@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.2.1] - 2023-03-04
 ### Fixed
 - Fixed all lint errors
 - Create the guild settings when not found instead of returning an error
@@ -223,7 +225,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/codetheweb/muse/compare/v2.2.0...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.2.1...HEAD
+[2.2.1]: https://github.com/codetheweb/muse/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/codetheweb/muse/compare/v2.1.9...v2.2.0
 [2.1.9]: https://github.com/codetheweb/muse/compare/v2.1.8...v2.1.9
 [2.1.8]: https://github.com/codetheweb/muse/compare/v2.1.7...v2.1.8
