@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- Fixed all lint errors
 - Create the guild settings when not found instead of returning an error
 - Add temporary workaround to avoid VoiceConnection being stuck in signalling state
 
