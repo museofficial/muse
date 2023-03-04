@@ -18,7 +18,7 @@ import {
 } from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
-import {prisma} from '../utils/db.js';
+import {getGuildSettings} from '../utils/get-guild-settings';
 
 export enum MediaSource {
   Youtube,
@@ -83,6 +83,22 @@ export default class {
       channelId: channel.id,
       guildId: channel.guild.id,
       adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
+    });
+
+    // Workaround to disable keepAlive
+    this.voiceConnection.on('stateChange', (oldState, newState) => {
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+      const oldNetworking = Reflect.get(oldState, 'networking');
+      const newNetworking = Reflect.get(newState, 'networking');
+
+      const networkStateChangeHandler = (_: any, newNetworkState: any) => {
+        const newUdp = Reflect.get(newNetworkState, 'udp');
+        clearInterval(newUdp?.keepAliveInterval);
+      };
+
+      oldNetworking?.off('stateChange', networkStateChangeHandler);
+      newNetworking?.on('stateChange', networkStateChangeHandler);
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
     });
   }
 
@@ -256,11 +272,7 @@ export default class {
         this.audioPlayer?.stop();
         this.status = STATUS.IDLE;
 
-        const settings = await prisma.setting.findUnique({where: {guildId: this.guildId}});
-
-        if (!settings) {
-          throw new Error('Could not find settings for guild');
-        }
+        const settings = await getGuildSettings(this.guildId);
 
         const {secondsToWaitAfterQueueEmpties} = settings;
         if (secondsToWaitAfterQueueEmpties !== 0) {
