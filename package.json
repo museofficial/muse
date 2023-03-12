@@ -113,6 +113,6 @@
     "xbytes": "^1.7.0",
     "youtube.ts": "^0.2.9",
     "ytdl-core": "^4.11.2",
-    "ytsr": "^3.8.0"
+    "ytsr": "github:Yonle/node-ytsr"
   }
 }
