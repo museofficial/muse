@@ -103,7 +103,11 @@ export default class {
 
   async getVideo(url: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     const result = await this.getVideosByID([String(getYouTubeID(url))]);
-    const video = result.at(0)!; // TODO undefined handling
+    const video = result.at(0);
+
+    if (!video) {
+      throw new Error('Video could not be found.');
+    }
 
     return this.getMetadataFromVideo({video, shouldSplitChapters});
   }
@@ -123,8 +127,11 @@ export default class {
       },
     );
 
-    // TODO Better undefined handling
     const playlist = playlists.at(0)!;
+
+    if (!playlist) {
+      throw new Error('Playlist could not be found.');
+    }
 
     const playlistVideos: PlaylistItem[] = [];
     const videoDetailsPromises: Array<Promise<void>> = [];
