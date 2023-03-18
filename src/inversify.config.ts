@@ -14,30 +14,31 @@ import GetSongs from './services/get-songs.js';
 import YoutubeAPI from './services/youtube-api.js';
 import SpotifyAPI from './services/spotify-api.js';
 
-// Comands
+// Commands
 import Command from './commands';
 import Clear from './commands/clear.js';
 import Config from './commands/config.js';
 import Disconnect from './commands/disconnect.js';
 import Favorites from './commands/favorites.js';
 import ForwardSeek from './commands/fseek.js';
+import Loop from './commands/loop';
 import Move from './commands/move.js';
+import Next from './commands/next.js';
 import NowPlaying from './commands/now-playing.js';
 import Pause from './commands/pause.js';
 import Play from './commands/play.js';
 import QueueCommand from './commands/queue.js';
 import Remove from './commands/remove.js';
+import Replay from './commands/replay.js';
 import Resume from './commands/resume.js';
 import Seek from './commands/seek.js';
 import Shuffle from './commands/shuffle.js';
 import Skip from './commands/skip.js';
-import Next from './commands/next.js';
 import Stop from './commands/stop.js';
 import Unskip from './commands/unskip.js';
 import ThirdParty from './services/third-party.js';
 import FileCacheProvider from './services/file-cache.js';
 import KeyValueCacheProvider from './services/key-value-cache.js';
-import Loop from './commands/loop';
 
 const container = new Container();
 
@@ -67,20 +68,21 @@ container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingleton
   Disconnect,
   Favorites,
   ForwardSeek,
+  Loop,
   Move,
+  Next,
   NowPlaying,
   Pause,
   Play,
   QueueCommand,
   Remove,
+  Replay,
   Resume,
   Seek,
   Shuffle,
   Skip,
-  Next,
   Stop,
   Unskip,
-  Loop,
 ].forEach(command => {
   container.bind<Command>(TYPES.Command).to(command).inSingletonScope();
 });

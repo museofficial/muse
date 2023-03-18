@@ -23,9 +23,7 @@ export default class {
   private readonly commandsByName!: Collection<string, Command>;
   private readonly commandsByButtonId!: Collection<string, Command>;
 
-  constructor(
-  @inject(TYPES.Client) client: Client,
-    @inject(TYPES.Config) config: Config) {
+  constructor(@inject(TYPES.Client) client: Client, @inject(TYPES.Config) config: Config) {
     this.client = client;
     this.config = config;
     this.shouldRegisterCommandsOnBot = config.REGISTER_COMMANDS_ON_BOT;

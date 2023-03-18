@@ -9,12 +9,12 @@ jobs:
       matrix:
         runner-platform:
           - ubuntu-latest
-          - self-hosted
+          - buildjet-4vcpu-ubuntu-2204-arm
         include:
           - runner-platform: ubuntu-latest
             build-arch: linux/amd64
             tagged-platform: amd64
-          - runner-platform: self-hosted
+          - runner-platform: buildjet-4vcpu-ubuntu-2204-arm
             build-arch: linux/arm64
             tagged-platform: arm64
     runs-on: ${{ matrix.runner-platform }}
@@ -24,7 +24,7 @@ jobs:
 
       - name: Cache Docker layers
         # AWS data transfer is pricy
-        if: ${{ matrix.runner-platform != 'self-hosted' }}
+        if: ${{ matrix.runner-platform != 'buildjet-4vcpu-ubuntu-2204-arm' }}
         uses: actions/cache@v2
         with:
           path: /tmp/.buildx-cache

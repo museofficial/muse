@@ -59,9 +59,7 @@ export default class {
   private readonly ytsrQueue: PQueue;
   private readonly got: Got;
 
-  constructor(
-  @inject(TYPES.Config) config: Config,
-    @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
+  constructor(@inject(TYPES.Config) config: Config, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
     this.youtubeKey = config.YOUTUBE_API_KEY;
     this.cache = cache;
     this.ytsrQueue = new PQueue({concurrency: 4});

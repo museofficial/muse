@@ -1,14 +1,15 @@
 /* eslint-disable complexity */
 import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
+import {URL} from 'node:url';
 import {inject, injectable} from 'inversify';
 import shuffle from 'array-shuffle';
 import {TYPES} from '../types.js';
 import GetSongs from '../services/get-songs.js';
 import {SongMetadata, STATUS} from './player.js';
 import PlayerManager from '../managers/player.js';
-import {prisma} from '../utils/db.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
+import {getGuildSettings} from '../utils/get-guild-settings';
 
 @injectable()
 export default class AddQueryToQueue {
@@ -34,11 +35,7 @@ export default class AddQueryToQueue {
 
     const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
 
-    const settings = await prisma.setting.findUnique({where: {guildId}});
-
-    if (!settings) {
-      throw new Error('Could not find settings for guild');
-    }
+    const settings = await getGuildSettings(guildId);
 
     const {playlistLimit} = settings;
 

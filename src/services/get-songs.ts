@@ -1,6 +1,6 @@
 import {inject, injectable} from 'inversify';
 import * as spotifyURI from 'spotify-uri';
-import {SongMetadata, QueuedPlaylist, MediaSource} from '../services/player.js';
+import {SongMetadata, QueuedPlaylist, MediaSource} from './player';
 import {TYPES} from '../types.js';
 import ffmpeg from 'fluent-ffmpeg';
 import YoutubeAPI from './youtube-api.js';
@@ -11,9 +11,7 @@ export default class {
   private readonly youtubeAPI: YoutubeAPI;
   private readonly spotifyAPI: SpotifyAPI;
 
-  constructor(
-  @inject(TYPES.Services.YoutubeAPI) youtubeAPI: YoutubeAPI,
-    @inject(TYPES.Services.SpotifyAPI) spotifyAPI: SpotifyAPI) {
+  constructor(@inject(TYPES.Services.YoutubeAPI) youtubeAPI: YoutubeAPI, @inject(TYPES.Services.SpotifyAPI) spotifyAPI: SpotifyAPI) {
     this.youtubeAPI = youtubeAPI;
     this.spotifyAPI = spotifyAPI;
   }
