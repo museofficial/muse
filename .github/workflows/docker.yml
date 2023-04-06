@@ -1,0 +1,37 @@
+name: docker-build-publish
+
+on:
+  push:
+    branches:
+      - "master"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/muse:latest
+      - 
+        name: Webhook
+        uses: distributhor/workflow-webhook@v2
+        env:
+          webhook_url: ${{ secrets.PORTAINER_WEBHOOK }}
+          webhook_secret: "thereisnosecret"
