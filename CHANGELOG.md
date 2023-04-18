@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.2.4] - 2023-04-17
 ### Fixed
 - Bumped ytdl-core
 
@@ -233,7 +235,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/codetheweb/muse/compare/v2.2.3...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.2.4...HEAD
+[2.2.4]: https://github.com/codetheweb/muse/compare/v2.2.3...v2.2.4
 [2.2.3]: https://github.com/codetheweb/muse/compare/v2.2.2...v2.2.3
 [2.2.2]: https://github.com/codetheweb/muse/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/codetheweb/muse/compare/v2.2.0...v2.2.1
