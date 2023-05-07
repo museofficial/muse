@@ -1,7 +1,7 @@
 import {VoiceChannel, Snowflake} from 'discord.js';
 import {Readable} from 'stream';
 import hasha from 'hasha';
-import ytdl from 'ytdl-core';
+import ytdl, {videoFormat} from 'ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
@@ -55,6 +55,8 @@ export enum STATUS {
 export interface PlayerEvents {
   statusChange: (oldStatus: STATUS, newStatus: STATUS) => void;
 }
+
+type YTDLVideoFormat = videoFormat & {loudnessDb?: number};
 
 export default class {
   public voiceConnection: VoiceConnection | null = null;
@@ -415,7 +417,7 @@ export default class {
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
-    let format: ytdl.videoFormat | undefined;
+    let format: YTDLVideoFormat | undefined;
 
     try {
       ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
@@ -431,7 +433,7 @@ export default class {
       // Not yet cached, must download
       const info = await ytdl.getInfo(song.url);
 
-      const {formats} = info;
+      const formats = info.formats as YTDLVideoFormat[];
 
       const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
 
@@ -465,11 +467,15 @@ export default class {
         }
       }
 
+      debug('Using format', format);
+
       ffmpegInput = format.url;
 
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
       shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.videoDetails.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
+
+      debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
 
       ffmpegInputOptions.push(...[
         '-reconnect',
@@ -489,7 +495,11 @@ export default class {
       }
     }
 
-    return this.createReadStream(ffmpegInput, {ffmpegInputOptions, cache: shouldCacheVideo});
+    return this.createReadStream(ffmpegInput, {
+      ffmpegInputOptions,
+      cache: shouldCacheVideo,
+      volumeAdjustment: `-${format?.loudnessDb ?? 0}dB`,
+    });
   }
 
   private startTrackingPosition(initalPosition?: number): void {
@@ -546,7 +556,7 @@ export default class {
     }
   }
 
-  private async createReadStream(url: string, options: {ffmpegInputOptions?: string[]; cache?: boolean} = {}): Promise<Readable> {
+  private async createReadStream(url: string, options: {ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string} = {}): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
 
@@ -563,6 +573,7 @@ export default class {
         .noVideo()
         .audioCodec('libopus')
         .outputFormat('webm')
+        .addOutputOption(['-filter:a', `volume=${options?.volumeAdjustment ?? '1'}`])
         .on('error', error => {
           if (!hasReturnedStreamClosed) {
             reject(error);
