@@ -19,6 +19,7 @@ Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that
 - ↔️ Autoconverts playlists / artists / albums / songs from Spotify
 - ↗️ Users can add custom shortcuts (aliases)
 - 1️⃣ Muse instance supports multiple guilds
+- 🔊 Normalizes volume across tracks
 - ✍️ Written in TypeScript, easily extendable
 - ❤️ Loyal Packers fan
 
