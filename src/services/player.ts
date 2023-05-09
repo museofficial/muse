@@ -498,7 +498,7 @@ export default class {
     return this.createReadStream(ffmpegInput, {
       ffmpegInputOptions,
       cache: shouldCacheVideo,
-      volumeAdjustment: `-${format?.loudnessDb ?? 0}dB`,
+      volumeAdjustment: `${-(format?.loudnessDb ?? 0)}dB`,
     });
   }
 
