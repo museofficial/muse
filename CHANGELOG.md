@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Muse now normalizes playback volume across tracks. Thanks to @UniversalSuperBox for sponsoring this feature!
 
+### Fixed
+- Fixed a bug where tracks wouldn't be cached
+
 ## [2.2.4] - 2023-04-17
 ### Fixed
 - Bumped ytdl-core
