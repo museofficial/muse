@@ -410,26 +410,18 @@ export default class {
 
   private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
     if (song.source === MediaSource.HLS) {
-      return this.createReadStream(song.url);
+      return this.createReadStream({url: song.url, cacheKey: song.url});
     }
 
-    let ffmpegInput = '';
+    let ffmpegInput: string | null;
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
     let format: YTDLVideoFormat | undefined;
 
-    try {
-      ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
+    ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
 
-      if (options.seek) {
-        ffmpegInputOptions.push('-ss', options.seek.toString());
-      }
-
-      if (options.to) {
-        ffmpegInputOptions.push('-to', options.to.toString());
-      }
-    } catch {
+    if (!ffmpegInput) {
       // Not yet cached, must download
       const info = await ytdl.getInfo(song.url);
 
@@ -485,17 +477,19 @@ export default class {
         '-reconnect_delay_max',
         '5',
       ]);
-
-      if (options.seek) {
-        ffmpegInputOptions.push('-ss', options.seek.toString());
-      }
-
-      if (options.to) {
-        ffmpegInputOptions.push('-to', options.to.toString());
-      }
     }
 
-    return this.createReadStream(ffmpegInput, {
+    if (options.seek) {
+      ffmpegInputOptions.push('-ss', options.seek.toString());
+    }
+
+    if (options.to) {
+      ffmpegInputOptions.push('-to', options.to.toString());
+    }
+
+    return this.createReadStream({
+      url: ffmpegInput,
+      cacheKey: song.url,
       ffmpegInputOptions,
       cache: shouldCacheVideo,
       volumeAdjustment: format?.loudnessDb ? `${-format.loudnessDb}dB` : undefined,
@@ -556,19 +550,19 @@ export default class {
     }
   }
 
-  private async createReadStream(url: string, options: {ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string} = {}): Promise<Readable> {
+  private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
 
       if (options?.cache) {
-        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(url));
+        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(options.cacheKey));
         capacitor.createReadStream().pipe(cacheStream);
       }
 
       const returnedStream = capacitor.createReadStream();
       let hasReturnedStreamClosed = false;
 
-      const stream = ffmpeg(url)
+      const stream = ffmpeg(options.url)
         .inputOptions(options?.ffmpegInputOptions ?? ['-re'])
         .noVideo()
         .audioCodec('libopus')
