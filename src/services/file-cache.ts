@@ -18,11 +18,11 @@ export default class FileCacheProvider {
   }
 
   /**
-   * Returns path to cached file if it exists, otherwise throws an error.
+   * Returns path to cached file if it exists, otherwise returns null.
    * Updates the `accessedAt` property of the cached file.
    * @param hash lookup key
    */
-  async getPathFor(hash: string): Promise<string> {
+  async getPathFor(hash: string): Promise<string | null> {
     const model = await prisma.fileCache.findUnique({
       where: {
         hash,
@@ -30,7 +30,7 @@ export default class FileCacheProvider {
     });
 
     if (!model) {
-      throw new Error('File is not cached');
+      return null;
     }
 
     const resolvedPath = path.join(this.config.CACHE_DIR, hash);
@@ -44,7 +44,7 @@ export default class FileCacheProvider {
         },
       });
 
-      throw new Error('File is not cached');
+      return null;
     }
 
     await prisma.fileCache.update({
@@ -76,19 +76,15 @@ export default class FileCacheProvider {
       const stats = await fs.stat(tmpPath);
 
       if (stats.size !== 0) {
-        try {
-          await fs.rename(tmpPath, finalPath);
+        await fs.rename(tmpPath, finalPath);
 
-          await prisma.fileCache.create({
-            data: {
-              hash,
-              accessedAt: new Date(),
-              bytes: stats.size,
-            },
-          });
-        } catch (error) {
-          debug('Errored when moving a finished cache file:', error);
-        }
+        await prisma.fileCache.create({
+          data: {
+            hash,
+            accessedAt: new Date(),
+            bytes: stats.size,
+          },
+        });
       }
 
       await this.evictOldestIfNecessary();

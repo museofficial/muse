@@ -714,13 +714,6 @@ asynckit@^0.4.0:
   resolved "https://registry.yarnpkg.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79"
   integrity sha1-x57Zf380y48robyXkLzDZkdLS3k=
 
-axios@^0.19.0:
-  version "0.19.2"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-0.19.2.tgz#3ea36c5d8818d0d5f8a8a97a6d36b86cdc00cb27"
-  integrity sha512-fjgm5MvRHLhx+osE2xoekY70AhARk3a6hkN+3Io1jc00jtquGvxYlKlsFUhmUET0V5te6CcZI7lcv2Ym61mjHA==
-  dependencies:
-    follow-redirects "1.5.10"
-
 balanced-match@^1.0.0:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/balanced-match/-/balanced-match-1.0.2.tgz#e83e3a7e3f300b34cb9d87f615fa0cbf357690ee"
@@ -1068,13 +1061,6 @@ debug@4, debug@4.3.4, debug@^4.0.1, debug@^4.1.1, debug@^4.3.1, debug@^4.3.3:
   integrity sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==
   dependencies:
     ms "2.1.2"
-
-debug@=3.1.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/debug/-/debug-3.1.0.tgz#5bb5a0672628b64149566ba16819e61518c67261"
-  integrity sha512-OX8XqP7/1a9cqkxYw2yXss15f26NKWBpDXQd0/uK/KPqdQhxbPa994hnzjcE2VqQpDslf55723cKPUOGSmMY3g==
-  dependencies:
-    ms "2.0.0"
 
 decode-uri-component@^0.2.0:
   version "0.2.0"
@@ -1774,13 +1760,6 @@ fluent-ffmpeg@^2.1.2:
   dependencies:
     async ">=0.2.9"
     which "^1.1.1"
-
-follow-redirects@1.5.10:
-  version "1.5.10"
-  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.5.10.tgz#7b7a9f9aea2fdff36786a94ff643ed07f4ff5e2a"
-  integrity sha512-0V5l4Cizzvqt5D44aTXbFZz+FtyXV1vrDN6qrelxtfYQKW0KO0W2T/hkE8xvGa/540LkZlkaUjO4ailYTFtHVQ==
-  dependencies:
-    debug "=3.1.0"
 
 form-data-encoder@1.7.1:
   version "1.7.1"
@@ -2868,11 +2847,6 @@ mkdirp@^1.0.3:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/mkdirp/-/mkdirp-1.0.4.tgz#3eb5ed62622756d79a5f0e2a221dfebad75c2f7e"
   integrity sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==
-
-ms@2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/ms/-/ms-2.0.0.tgz#5608aeadfc00be6c2901df5f9861788de0d597c8"
-  integrity sha1-VgiurfwAvmwpAd9fmGF4jeDVl8g=
 
 ms@2.1.2:
   version "2.1.2"
@@ -4374,35 +4348,18 @@ yocto-queue@^1.0.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-1.0.0.tgz#7f816433fb2cbc511ec8bf7d263c3b58a1a3c251"
   integrity sha512-9bnSc/HEW2uRy67wc+T8UwauLuPJVn28jb+GtJY16iiKWyvmYJRXVT4UamsAEGQfPohgr2q4Tq0sQbQlxTfi1g==
 
-youtube.ts@^0.2.9:
-  version "0.2.9"
-  resolved "https://registry.yarnpkg.com/youtube.ts/-/youtube.ts-0.2.9.tgz#f66f210ede81ae8116dc614788d90f6016e269c2"
-  integrity sha512-s7udygKcvNpjGM4AieWQ84+H0McJIKCWCTBjxKOJsBm5jtk8D6eRtwHxbAmDgOQ9X+mykMEopDK1jdfI8VpExg==
-  dependencies:
-    axios "^0.19.0"
-    ytdl-core "^4.11.0"
-
-ytdl-core@^4.11.0:
-  version "4.11.0"
-  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.11.0.tgz#79a3ea94d9d662b4b3acecdb1372ed3f1a9ea9db"
-  integrity sha512-Q3hCLiUA9AOGQXzPvno14GN+HgF9wsO1ZBHlj0COTcyxjIyFpWvMfii0UC4/cAbVaIjEdbWB71GdcGuc4J1Lmw==
+ytdl-core@^4.11.4:
+  version "4.11.4"
+  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.11.4.tgz#0ee2bd04d8effa7b8762a3ba0e3d038e37dc10f2"
+  integrity sha512-tsVvqt++B5LSTMnCKQb4H/PFBewKj7gGPJ6KIM5gOFGMKNZj4qglGAl4QGFG8cNPP6wY54P80FDID5eN2di0GQ==
   dependencies:
     m3u8stream "^0.8.6"
     miniget "^4.2.2"
     sax "^1.1.3"
 
-ytdl-core@^4.11.2:
-  version "4.11.2"
-  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.11.2.tgz#c2341916b9757171741a2fa118b6ffbb4ffd92f7"
-  integrity sha512-D939t9b4ZzP3v0zDvehR2q+KgG97UTgrTKju3pOPGQcXtl4W6W5z0EpznzcJFu+OOpl7S7Ge8hv8zU65QnxYug==
-  dependencies:
-    m3u8stream "^0.8.6"
-    miniget "^4.2.2"
-    sax "^1.1.3"
-
-ytsr@^3.8.0:
-  version "3.8.0"
-  resolved "https://registry.yarnpkg.com/ytsr/-/ytsr-3.8.0.tgz#49a8e5dc413f41515fc3d79d93ee3e073d10e772"
-  integrity sha512-R+RfYXvBBMAr2e4OxrQ5SBv5x/Mdhmcj1Q8TH0f2HK5d2jbhHOtK4BdzPvLriA6MDoMwqqX04GD8Rpf9UNtSTg==
+ytsr@^3.8.2:
+  version "3.8.2"
+  resolved "https://registry.yarnpkg.com/ytsr/-/ytsr-3.8.2.tgz#10a60d0c1adcc3522b0810368c18dff49e875ba7"
+  integrity sha512-J+t+a1Ic6jL0Hd0zGX8eFn3uEKtXTf6naa96KO0q7H00GKBfCG8aXW55NAMnaBeUi9Hni6u1xKnf8xZF2F0E/A==
   dependencies:
     miniget "^4.2.2"
