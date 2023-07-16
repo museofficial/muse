@@ -137,18 +137,22 @@ export default class implements Command {
       return;
     }
 
-    const embed = new EmbedBuilder().setTitle('Favorites');
-
-    let description = '';
-    for (const favorite of favorites) {
-      description += `**${favorite.name}**: ${favorite.query} (<@${favorite.authorId}>)\n`;
+    const fields = new Array<APIEmbedField>(favorites.length);
+    for (let index = 0; index < favorites.length; index++) {
+      const favorite = favorites[index];
+      fields[index] = {
+        inline: false,
+        name: favorite.name,
+        value: `${favorite.query} (<@${favorite.authorId}>)`,
+      };
     }
 
-    embed.setDescription(description);
-
-    await interaction.reply({
-      embeds: [embed],
-    });
+    await new Pagination(
+      interaction as ChatInputCommandInteraction<'cached'>,
+      {ephemeral: true, limit: 25})
+      .setFields(fields)
+      .paginateFields(true)
+      .render();
   }
 
   private async create(interaction: ChatInputCommandInteraction) {
