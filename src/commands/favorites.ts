@@ -1,10 +1,11 @@
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {AutocompleteInteraction, ChatInputCommandInteraction, EmbedBuilder} from 'discord.js';
+import {APIEmbedField, AutocompleteInteraction, ChatInputCommandInteraction} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import Command from '.';
 import AddQueryToQueue from '../services/add-query-to-queue.js';
 import {TYPES} from '../types.js';
 import {prisma} from '../utils/db.js';
+import {Pagination} from 'pagination.djs';
 
 @injectable()
 export default class implements Command {
@@ -54,7 +55,8 @@ export default class implements Command {
       ),
     );
 
-  constructor(@inject(TYPES.Services.AddQueryToQueue) private readonly addQueryToQueue: AddQueryToQueue) {}
+  constructor(@inject(TYPES.Services.AddQueryToQueue) private readonly addQueryToQueue: AddQueryToQueue) {
+  }
 
   requiresVC = (interaction: ChatInputCommandInteraction) => interaction.options.getSubcommand() === 'use';
 
