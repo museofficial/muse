@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "repository": "git@github.com:codetheweb/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
@@ -112,7 +112,7 @@
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "^4.11.4",
+    "ytdl-core": "^4.11.5",
     "ytsr": "^3.8.2"
   },
   "resolutions": {
