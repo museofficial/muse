@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "lib": ["es2020" ,"esnext"],
+    "lib": ["esnext"],
     "target": "es2020",
-    "module": "es2020",
+    "module": "ES2020",
     "moduleResolution": "node",
     "strict": true,
     "experimentalDecorators": true,
