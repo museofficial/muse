@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2023-07-19
+### Added
+- Pagination to the output of the `favorites list` command
+
+### Fixed
+- Favorites list exceeding Discord's size limit could not be
+  viewed ([#606](https://github.com/codetheweb/muse/issues/606))
+
 ## [2.3.1] - 2023-07-18
 ### Fixed
 - Bumped ytdl-core
