@@ -89,7 +89,7 @@ export default class implements Command {
       },
     });
 
-    let results = query === '' ? favorites : favorites.filter(f => f.name.startsWith(query));
+    let results = query === '' ? favorites : favorites.filter(f => f.name.toLowerCase().startsWith(query.toLowerCase()));
 
     if (subcommand === 'remove') {
       // Only show favorites that user is allowed to remove
