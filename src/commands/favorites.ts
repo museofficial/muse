@@ -96,7 +96,9 @@ export default class implements Command {
       results = interaction.member?.user.id === interaction.guild?.ownerId ? results : results.filter(r => r.authorId === interaction.member!.user.id);
     }
 
-    await interaction.respond(results.map(r => ({
+    // Limit results to 25 maximum per Discord limits
+    const trimmed = results.length > 25 ? results.slice(0, 25) : results;
+    await interaction.respond(trimmed.map(r => ({
       name: r.name,
       value: r.name,
     })));
