@@ -89,14 +89,16 @@ export default class implements Command {
       },
     });
 
-    let results = query === '' ? favorites : favorites.filter(f => f.name.startsWith(query));
+    let results = query === '' ? favorites : favorites.filter(f => f.name.toLowerCase().startsWith(query.toLowerCase()));
 
     if (subcommand === 'remove') {
       // Only show favorites that user is allowed to remove
       results = interaction.member?.user.id === interaction.guild?.ownerId ? results : results.filter(r => r.authorId === interaction.member!.user.id);
     }
 
-    await interaction.respond(results.map(r => ({
+    // Limit results to 25 maximum per Discord limits
+    const trimmed = results.length > 25 ? results.slice(0, 25) : results;
+    await interaction.respond(trimmed.map(r => ({
       name: r.name,
       value: r.name,
     })));
