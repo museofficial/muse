@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.1] - 2023-07-23
+
 ### Fixed
 - Autocomplete suggestion search for `favorites use` command is no longer case-sensitive
 - Autocomplete suggestion results for `favorites use` could return >25 results which Discord's API does not support
@@ -258,7 +260,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/codetheweb/muse/compare/v2.4.0...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.4.1...HEAD
+[2.4.1]: https://github.com/codetheweb/muse/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/codetheweb/muse/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/codetheweb/muse/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/codetheweb/muse/compare/v2.2.4...v2.3.0
