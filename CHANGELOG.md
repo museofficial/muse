@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Bumped node-ytsr ([#948](https://github.com/codetheweb/muse/issues/948))
+
 ## [2.4.1] - 2023-07-23
 
 ### Fixed
