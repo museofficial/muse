@@ -19,13 +19,13 @@
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "typecheck": "tsc --noEmit",
     "test": "npm run lint",
-    "start": "npm run env:set-database-url -- tsx src/scripts/migrate-and-start.ts",
+    "start": "npm run env:set-database-url -- tsx --no-cache src/scripts/migrate-and-start.ts",
     "cache:clear-key-value": "npm run env:set-database-url tsx src/scripts/cache-clear-key-value.ts",
     "dev": "npm run env:set-database-url -- tsx watch src/scripts/start.ts",
     "migrations:generate": "npm run prisma:with-env migrate dev",
     "migrations:run": "npm run prisma:with-env migrate deploy",
     "prisma:with-env": "npm run env:set-database-url prisma",
-    "env:set-database-url": "tsx src/scripts/run-with-database-url.ts",
+    "env:set-database-url": "tsx --no-cache src/scripts/run-with-database-url.ts",
     "release": "release-it"
   },
   "devDependencies": {
