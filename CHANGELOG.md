@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Switched ytdl-core to patched version
+
 ## [2.4.2] - 2023-08-12
 
 ### Fixed

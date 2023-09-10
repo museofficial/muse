@@ -4486,18 +4486,17 @@ yocto-queue@^1.0.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-1.0.0.tgz#7f816433fb2cbc511ec8bf7d263c3b58a1a3c251"
   integrity sha512-9bnSc/HEW2uRy67wc+T8UwauLuPJVn28jb+GtJY16iiKWyvmYJRXVT4UamsAEGQfPohgr2q4Tq0sQbQlxTfi1g==
 
-ytdl-core@^4.11.5:
-  version "4.11.5"
-  resolved "https://registry.yarnpkg.com/ytdl-core/-/ytdl-core-4.11.5.tgz#8cc3dc9e4884e24e8251250cfb56313a300811f0"
-  integrity sha512-27LwsW4n4nyNviRCO1hmr8Wr5J1wLLMawHCQvH8Fk0hiRqrxuIu028WzbJetiYH28K8XDbeinYW4/wcHQD1EXA==
+"ytdl-core@git+https://github.com/khlevon/node-ytdl-core.git#v4.11.4-patch.2":
+  version "0.0.0-development"
+  resolved "git+https://github.com/khlevon/node-ytdl-core.git#87450450caabb91f81afa6e66758bf2f629664a1"
   dependencies:
     m3u8stream "^0.8.6"
     miniget "^4.2.2"
     sax "^1.1.3"
 
-ytsr@^3.8.2:
-  version "3.8.2"
-  resolved "https://registry.yarnpkg.com/ytsr/-/ytsr-3.8.2.tgz#10a60d0c1adcc3522b0810368c18dff49e875ba7"
-  integrity sha512-J+t+a1Ic6jL0Hd0zGX8eFn3uEKtXTf6naa96KO0q7H00GKBfCG8aXW55NAMnaBeUi9Hni6u1xKnf8xZF2F0E/A==
+ytsr@^3.8.4:
+  version "3.8.4"
+  resolved "https://registry.yarnpkg.com/ytsr/-/ytsr-3.8.4.tgz#f279eb5a50a72a1135816ea69220f76030f62358"
+  integrity sha512-rrJo59vDDf98mz/Cuw7Y2YiuTwSm3cs4XsXrP6yjYDXYup/aE0lRxY6XMKR3mGOHKwgLouZqFq8QRllVVVN88w==
   dependencies:
     miniget "^4.2.2"
