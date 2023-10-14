@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "2.3.0",
+  "version": "2.4.3",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "repository": "git@github.com:codetheweb/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
@@ -39,7 +39,7 @@
     "@types/node-emoji": "^1.8.1",
     "@types/spotify-web-api-node": "^5.0.2",
     "@types/validator": "^13.1.4",
-    "@types/ws": "^8.2.2",
+    "@types/ws": "8.5.4",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
     "eslint": "^7.32.0",
@@ -84,7 +84,7 @@
     "debug": "^4.3.3",
     "delay": "^5.0.0",
     "discord-api-types": "0.32.1",
-    "discord.js": "14.1.2",
+    "discord.js": "14.11.0",
     "dotenv": "^16.0.0",
     "execa": "^6.1.0",
     "fluent-ffmpeg": "^2.1.2",
@@ -103,6 +103,7 @@
     "p-limit": "^4.0.0",
     "p-queue": "^7.2.0",
     "p-retry": "4.6.2",
+    "pagination.djs": "^4.0.10",
     "parse-duration": "1.0.2",
     "read-pkg": "7.1.0",
     "reflect-metadata": "^0.1.13",
@@ -111,7 +112,10 @@
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "^4.11.4",
-    "ytsr": "^3.8.2"
+    "ytdl-core": "git+https://github.com/khlevon/node-ytdl-core.git#v4.11.4-patch.2",
+    "ytsr": "^3.8.4"
+  },
+  "resolutions": {
+    "@types/ws": "8.5.4"
   }
 }
