@@ -15,7 +15,12 @@ import {DATA_DIR} from '../services/config.js';
 const client = new Prisma.PrismaClient();
 
 const migrateFromSequelizeToPrisma = async () => {
-  await execa('prisma', ['migrate', 'resolve', '--applied', '20220101155430_migrate_from_sequelize'], {preferLocal: true});
+  await execa('prisma', ['migrate', 'resolve', '--applied', '20220101155430_migrate_from_sequelize'], {
+    preferLocal: true,
+    env: {
+      DATABASE_URL: process.env.DATABASE_URL,
+    },
+  });
 };
 
 const doesUserHaveExistingDatabase = async () => {

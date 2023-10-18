@@ -18,7 +18,7 @@ import {
 } from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
-import {getGuildSettings} from '../utils/get-guild-settings';
+import {getGuildSettings} from '../utils/get-guild-settings.js';
 
 export enum MediaSource {
   Youtube,

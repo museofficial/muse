@@ -3,7 +3,7 @@ import {ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from 'di
 import {injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
 import Command from './index.js';
-import {getGuildSettings} from '../utils/get-guild-settings';
+import {getGuildSettings} from '../utils/get-guild-settings.js';
 
 @injectable()
 export default class implements Command {

@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Optimized Docker container to run JS code directly with node instead of yarn, npm and tsx. Reduces memory usage. 
+
 ## [2.4.3] - 2023-09-10
 
 ### Fixed
