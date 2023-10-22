@@ -30,6 +30,7 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 - `DISCORD_TOKEN` can be acquired [here](https://discordapp.com/developers/applications) by creating a 'New Application', then going to 'Bot'.
 - `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` can be acquired [here](https://developer.spotify.com/dashboard/applications) with 'Create a Client ID'.
 - `YOUTUBE_API_KEY` can be acquired by [creating a new project](https://console.developers.google.com) in Google's Developer Console, enabling the YouTube API, and creating an API key under credentials.
+
 > [!WARNING]
 > Even if you don't plan on using Spotify, you must still provide the client ID and secret; otherwise Muse will not function.
 
