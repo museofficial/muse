@@ -7,7 +7,7 @@
     "strict": true,
     "experimentalDecorators": true,
     "esModuleInterop": true,
-    "sourceMap": false,
+    "sourceMap": true,
     "resolveJsonModule": true,
     "outDir": "dist"
   },

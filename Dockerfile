@@ -45,6 +45,4 @@ ENV NODE_ENV production
 ENV COMMIT_HASH $COMMIT_HASH
 ENV BUILD_DATE $BUILD_DATE
 
-RUN echo "DATABASE_URL=$(node dist/scripts/print-database-url.js)" > .env
-
-CMD ["tini", "--", "node", "dist/scripts/migrate-and-start.js"]
+CMD ["tini", "--", "node", "--enable-source-maps", "dist/scripts/migrate-and-start.js"]
