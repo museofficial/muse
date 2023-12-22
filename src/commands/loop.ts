@@ -4,7 +4,7 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from '.';
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {STATUS} from '../services/player';
+import {STATUS} from '../services/player.js';
 
 @injectable()
 export default class implements Command {

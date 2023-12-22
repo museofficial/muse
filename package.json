@@ -26,7 +26,8 @@
     "migrations:run": "npm run prisma:with-env migrate deploy",
     "prisma:with-env": "npm run env:set-database-url prisma",
     "env:set-database-url": "tsx src/scripts/run-with-database-url.ts",
-    "release": "release-it"
+    "release": "release-it",
+    "build": "tsc"
   },
   "devDependencies": {
     "@release-it/keep-a-changelog": "^2.3.0",
