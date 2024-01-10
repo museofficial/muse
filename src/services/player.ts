@@ -63,6 +63,7 @@ export default class {
   public status = STATUS.PAUSED;
   public guildId: string;
   public loopCurrentSong = false;
+  public loopCurrentQueue = false;
 
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
@@ -543,6 +544,17 @@ export default class {
     if (this.loopCurrentSong && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.seek(0);
       return;
+    }
+
+    // Automatically re-add current song to queue
+    if (this.loopCurrentQueue && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
+      const currentSong = this.getCurrent();
+
+      if (currentSong) {
+        this.add(currentSong);
+      } else {
+        throw new Error('No song currently playing.');
+      }
     }
 
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
