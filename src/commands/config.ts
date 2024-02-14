@@ -38,6 +38,9 @@ export default class implements Command {
       .setDescription('show all settings'));
 
   async execute(interaction: ChatInputCommandInteraction) {
+    // Ensure guild settings exist before trying to update
+    await getGuildSettings(interaction.guild!.id);
+
     switch (interaction.options.getSubcommand()) {
       case 'set-playlist-limit': {
         const limit: number = interaction.options.getInteger('limit')!;
