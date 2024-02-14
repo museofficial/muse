@@ -47,7 +47,8 @@ const getPlayerUI = (player: Player) => {
   const progressBar = getProgressBar(15, position / song.length);
   const elapsedTime = song.isLive ? 'live' : `${prettyTime(position)}/${prettyTime(song.length)}`;
   const loop = player.loopCurrentSong ? '🔂' : player.loopCurrentQueue ? '🔁' : '';
-  return `${button} ${progressBar} \`[${elapsedTime}]\` 🔉 ${loop}`;
+  const vol: string = typeof player.getVolume() === 'number' ? `${player.getVolume()!}%` : '';
+  return `${button} ${progressBar} \`[${elapsedTime}]\` 🔉${vol} ${loop}`;
 };
 
 export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {

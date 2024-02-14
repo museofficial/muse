@@ -34,6 +34,15 @@ export default class implements Command {
         .setDescription('whether to leave when everyone else leaves')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
+      .setName('set-default-volume')
+      .setDescription('set default volume used when entering the voice channel')
+      .addIntegerOption(option => option
+        .setName('level')
+        .setDescription('percentage as number EG 0 is muted, 100 is default max volume')
+        .setMinValue(0)
+        .setMaxValue(100)
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
       .setName('get')
       .setDescription('show all settings'));
 
@@ -94,6 +103,23 @@ export default class implements Command {
         break;
       }
 
+      case 'set-default-volume': {
+        const value = interaction.options.getInteger('level')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            defaultVolume: value,
+          },
+        });
+
+        await interaction.reply('👍 leave setting updated');
+
+        break;
+      }
+
       case 'get': {
         const embed = new EmbedBuilder().setTitle('Config');
 
@@ -105,6 +131,7 @@ export default class implements Command {
             ? 'never leave'
             : `${config.secondsToWaitAfterQueueEmpties}s`,
           'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
+          'Default Volume': config.defaultVolume,
         };
 
         let description = '';
