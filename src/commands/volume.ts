@@ -12,7 +12,7 @@ export default class implements Command {
     .setDescription('set current player volume level')
     .addIntegerOption(option =>
       option.setName('level')
-        .setDescription('percentage as number EG 0 is muted, 100 is default max (normal) volume')
+        .setDescription('volume percentage (0 is muted, 100 is max & default')
         .setMinValue(0)
         .setMaxValue(100)
         .setRequired(true),

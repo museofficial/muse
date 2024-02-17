@@ -115,7 +115,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 leave setting updated');
+        await interaction.reply('👍 volume setting updated');
 
         break;
       }
