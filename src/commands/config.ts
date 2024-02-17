@@ -38,7 +38,7 @@ export default class implements Command {
       .setDescription('set default volume used when entering the voice channel')
       .addIntegerOption(option => option
         .setName('level')
-        .setDescription('percentage as number EG 0 is muted, 100 is default max volume')
+        .setDescription('volume percentage (0 is muted, 100 is max & default)')
         .setMinValue(0)
         .setMaxValue(100)
         .setRequired(true)))
