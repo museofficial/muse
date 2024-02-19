@@ -72,6 +72,7 @@ export default class {
   private audioPlayer: AudioPlayer | null = null;
   private audioResource: AudioResource | null = null;
   private volume?: number;
+  private defaultVolume: number = DEFAULT_VOLUME;
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
@@ -86,12 +87,10 @@ export default class {
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
-    // Only use default volume if player volume is not already set (in the event of a reconnect we shouldn't reset)
-    if (this.volume === undefined) {
-      const settings = await getGuildSettings(this.guildId);
-      const {defaultVolume} = settings;
-      this.volume = defaultVolume;
-    }
+    // Always get freshest default volume setting value
+    const settings = await getGuildSettings(this.guildId);
+    const {defaultVolume = DEFAULT_VOLUME} = settings;
+    this.defaultVolume = defaultVolume;
 
     this.voiceConnection = joinVoiceChannel({
       channelId: channel.id,
@@ -418,7 +417,8 @@ export default class {
   }
 
   getVolume(): number {
-    return this.volume ?? DEFAULT_VOLUME;
+    // Only use default volume if player volume is not already set (in the event of a reconnect we shouldn't reset)
+    return this.volume ?? this.defaultVolume;
   }
 
   private getHashForCache(url: string): string {
