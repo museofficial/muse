@@ -34,7 +34,7 @@ export default class implements Command {
         .setDescription('whether to leave when everyone else leaves')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
-      .setName('set-auto-announce-new-song')
+      .setName('set-auto-announce-next-song')
       .setDescription('set whether to announce the next song in the queue automatically')
       .addBooleanOption(option => option
         .setName('value')
