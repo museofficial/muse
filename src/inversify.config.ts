@@ -21,7 +21,8 @@ import Config from './commands/config.js';
 import Disconnect from './commands/disconnect.js';
 import Favorites from './commands/favorites.js';
 import ForwardSeek from './commands/fseek.js';
-import Loop from './commands/loop';
+import LoopQueue from './commands/loop-queue.js';
+import Loop from './commands/loop.js';
 import Move from './commands/move.js';
 import Next from './commands/next.js';
 import NowPlaying from './commands/now-playing.js';
@@ -68,6 +69,7 @@ container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingleton
   Disconnect,
   Favorites,
   ForwardSeek,
+  LoopQueue,
   Loop,
   Move,
   Next,

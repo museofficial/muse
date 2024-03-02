@@ -9,8 +9,8 @@ import {STATUS} from '../services/player.js';
 @injectable()
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
-    .setName('loop')
-    .setDescription('toggle looping the current song');
+    .setName('loop-queue')
+    .setDescription('toggle looping the entire queue');
 
   public requiresVC = true;
 
@@ -24,15 +24,19 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (player.status === STATUS.IDLE) {
-      throw new Error('no song to loop!');
+      throw new Error('no songs to loop!');
     }
 
-    if (player.loopCurrentQueue) {
-      player.loopCurrentQueue = false;
+    if (player.queueSize() < 2) {
+      throw new Error('not enough songs to loop a queue!');
     }
 
-    player.loopCurrentSong = !player.loopCurrentSong;
+    if (player.loopCurrentSong) {
+      player.loopCurrentSong = false;
+    }
 
-    await interaction.reply((player.loopCurrentSong ? 'looped :)' : 'stopped looping :('));
+    player.loopCurrentQueue = !player.loopCurrentQueue;
+
+    await interaction.reply((player.loopCurrentQueue ? 'looped queue :)' : 'stopped looping queue :('));
   }
 }

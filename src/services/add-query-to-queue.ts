@@ -9,7 +9,7 @@ import {SongMetadata, STATUS} from './player.js';
 import PlayerManager from '../managers/player.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
-import {getGuildSettings} from '../utils/get-guild-settings';
+import {getGuildSettings} from '../utils/get-guild-settings.js';
 
 @injectable()
 export default class AddQueryToQueue {

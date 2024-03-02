@@ -19,6 +19,7 @@ Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that
 - ↔️ Autoconverts playlists / artists / albums / songs from Spotify
 - ↗️ Users can add custom shortcuts (aliases)
 - 1️⃣ Muse instance supports multiple guilds
+- 🔊 Normalizes volume across tracks
 - ✍️ Written in TypeScript, easily extendable
 - ❤️ Loyal Packers fan
 
@@ -29,6 +30,9 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 - `DISCORD_TOKEN` can be acquired [here](https://discordapp.com/developers/applications) by creating a 'New Application', then going to 'Bot'.
 - `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` can be acquired [here](https://developer.spotify.com/dashboard/applications) with 'Create a Client ID'.
 - `YOUTUBE_API_KEY` can be acquired by [creating a new project](https://console.developers.google.com) in Google's Developer Console, enabling the YouTube API, and creating an API key under credentials.
+
+> [!WARNING]
+> Even if you don't plan on using Spotify, you must still provide the client ID and secret; otherwise Muse will not function.
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 

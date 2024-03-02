@@ -3,7 +3,7 @@ import container from '../inversify.config.js';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import {getSizeWithoutBots} from '../utils/channels.js';
-import {getGuildSettings} from '../utils/get-guild-settings';
+import {getGuildSettings} from '../utils/get-guild-settings.js';
 
 export default async (oldState: VoiceState, _: VoiceState): Promise<void> => {
   const playerManager = container.get<PlayerManager>(TYPES.Managers.Player);

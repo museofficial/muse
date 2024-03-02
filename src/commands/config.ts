@@ -3,7 +3,7 @@ import {ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from 'di
 import {injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
 import Command from './index.js';
-import {getGuildSettings} from '../utils/get-guild-settings';
+import {getGuildSettings} from '../utils/get-guild-settings.js';
 
 @injectable()
 export default class implements Command {
@@ -38,6 +38,9 @@ export default class implements Command {
       .setDescription('show all settings'));
 
   async execute(interaction: ChatInputCommandInteraction) {
+    // Ensure guild settings exist before trying to update
+    await getGuildSettings(interaction.guild!.id);
+
     switch (interaction.options.getSubcommand()) {
       case 'set-playlist-limit': {
         const limit: number = interaction.options.getInteger('limit')!;

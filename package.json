@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "2.2.2",
+  "version": "2.5.0",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "repository": "git@github.com:codetheweb/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
@@ -25,8 +25,10 @@
     "migrations:generate": "npm run prisma:with-env migrate dev",
     "migrations:run": "npm run prisma:with-env migrate deploy",
     "prisma:with-env": "npm run env:set-database-url prisma",
+    "prisma:generate": "prisma generate",
     "env:set-database-url": "tsx src/scripts/run-with-database-url.ts",
-    "release": "release-it"
+    "release": "release-it",
+    "build": "tsc"
   },
   "devDependencies": {
     "@release-it/keep-a-changelog": "^2.3.0",
@@ -39,14 +41,14 @@
     "@types/node-emoji": "^1.8.1",
     "@types/spotify-web-api-node": "^5.0.2",
     "@types/validator": "^13.1.4",
-    "@types/ws": "^8.2.2",
+    "@types/ws": "8.5.4",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
     "eslint": "^7.32.0",
     "eslint-config-xo": "^0.39.0",
     "eslint-config-xo-typescript": "^0.44.0",
     "husky": "^4.3.8",
-    "prisma": "^3.14.0",
+    "prisma": "4.16.0",
     "release-it": "^14.11.8",
     "type-fest": "^2.12.0",
     "typescript": "^4.6.4"
@@ -78,13 +80,13 @@
     "@discordjs/opus": "^0.8.0",
     "@discordjs/rest": "1.0.1",
     "@discordjs/voice": "0.11.0",
-    "@prisma/client": "^4.1.1",
+    "@prisma/client": "4.16.0",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
     "debug": "^4.3.3",
     "delay": "^5.0.0",
     "discord-api-types": "0.32.1",
-    "discord.js": "14.1.2",
+    "discord.js": "14.11.0",
     "dotenv": "^16.0.0",
     "execa": "^6.1.0",
     "fluent-ffmpeg": "^2.1.2",
@@ -103,6 +105,7 @@
     "p-limit": "^4.0.0",
     "p-queue": "^7.2.0",
     "p-retry": "4.6.2",
+    "pagination.djs": "^4.0.10",
     "parse-duration": "1.0.2",
     "read-pkg": "7.1.0",
     "reflect-metadata": "^0.1.13",
@@ -111,7 +114,10 @@
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "^4.11.2",
-    "ytsr": "^3.8.0"
+    "ytdl-core": "git+https://github.com/khlevon/node-ytdl-core.git#v4.11.4-patch.2",
+    "ytsr": "^3.8.4"
+  },
+  "resolutions": {
+    "@types/ws": "8.5.4"
   }
 }
