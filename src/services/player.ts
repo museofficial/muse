@@ -18,8 +18,8 @@ import {
 } from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
-import {getGuildSettings} from '../utils/get-guild-settings.js'
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';;
+import {getGuildSettings} from '../utils/get-guild-settings.js';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 export enum MediaSource {
   Youtube,
@@ -66,8 +66,7 @@ export default class {
   public loopCurrentSong = false;
   public loopCurrentQueue = false;
   public currentChannel: VoiceChannel;
-  
-  private queue: QueuedSong[] = [];
+    private queue: QueuedSong[] = [];
   private queuePosition = 0;
   private audioPlayer: AudioPlayer | null = null;
   private nowPlaying: QueuedSong | null = null;
@@ -564,7 +563,7 @@ export default class {
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
       await this.currentChannel.send({
-	      embeds: this.getCurrent() ? [buildPlayingMessageEmbed(this)]: [],
+        embeds: this.getCurrent() ? [buildPlayingMessageEmbed(this)] : [],
       });
     }
   }
