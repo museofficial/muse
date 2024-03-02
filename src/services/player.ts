@@ -65,8 +65,8 @@ export default class {
   public guildId: string;
   public loopCurrentSong = false;
   public loopCurrentQueue = false;
-  public currentChannel: VoiceChannel;
-    private queue: QueuedSong[] = [];
+  public currentChannel: VoiceChannel = null;
+  private queue: QueuedSong[] = [];
   private queuePosition = 0;
   private audioPlayer: AudioPlayer | null = null;
   private nowPlaying: QueuedSong | null = null;
@@ -562,9 +562,15 @@ export default class {
 
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
-      await this.currentChannel.send({
-        embeds: this.getCurrent() ? [buildPlayingMessageEmbed(this)] : [],
-      });
+      
+      //auto announce the next song if set up to
+      const settings = await getGuildSettings(this.guildId);
+      const {autoAnnounceNextSong} = settings;
+      if (autoAnnounceNextSong == true) {
+        await this.currentChannel.send({
+          embeds: this.getCurrent() ? [buildPlayingMessageEmbed(this)] : [],
+        });
+      }
     }
   }
 

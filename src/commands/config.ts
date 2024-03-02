@@ -34,6 +34,13 @@ export default class implements Command {
         .setDescription('whether to leave when everyone else leaves')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
+      .setName('set-auto-announce-new-song')
+      .setDescription('set whether to announce the next song in the queue automatically')
+      .addBooleanOption(option => option
+        .setName('value')
+        .setDescription('whether to announce the next song in the queue automatically')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
       .setName('get')
       .setDescription('show all settings'));
 
@@ -97,6 +104,23 @@ export default class implements Command {
         break;
       }
 
+      case 'set-auto-announce-next-song': {
+        const value = interaction.options.getBoolean('value')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            autoAnnounceNextSong: value,
+          },
+        });
+
+        await interaction.reply('👍 auto announce setting updated');
+
+        break;
+      }
+
       case 'get': {
         const embed = new EmbedBuilder().setTitle('Config');
 
@@ -108,6 +132,7 @@ export default class implements Command {
             ? 'never leave'
             : `${config.secondsToWaitAfterQueueEmpties}s`,
           'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
+          'Auto announce next song in queue': config.autoAnnounceNextSong ? 'yes' : 'no',
         };
 
         let description = '';
