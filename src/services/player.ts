@@ -65,7 +65,7 @@ export default class {
   public guildId: string;
   public loopCurrentSong = false;
   public loopCurrentQueue = false;
-  public currentChannel: VoiceChannel | null = null;
+  public currentChannel: VoiceChannel;
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
   private audioPlayer: AudioPlayer | null = null;
