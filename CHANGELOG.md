@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Muse can now auto-announce new tracks in your voice channel on the transition of a new track. Use `/config set-auto-announce-next-song True` to enable.
+
 ## [2.5.0] - 2024-01-16
 
 ### Added
