@@ -19,6 +19,7 @@ import {
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 export enum MediaSource {
   Youtube,
@@ -66,7 +67,7 @@ export default class {
   public guildId: string;
   public loopCurrentSong = false;
   public loopCurrentQueue = false;
-
+  private currentChannel: VoiceChannel | undefined;
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
   private audioPlayer: AudioPlayer | null = null;
@@ -112,6 +113,8 @@ export default class {
       oldNetworking?.off('stateChange', networkStateChangeHandler);
       newNetworking?.on('stateChange', networkStateChangeHandler);
       /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+
+      this.currentChannel = channel;
     });
   }
 
@@ -575,6 +578,14 @@ export default class {
 
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
+      // Auto announce the next song if configured to
+      const settings = await getGuildSettings(this.guildId);
+      const {autoAnnounceNextSong} = settings;
+      if (autoAnnounceNextSong && this.currentChannel) {
+        await this.currentChannel.send({
+          embeds: this.getCurrent() ? [buildPlayingMessageEmbed(this)] : [],
+        });
+      }
     }
   }
 
