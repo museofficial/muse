@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added 🔊
+- A `/volume` command is now available.
+- Set the default volume with `/config set-default-volume`
+
 ## [2.6.0] - 2024-03-03
 
 ### Added

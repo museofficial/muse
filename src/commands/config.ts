@@ -41,6 +41,15 @@ export default class implements Command {
         .setDescription('whether to announce the next song in the queue automatically')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
+      .setName('set-default-volume')
+      .setDescription('set default volume used when entering the voice channel')
+      .addIntegerOption(option => option
+        .setName('level')
+        .setDescription('volume percentage (0 is muted, 100 is max & default)')
+        .setMinValue(0)
+        .setMaxValue(100)
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
       .setName('get')
       .setDescription('show all settings'));
 
@@ -121,6 +130,23 @@ export default class implements Command {
         break;
       }
 
+      case 'set-default-volume': {
+        const value = interaction.options.getInteger('level')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            defaultVolume: value,
+          },
+        });
+
+        await interaction.reply('👍 volume setting updated');
+
+        break;
+      }
+
       case 'get': {
         const embed = new EmbedBuilder().setTitle('Config');
 
@@ -133,6 +159,7 @@ export default class implements Command {
             : `${config.secondsToWaitAfterQueueEmpties}s`,
           'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
           'Auto announce next song in queue': config.autoAnnounceNextSong ? 'yes' : 'no',
+          'Default Volume': config.defaultVolume,
         };
 
         let description = '';
