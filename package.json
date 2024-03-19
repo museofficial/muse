@@ -28,7 +28,8 @@
     "prisma:generate": "prisma generate",
     "env:set-database-url": "tsx src/scripts/run-with-database-url.ts",
     "release": "release-it",
-    "build": "tsc"
+    "build": "tsc",
+    "postinstall": "patch-package"
   },
   "devDependencies": {
     "@release-it/keep-a-changelog": "^2.3.0",
@@ -107,6 +108,8 @@
     "p-retry": "4.6.2",
     "pagination.djs": "^4.0.10",
     "parse-duration": "1.0.2",
+    "patch-package": "^8.0.0",
+    "postinstall-postinstall": "^2.1.0",
     "read-pkg": "7.1.0",
     "reflect-metadata": "^0.1.13",
     "spotify-uri": "^3.0.2",
@@ -114,7 +117,7 @@
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "git+https://github.com/khlevon/node-ytdl-core.git#v4.11.4-patch.2",
+    "ytdl-core": "^4.11.5",
     "ytsr": "^3.8.4"
   },
   "resolutions": {

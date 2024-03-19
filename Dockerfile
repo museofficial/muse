@@ -9,7 +9,6 @@ RUN apt-get update \
     tini \
     openssl \
     ca-certificates \
-    git \
     && apt-get autoclean \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
@@ -20,6 +19,7 @@ FROM base AS dependencies
 WORKDIR /usr/app
 
 COPY package.json .
+COPY patches ./patches
 COPY yarn.lock .
 
 RUN yarn install --prod
