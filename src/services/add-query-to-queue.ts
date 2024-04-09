@@ -15,13 +15,15 @@ import Config from './config';
 
 @injectable()
 export default class AddQueryToQueue {
-  private readonly sbClient?: SponsorBlock;
-  private sbClientTimeout = false;
+  private readonly sponsorBlock?: SponsorBlock;
+  private sponsorBlockDisabledUntil?: Date;
+  private readonly sponsorBlockTimeoutDelay;
 
   constructor(@inject(TYPES.Services.GetSongs) private readonly getSongs: GetSongs,
     @inject(TYPES.Managers.Player) private readonly playerManager: PlayerManager,
     @inject(TYPES.Config) private readonly config: Config) {
-    this.sbClient = config.ENABLE_SPONSORBLOCK
+    this.sponsorBlockTimeoutDelay = config.SPONSORBLOCK_TIMEOUT;
+    this.sponsorBlock = config.ENABLE_SPONSORBLOCK
       ? new SponsorBlock('muse-sb-integration') // UserID matters only for submissions
       : undefined;
   }
@@ -128,8 +130,8 @@ export default class AddQueryToQueue {
       newSongs = shuffle(newSongs);
     }
 
-    if (this.config.ENABLE_SPONSORBLOCK && !this.sbClientTimeout) {
-      newSongs = await this.enrichWithSkipSegments(newSongs);
+    if (this.config.ENABLE_SPONSORBLOCK) {
+      newSongs = await Promise.all(newSongs.map(this.skipNonMusicSegments.bind(this)));
     }
 
     newSongs.forEach(song => {
@@ -182,66 +184,59 @@ export default class AddQueryToQueue {
     }
   }
 
-  private async enrichWithSkipSegments(songs: SongMetadata[]) {
-    const promises = songs.map(async song => {
-      if (!this.sbClient
-          || this.sbClientTimeout
+  private async skipNonMusicSegments(song: SongMetadata) {
+    if (!this.sponsorBlock
+          || (this.sponsorBlockDisabledUntil && new Date() < this.sponsorBlockDisabledUntil)
           || song.source !== MediaSource.Youtube
           || !song.url) {
+      return song;
+    }
+
+    try {
+      const segments = await this.sponsorBlock.getSegments(song.url, ['music_offtopic']);
+      const skipSegments = segments
+        .sort((a, b) => a.startTime - b.startTime)
+        .reduce((acc: Array<{startTime: number; endTime: number}>, {startTime, endTime}) => {
+          const previousSegment = acc[acc.length - 1];
+          // If segments overlap merge
+          if (previousSegment && previousSegment.endTime > startTime) {
+            acc[acc.length - 1].endTime = endTime;
+          } else {
+            acc.push({startTime, endTime});
+          }
+
+          return acc;
+        }, []);
+
+      const intro = skipSegments[0];
+      const outro = skipSegments.at(-1);
+      if (outro && outro?.endTime >= song.length - 2) {
+        song.length -= outro.endTime - outro.startTime;
+      }
+
+      if (intro?.startTime <= 2) {
+        song.offset = Math.floor(intro.endTime);
+        song.length -= song.offset;
+      }
+
+      return song;
+    } catch (e) {
+      if (!(e instanceof Error)) {
+        console.error('Unexpected event occurred while fetching skip segments : ', e);
         return song;
       }
 
-      try {
-        return await this.sbClient.getSegments(song.url, ['music_offtopic']).then(segments => {
-          const skipSegments = segments
-            .sort((a, b) => a.startTime - b.startTime)
-            .reduce((acc: Array<{startTime: number; endTime: number}>, {startTime, endTime}) => {
-              const previousSegment = acc[acc.length - 1];
-              // If segments overlap merge
-              if (previousSegment && previousSegment.endTime > startTime) {
-                acc[acc.length - 1].endTime = endTime;
-              } else {
-                acc.push({startTime, endTime});
-              }
-
-              return acc;
-            }, []);
-
-          const intro = skipSegments[0];
-          const outro = skipSegments.at(-1);
-          if (outro && outro?.endTime >= song.length - 2) {
-            song.length -= outro.endTime - outro.startTime;
-          }
-
-          if (intro?.startTime <= 2) {
-            song.offset = Math.floor(intro.endTime);
-            song.length -= song.offset;
-          }
-
-          return song;
-        });
-      } catch (e) {
-        if (!(e instanceof Error)) {
-          console.error('Unexpected event occured while fecthing skip segments : ', e);
-          return song;
-        }
-
-        if (!e.message.includes('404')) {
-          // Don't log 404 response, it just means that there are no segments for given video
-          console.error(`Could not fetch skip segments for "${song.url}" :`, e);
-        }
-
-        if (e.message.includes('504')) {
-          // Stop fetching SponsorBlock data when servers are down
-          this.sbClientTimeout = true;
-          // eslint-disable-next-line no-return-assign
-          setTimeout(() => this.sbClientTimeout = false, 5 * 60_000);
-        }
-
-        return song;
+      if (!e.message.includes('404')) {
+        // Don't log 404 response, it just means that there are no segments for given video
+        console.warn(`Could not fetch skip segments for "${song.url}" :`, e);
       }
-    });
 
-    return Promise.all(promises);
+      if (e.message.includes('504')) {
+        // Stop fetching SponsorBlock data when servers are down
+        this.sponsorBlockDisabledUntil = new Date(new Date().getTime() + (this.sponsorBlockTimeoutDelay * 60_000));
+      }
+
+      return song;
+    }
   }
 }
