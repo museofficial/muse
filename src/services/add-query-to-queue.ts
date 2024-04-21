@@ -12,21 +12,27 @@ import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channe
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {SponsorBlock} from 'sponsorblock-api';
 import Config from './config';
+import KeyValueCacheProvider from './key-value-cache';
+import {ONE_HOUR_IN_SECONDS} from '../utils/constants';
 
 @injectable()
 export default class AddQueryToQueue {
   private readonly sponsorBlock?: SponsorBlock;
   private sponsorBlockDisabledUntil?: Date;
   private readonly sponsorBlockTimeoutDelay;
+  private readonly cache: KeyValueCacheProvider;
 
   constructor(@inject(TYPES.Services.GetSongs) private readonly getSongs: GetSongs,
     @inject(TYPES.Managers.Player) private readonly playerManager: PlayerManager,
-    @inject(TYPES.Config) private readonly config: Config) {
+    @inject(TYPES.Config) private readonly config: Config,
+    @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
     this.sponsorBlockTimeoutDelay = config.SPONSORBLOCK_TIMEOUT;
     this.sponsorBlock = config.ENABLE_SPONSORBLOCK
       ? new SponsorBlock('muse-sb-integration') // UserID matters only for submissions
       : undefined;
+    this.cache = cache;
   }
+
 
   public async addToQueue({
     query,
@@ -193,7 +199,13 @@ export default class AddQueryToQueue {
     }
 
     try {
-      const segments = await this.sponsorBlock.getSegments(song.url, ['music_offtopic']);
+      const segments = await this.cache.wrap(
+        async () => this.sponsorBlock?.getSegments(song.url, ['music_offtopic']),
+        {
+          key: song.url, // Value is too short for hashing
+          expiresIn: ONE_HOUR_IN_SECONDS,
+        },
+      ) ?? [];
       const skipSegments = segments
         .sort((a, b) => a.startTime - b.startTime)
         .reduce((acc: Array<{startTime: number; endTime: number}>, {startTime, endTime}) => {
