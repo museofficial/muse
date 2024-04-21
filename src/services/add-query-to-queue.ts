@@ -33,7 +33,6 @@ export default class AddQueryToQueue {
     this.cache = cache;
   }
 
-
   public async addToQueue({
     query,
     addToFrontOfQueue,
