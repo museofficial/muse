@@ -34,11 +34,11 @@ export default class implements Command {
         .setDescription('whether to leave when everyone else leaves')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
-      .setName('set-queue-add-response-eph')
-      .setDescription('set whether bot responses to queue adds are only displayed to the requester')
+      .setName('set-queue-add-response-hidden')
+      .setDescription('set whether bot responses to queue additions are only displayed to the requester')
       .addBooleanOption(option => option
         .setName('value')
-        .setDescription('whether bot responses to queue adds are only displayed to the requester')
+        .setDescription('whether bot responses to queue additions are only displayed to the requester')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-auto-announce-next-song')
