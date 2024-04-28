@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2024-04-28
+
 ### Added
 - SponsorBlock is now supported as an opt-in feature and will skip non-music segments of videos when possible. Check the readme for config details. Thanks @Charlignon!
 - There's a new config setting to make Muse responses when adding items to the queue visible only to the requester. Thanks @Sheeley7!
@@ -300,7 +302,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/codetheweb/muse/compare/v2.7.1...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/codetheweb/muse/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/codetheweb/muse/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/codetheweb/muse/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/codetheweb/muse/compare/v2.5.0...v2.6.0
