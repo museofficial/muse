@@ -1,6 +1,6 @@
 import {Client, Guild} from 'discord.js';
 import container from '../inversify.config.js';
-import Command from '../commands';
+import Command from '../commands/index.js';
 import {TYPES} from '../types.js';
 import Config from '../services/config.js';
 import {prisma} from '../utils/db.js';

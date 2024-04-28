@@ -3,7 +3,7 @@ import {URL} from 'url';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {inject, injectable} from 'inversify';
 import Spotify from 'spotify-web-api-node';
-import Command from '.';
+import Command from './index.js';
 import {TYPES} from '../types.js';
 import ThirdParty from '../services/third-party.js';
 import getYouTubeAndSpotifySuggestionsFor from '../utils/get-youtube-and-spotify-suggestions-for.js';

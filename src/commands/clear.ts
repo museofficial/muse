@@ -3,7 +3,7 @@ import {ChatInputCommandInteraction} from 'discord.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
-import Command from '.';
+import Command from './index.js';
 
 @injectable()
 export default class implements Command {
