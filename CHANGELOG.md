@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed import issue that broke Muse inside of Docker. Thanks @sonroyaalmerol!
+
 ## [2.8.0] - 2024-04-28
 
 ### Added
@@ -35,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.4] - 2023-12-21
 
-- Optimized Docker container to run JS code directly with node instead of yarn, npm and tsx. Reduces memory usage. 
+- Optimized Docker container to run JS code directly with node instead of yarn, npm and tsx. Reduces memory usage.
 
 ## [2.4.3] - 2023-09-10
 

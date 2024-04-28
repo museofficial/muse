@@ -11,9 +11,9 @@ import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {SponsorBlock} from 'sponsorblock-api';
-import Config from './config';
-import KeyValueCacheProvider from './key-value-cache';
-import {ONE_HOUR_IN_SECONDS} from '../utils/constants';
+import Config from './config.js';
+import KeyValueCacheProvider from './key-value-cache.js';
+import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
 
 @injectable()
 export default class AddQueryToQueue {
