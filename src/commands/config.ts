@@ -34,6 +34,13 @@ export default class implements Command {
         .setDescription('whether to leave when everyone else leaves')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
+      .setName('set-queue-add-response-hidden')
+      .setDescription('set whether bot responses to queue additions are only displayed to the requester')
+      .addBooleanOption(option => option
+        .setName('value')
+        .setDescription('whether bot responses to queue additions are only displayed to the requester')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
       .setName('set-auto-announce-next-song')
       .setDescription('set whether to announce the next song in the queue automatically')
       .addBooleanOption(option => option
@@ -113,6 +120,23 @@ export default class implements Command {
         break;
       }
 
+      case 'set-queue-add-response-eph': {
+        const value = interaction.options.getBoolean('value')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            queueAddResponseEphemeral: value,
+          },
+        });
+
+        await interaction.reply('👍 queue add notification setting updated');
+
+        break;
+      }
+
       case 'set-auto-announce-next-song': {
         const value = interaction.options.getBoolean('value')!;
 
@@ -159,6 +183,7 @@ export default class implements Command {
             : `${config.secondsToWaitAfterQueueEmpties}s`,
           'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
           'Auto announce next song in queue': config.autoAnnounceNextSong ? 'yes' : 'no',
+          'Add to queue reponses show for requester only': config.autoAnnounceNextSong ? 'yes' : 'no',
           'Default Volume': config.defaultVolume,
         };
 

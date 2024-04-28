@@ -34,7 +34,7 @@ export interface QueuedPlaylist {
 export interface SongMetadata {
   title: string;
   artist: string;
-  url: string;
+  url: string; // For YT, it's the video ID (not the full URI)
   length: number;
   offset: number;
   playlist: QueuedPlaylist | null;
