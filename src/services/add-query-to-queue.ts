@@ -37,9 +37,9 @@ export default class AddQueryToQueue {
 
     const settings = await getGuildSettings(guildId);
 
-    const {playlistLimit} = settings;
+    const {playlistLimit, queueAddResponseEphemeral} = settings;
 
-    await interaction.deferReply();
+    await interaction.deferReply({ephemeral: queueAddResponseEphemeral});
 
     let newSongs: SongMetadata[] = [];
     let extraMsg = '';
