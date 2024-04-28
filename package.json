@@ -81,6 +81,7 @@
     "@discordjs/opus": "^0.8.0",
     "@discordjs/rest": "1.0.1",
     "@discordjs/voice": "0.11.0",
+    "@distube/ytsr": "^2.0.0",
     "@prisma/client": "4.16.0",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
@@ -117,8 +118,7 @@
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "^4.11.5",
-    "ytsr": "^3.8.4"
+    "ytdl-core": "^4.11.5"
   },
   "resolutions": {
     "@types/ws": "8.5.4"
