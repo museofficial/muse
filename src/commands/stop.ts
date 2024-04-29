@@ -4,7 +4,7 @@ import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';
-import Command from '.';
+import Command from './index.js';
 
 @injectable()
 export default class implements Command {

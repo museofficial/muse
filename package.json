@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "2.7.1",
+  "version": "2.8.1",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "repository": "git@github.com:codetheweb/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
@@ -48,6 +48,7 @@
     "eslint": "^7.32.0",
     "eslint-config-xo": "^0.39.0",
     "eslint-config-xo-typescript": "^0.44.0",
+    "eslint-plugin-import": "2.29.1",
     "husky": "^4.3.8",
     "prisma": "4.16.0",
     "release-it": "^14.11.8",
@@ -63,12 +64,19 @@
     "parserOptions": {
       "project": "./tsconfig.json"
     },
+    "plugins": [
+      "import"
+    ],
     "rules": {
       "new-cap": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars-experimental": "error",
       "@typescript-eslint/prefer-readonly-parameter-types": "off",
-      "@typescript-eslint/no-implicit-any-catch": "off"
+      "@typescript-eslint/no-implicit-any-catch": "off",
+      "import/extensions": [
+        "error",
+        "ignorePackages"
+      ]
     }
   },
   "husky": {
@@ -112,6 +120,7 @@
     "postinstall-postinstall": "^2.1.0",
     "read-pkg": "7.1.0",
     "reflect-metadata": "^0.1.13",
+    "sponsorblock-api": "^0.2.4",
     "spotify-uri": "^3.0.2",
     "spotify-web-api-node": "^5.0.2",
     "sync-fetch": "^0.3.1",
