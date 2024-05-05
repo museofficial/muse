@@ -5,15 +5,18 @@ import {TYPES} from '../types.js';
 import ffmpeg from 'fluent-ffmpeg';
 import YoutubeAPI from './youtube-api.js';
 import SpotifyAPI, {SpotifyTrack} from './spotify-api.js';
+import SoundCloudAPI from './soundcloud-api.js';
 
 @injectable()
 export default class {
   private readonly youtubeAPI: YoutubeAPI;
   private readonly spotifyAPI: SpotifyAPI;
+  private readonly soundcloudAPI: SoundCloudAPI;
 
-  constructor(@inject(TYPES.Services.YoutubeAPI) youtubeAPI: YoutubeAPI, @inject(TYPES.Services.SpotifyAPI) spotifyAPI: SpotifyAPI) {
+  constructor(@inject(TYPES.Services.YoutubeAPI) youtubeAPI: YoutubeAPI, @inject(TYPES.Services.SpotifyAPI) spotifyAPI: SpotifyAPI, @inject(TYPES.Services.SoundCloudAPI) soundcloudAPI: SoundCloudAPI) {
     this.youtubeAPI = youtubeAPI;
     this.spotifyAPI = spotifyAPI;
+    this.soundcloudAPI = soundcloudAPI;
   }
 
   async youtubeVideoSearch(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
@@ -26,6 +29,22 @@ export default class {
 
   async youtubePlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     return this.youtubeAPI.getPlaylist(listId, shouldSplitChapters);
+  }
+
+  async soundcloudVideoSearch(query: string): Promise<SongMetadata[]> {
+    return this.soundcloudAPI.search(query);
+  }
+
+  async soundcloudVideo(url: string): Promise<SongMetadata[]> {
+    return this.soundcloudAPI.get(url);
+  }
+
+  async soundcloudPlaylist(listId: string): Promise<SongMetadata[]> {
+    return this.soundcloudAPI.getPlaylist(listId);
+  }
+
+  async soundcloudArtist(listId: string): Promise<SongMetadata[]> {
+    return this.soundcloudAPI.getArtist(listId);
   }
 
   async spotifySource(url: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], number, number]> {

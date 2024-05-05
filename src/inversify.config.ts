@@ -13,6 +13,7 @@ import AddQueryToQueue from './services/add-query-to-queue.js';
 import GetSongs from './services/get-songs.js';
 import YoutubeAPI from './services/youtube-api.js';
 import SpotifyAPI from './services/spotify-api.js';
+import SoundCloudAPI from './services/soundcloud-api.js';
 
 // Commands
 import Command from './commands/index.js';
@@ -62,6 +63,7 @@ container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope(
 container.bind<AddQueryToQueue>(TYPES.Services.AddQueryToQueue).to(AddQueryToQueue).inSingletonScope();
 container.bind<YoutubeAPI>(TYPES.Services.YoutubeAPI).to(YoutubeAPI).inSingletonScope();
 container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingletonScope();
+container.bind<SoundCloudAPI>(TYPES.Services.SoundCloudAPI).to(SoundCloudAPI).inSingletonScope();
 
 // Commands
 [
