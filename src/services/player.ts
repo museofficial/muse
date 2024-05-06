@@ -439,7 +439,7 @@ export default class {
     }
 
     if (song.source === MediaSource.SoundCloud) {
-      const scSong = await this.soundcloud.util.streamTrack(song.url);
+      const scSong = await this.soundcloud.util.streamTrack(song.url) as Readable;
       return this.createReadStream({url: scSong, cacheKey: song.url, cache: song.length < 30 * 60});
     }
 
@@ -599,7 +599,7 @@ export default class {
     }
   }
 
-  private async createReadStream(options: {url: string | ReadableStream; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
+  private async createReadStream(options: {url: string | Readable; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
 
