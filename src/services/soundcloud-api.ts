@@ -91,7 +91,7 @@ export default class {
     return songsToReturn;
   }
 
-  // not fully supported yet.
+  // Not fully supported yet.
   async getArtist(userName: string): Promise<SongMetadata[]> {
     const tracks = await this.cache.wrap(
       async () => this.soundcloud.users.tracksV2(userName),
