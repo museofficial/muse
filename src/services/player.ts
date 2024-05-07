@@ -440,7 +440,7 @@ export default class {
 
     if (song.source === MediaSource.SoundCloud) {
       const scSong = await this.soundcloud.util.streamTrack(song.url) as Readable;
-      return this.createReadStream({url: scSong, cacheKey: song.url, cache: song.length < 30 * 60});
+      return this.createReadStream({url: scSong, cacheKey: song.url});
     }
 
     let ffmpegInput: string | null;

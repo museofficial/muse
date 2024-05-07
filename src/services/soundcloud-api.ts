@@ -22,11 +22,8 @@ export default class {
   async search(query: string): Promise<SongMetadata[]> {
     const items = await this.scsrQueue.add(async () => this.cache.wrap(
       async () => this.soundcloud.tracks.searchV2({q: query}),
-      // {q: query},
       {
-        limit: 10,
-      },
-      {
+        key: 'scsearch:' + query,
         expiresIn: ONE_HOUR_IN_SECONDS,
       },
     ));
@@ -43,11 +40,8 @@ export default class {
   async get(query: string): Promise<SongMetadata[]> {
     const track = await this.scsrQueue.add(async () => this.cache.wrap(
       async () => this.soundcloud.tracks.getV2(query),
-      // {q: query},
       {
-        limit: 10,
-      },
-      {
+        key: 'scget:' + query,
         expiresIn: ONE_HOUR_IN_SECONDS,
       },
     ));
@@ -59,11 +53,11 @@ export default class {
     return this.getMetadataFromVideo({track});
   }
 
-  async getPlaylist(listId: string): Promise<SongMetadata[]> {
+  async getPlaylist(query: string): Promise<SongMetadata[]> {
     const playlist = await this.cache.wrap(
-      async () => this.soundcloud.playlists.getV2(listId),
+      async () => this.soundcloud.playlists.getV2(query),
       {
-        key: listId,
+        key: 'scplaylist:' + query,
         expiresIn: ONE_MINUTE_IN_SECONDS,
       },
     );
