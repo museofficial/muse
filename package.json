@@ -108,6 +108,7 @@
     "libsodium-wrappers": "^0.7.9",
     "make-dir": "^3.1.0",
     "node-emoji": "^1.10.0",
+    "node-fetch": "^3.3.2",
     "nodesplash": "^0.1.1",
     "ora": "^6.1.0",
     "p-event": "^5.0.1",
@@ -117,6 +118,7 @@
     "pagination.djs": "^4.0.10",
     "parse-duration": "1.0.2",
     "patch-package": "^8.0.0",
+    "play-dl": "^1.9.7",
     "postinstall-postinstall": "^2.1.0",
     "read-pkg": "7.1.0",
     "reflect-metadata": "^0.1.13",
@@ -126,7 +128,6 @@
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "^4.11.5",
     "ytsr": "^3.8.4"
   },
   "resolutions": {

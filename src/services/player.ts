@@ -1,10 +1,11 @@
 import {VoiceChannel, Snowflake} from 'discord.js';
 import {Readable} from 'stream';
 import hasha from 'hasha';
-import ytdl, {videoFormat} from 'ytdl-core';
+import {InfoData, video_basic_info} from 'play-dl';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
+import fetch from 'node-fetch';
 import {
   AudioPlayer,
   AudioPlayerState,
@@ -56,8 +57,6 @@ export enum STATUS {
 export interface PlayerEvents {
   statusChange: (oldStatus: STATUS, newStatus: STATUS) => void;
 }
-
-type YTDLVideoFormat = videoFormat & {loudnessDb?: number};
 
 export const DEFAULT_VOLUME = 100;
 
@@ -443,55 +442,56 @@ export default class {
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
-    let format: YTDLVideoFormat | undefined;
+    let format: InfoData['format'][0] | undefined;
 
     ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await ytdl.getInfo(song.url);
+      const info = await video_basic_info(song.url);
 
-      const formats = info.formats as YTDLVideoFormat[];
+      if (info.LiveStreamData.isLive) {
+        const hlsUrl = info.LiveStreamData.hlsManifestUrl;
 
-      const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
-
-      format = formats.find(filter);
-
-      const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
-        if (formats[0].isLive) {
-          formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate); // Bad typings
-
-          return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10))); // Bad typings
+        if (hlsUrl === null) {
+          throw new Error('No HLS manifest URL found.');
         }
 
-        formats = formats
-          .filter(format => format.averageBitrate)
-          .sort((a, b) => {
-            if (a && b) {
-              return b.averageBitrate! - a.averageBitrate!;
-            }
+        const audioBitrates: Record<number, number> = {128: 96, 127: 96, 120: 128, 96: 256, 95: 256, 94: 128, 93: 128};
 
-            return 0;
+        let formats: Array<{itag: number; url: string; audioBitrate?: number; loudnessDb: undefined}> = [];
+
+        const m3u8_data = await fetch(hlsUrl).then(async res => res.text());
+
+        m3u8_data
+          .split('\n')
+          .filter(line => /^https?:\/\//.test(line))
+          .forEach(line => {
+            let itag: RegExpExecArray | number | null = /\/itag\/(\d+)\//.exec(line);
+            if (itag !== null) {
+              itag = parseInt(itag[1], 10);
+              formats.unshift({itag, url: line, audioBitrate: audioBitrates[itag], loudnessDb: undefined});
+            }
           });
-        return formats.find(format => !format.bitrate) ?? formats[0];
-      };
+
+        formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate);
+
+        format = formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(format.itag));
+      } else {
+        format = info.format.at(info.format.length - 1);
+      }
 
       if (!format) {
-        format = nextBestFormat(info.formats);
-
-        if (!format) {
-          // If still no format is found, throw
-          throw new Error('Can\'t find suitable format.');
-        }
+        // If no format is found, throw
+        throw new Error('Can\'t find suitable format.');
       }
 
       debug('Using format', format);
-
-      ffmpegInput = format.url;
+      ffmpegInput = format.url!;
 
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-      shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.videoDetails.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
+      shouldCacheVideo = !info.video_details.live && info.video_details.durationInSec < MAX_CACHE_LENGTH_SECONDS && !options.seek;
 
       debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
 

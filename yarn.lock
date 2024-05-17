@@ -1249,6 +1249,11 @@ data-uri-to-buffer@3:
   resolved "https://registry.npmjs.org/data-uri-to-buffer/-/data-uri-to-buffer-3.0.1.tgz"
   integrity sha512-WboRycPNsVw3B3TL559F7kuBUM4d8CgMEvk6xEJlOp7OBPjt6G7z8WMWlD2rOFZLk6OYfFIUGsCOWzcQH9K2og==
 
+data-uri-to-buffer@^4.0.0:
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/data-uri-to-buffer/-/data-uri-to-buffer-4.0.1.tgz#d8feb2b2881e6a4f58c2e08acfd0e2834e26222e"
+  integrity sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A==
+
 data-view-buffer@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/data-view-buffer/-/data-view-buffer-1.0.1.tgz#8ea6326efec17a2e42620696e671d7d5a8bc66b2"
@@ -2072,6 +2077,14 @@ fastq@^1.6.0:
   dependencies:
     reusify "^1.0.4"
 
+fetch-blob@^3.1.2, fetch-blob@^3.1.4:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/fetch-blob/-/fetch-blob-3.2.0.tgz#f09b8d4bbd45adc6f0c20b7e787e793e309dcce9"
+  integrity sha512-7yAQpD2UMJzLi1Dqv7qFYnPbaPx7ZfFK6PiIxQ4PfkGPyNyl2Ugx+a/umUonmKqjhM4DnfbMvdX6otXq83soQQ==
+  dependencies:
+    node-domexception "^1.0.0"
+    web-streams-polyfill "^3.0.3"
+
 figures@^3.0.0:
   version "3.2.0"
   resolved "https://registry.npmjs.org/figures/-/figures-3.2.0.tgz"
@@ -2198,6 +2211,13 @@ form-data@^3.0.0:
     asynckit "^0.4.0"
     combined-stream "^1.0.8"
     mime-types "^2.1.12"
+
+formdata-polyfill@^4.0.10:
+  version "4.0.10"
+  resolved "https://registry.yarnpkg.com/formdata-polyfill/-/formdata-polyfill-4.0.10.tgz#24807c31c9d402e002ab3d8c720144ceb8848423"
+  integrity sha512-buewHzMvYL29jdeQTVILecSaZKnt/RJWjoZCF5OW60Z67/GmSLBkOFM7qh1PI3zFNtJbaZL5eQu1vLfazOwj4g==
+  dependencies:
+    fetch-blob "^3.1.2"
 
 formidable@^1.2.2:
   version "1.2.6"
@@ -3308,14 +3328,6 @@ lru-cache@^6.0.0:
   dependencies:
     yallist "^4.0.0"
 
-m3u8stream@^0.8.6:
-  version "0.8.6"
-  resolved "https://registry.npmjs.org/m3u8stream/-/m3u8stream-0.8.6.tgz"
-  integrity sha512-LZj8kIVf9KCphiHmH7sbFQTVe4tOemb202fWwvJwR9W5ENW/1hxJN6ksAWGhQgSBSa3jyWhnjKU1Fw1GaOdbyA==
-  dependencies:
-    miniget "^4.2.2"
-    sax "^1.2.4"
-
 macos-release@^2.5.0:
   version "2.5.0"
   resolved "https://registry.npmjs.org/macos-release/-/macos-release-2.5.0.tgz"
@@ -3462,6 +3474,11 @@ node-addon-api@^5.0.0:
   resolved "https://registry.npmjs.org/node-addon-api/-/node-addon-api-5.0.0.tgz"
   integrity sha512-CvkDw2OEnme7ybCykJpVcKH+uAOLV2qLqiyla128dN9TkEWfrYmxG6C2boDe5KcNQqZF3orkqzGgOMvZ/JNekA==
 
+node-domexception@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/node-domexception/-/node-domexception-1.0.0.tgz#6888db46a1f71c0b76b3f7555016b63fe64766e5"
+  integrity sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==
+
 node-emoji@^1.10.0:
   version "1.11.0"
   resolved "https://registry.npmjs.org/node-emoji/-/node-emoji-1.11.0.tgz"
@@ -3475,6 +3492,15 @@ node-fetch@^2.6.1, node-fetch@^2.6.7:
   integrity sha512-ZjMPFEfVx5j+y2yF35Kzx5sF7kDzxuDj6ziH4FFbOp87zKDZNx8yExJIb05OGF4Nlt9IHFIMBkRl41VdvcNdbQ==
   dependencies:
     whatwg-url "^5.0.0"
+
+node-fetch@^3.3.2:
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/node-fetch/-/node-fetch-3.3.2.tgz#d1e889bacdf733b4ff3b2b243eb7a12866a0b78b"
+  integrity sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==
+  dependencies:
+    data-uri-to-buffer "^4.0.0"
+    fetch-blob "^3.1.4"
+    formdata-polyfill "^4.0.10"
 
 nodesplash@^0.1.1:
   version "0.1.1"
@@ -3911,6 +3937,18 @@ pkg-dir@^5.0.0:
   dependencies:
     find-up "^5.0.0"
 
+play-audio@^0.5.2:
+  version "0.5.2"
+  resolved "https://registry.yarnpkg.com/play-audio/-/play-audio-0.5.2.tgz#191dd45b95ff64ae20bbd718671da4e987d4edd1"
+  integrity sha512-ZAqHUKkQLix2Iga7pPbsf1LpUoBjcpwU93F1l3qBIfxYddQLhxS6GKmS0d3jV8kSVaUbr6NnOEcEMFvuX93SWQ==
+
+play-dl@^1.9.7:
+  version "1.9.7"
+  resolved "https://registry.yarnpkg.com/play-dl/-/play-dl-1.9.7.tgz#885beb66ad3b450632733240faeb65040a43b30f"
+  integrity sha512-KpgerWxUCY4s9Mhze2qdqPhiqd8Ve6HufpH9mBH3FN+vux55qSh6WJKDabfie8IBHN7lnrAlYcT/UdGax58c2A==
+  dependencies:
+    play-audio "^0.5.2"
+
 please-upgrade-node@^3.2.0:
   version "3.2.0"
   resolved "https://registry.npmjs.org/please-upgrade-node/-/please-upgrade-node-3.2.0.tgz"
@@ -4316,11 +4354,6 @@ safe-regex-test@^1.0.3:
   version "2.1.2"
   resolved "https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz"
   integrity sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==
-
-sax@^1.1.3, sax@^1.2.4:
-  version "1.2.4"
-  resolved "https://registry.npmjs.org/sax/-/sax-1.2.4.tgz"
-  integrity sha512-NqVDv9TpANUjFm0N8uM5GxL36UgKi9/atZw+x7YFnQ8ckwFGKrl4xX4yWtrey3UJm5nP1kUbnYgLopqWNSRhWw==
 
 semver-compare@^1.0.0:
   version "1.0.0"
@@ -5059,6 +5092,11 @@ wcwidth@^1.0.1:
   dependencies:
     defaults "^1.0.3"
 
+web-streams-polyfill@^3.0.3:
+  version "3.3.3"
+  resolved "https://registry.yarnpkg.com/web-streams-polyfill/-/web-streams-polyfill-3.3.3.tgz#2073b91a2fdb1fbfbd401e7de0ac9f8214cecb4b"
+  integrity sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==
+
 webidl-conversions@^3.0.0:
   version "3.0.1"
   resolved "https://registry.npmjs.org/webidl-conversions/-/webidl-conversions-3.0.1.tgz"
@@ -5227,15 +5265,6 @@ yocto-queue@^1.0.0:
   version "1.0.0"
   resolved "https://registry.npmjs.org/yocto-queue/-/yocto-queue-1.0.0.tgz"
   integrity sha512-9bnSc/HEW2uRy67wc+T8UwauLuPJVn28jb+GtJY16iiKWyvmYJRXVT4UamsAEGQfPohgr2q4Tq0sQbQlxTfi1g==
-
-ytdl-core@^4.11.5:
-  version "4.11.5"
-  resolved "https://registry.npmjs.org/ytdl-core/-/ytdl-core-4.11.5.tgz"
-  integrity sha512-27LwsW4n4nyNviRCO1hmr8Wr5J1wLLMawHCQvH8Fk0hiRqrxuIu028WzbJetiYH28K8XDbeinYW4/wcHQD1EXA==
-  dependencies:
-    m3u8stream "^0.8.6"
-    miniget "^4.2.2"
-    sax "^1.1.3"
 
 ytsr@^3.8.4:
   version "3.8.4"
