@@ -77,10 +77,12 @@ export default class {
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
+  private isCached = false;
 
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
   private disconnectTimer: NodeJS.Timeout | null = null;
+  private currentFFmpeg: ffmpeg.FfmpegCommand | null = null;
 
   constructor(fileCache: FileCacheProvider, guildId: string) {
     this.fileCache = fileCache;
@@ -127,6 +129,7 @@ export default class {
       this.loopCurrentSong = false;
       this.voiceConnection.destroy();
       this.audioPlayer?.stop();
+      this.stopFFmpeg();
 
       this.voiceConnection = null;
       this.audioPlayer = null;
@@ -259,6 +262,12 @@ export default class {
     }
   }
 
+  stopFFmpeg(): void {
+    if (!this.isCached) {
+      this.currentFFmpeg?.kill('SIGKILL');
+    }
+  }
+
   pause(): void {
     if (this.status !== STATUS.PLAYING) {
       throw new Error('Not currently playing.');
@@ -281,6 +290,7 @@ export default class {
         await this.play();
       } else {
         this.audioPlayer?.stop();
+        this.stopFFmpeg();
         this.status = STATUS.IDLE;
 
         const settings = await getGuildSettings(this.guildId);
@@ -433,6 +443,8 @@ export default class {
       return this.createReadStream({url: song.url, cacheKey: song.url});
     }
 
+    this.stopFFmpeg();
+
     let ffmpegInput: string | null;
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
@@ -486,6 +498,7 @@ export default class {
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
       shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.videoDetails.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
+      this.isCached = shouldCacheVideo;
 
       debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
 
@@ -601,7 +614,7 @@ export default class {
       const returnedStream = capacitor.createReadStream();
       let hasReturnedStreamClosed = false;
 
-      const stream = ffmpeg(options.url)
+      this.currentFFmpeg = ffmpeg(options.url)
         .inputOptions(options?.ffmpegInputOptions ?? ['-re'])
         .noVideo()
         .audioCodec('libopus')
@@ -616,10 +629,10 @@ export default class {
           debug(`Spawned ffmpeg with ${command as string}`);
         });
 
-      stream.pipe(capacitor);
+      this.currentFFmpeg.pipe(capacitor);
 
       returnedStream.on('close', () => {
-        stream.kill('SIGKILL');
+        this.currentFFmpeg?.kill('SIGKILL');
         hasReturnedStreamClosed = true;
       });
 
