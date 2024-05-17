@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Stop unnecessary FFmpeg processes that are running in the background.
+
 ## [2.8.1] - 2024-04-28
 
 ### Fixed
