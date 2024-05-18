@@ -1,7 +1,7 @@
 import {VoiceChannel, Snowflake} from 'discord.js';
 import {Readable} from 'stream';
 import hasha from 'hasha';
-import {InfoData, video_basic_info} from 'play-dl';
+import {InfoData, video_info} from 'play-dl';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
@@ -448,7 +448,7 @@ export default class {
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await video_basic_info(song.url);
+      const info = await video_info(song.url);
 
       if (info.LiveStreamData.isLive) {
         const hlsUrl = info.LiveStreamData.hlsManifestUrl;
@@ -479,6 +479,20 @@ export default class {
         format = formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(format.itag));
       } else {
         format = info.format.at(info.format.length - 1);
+
+        if (format?.mimeType?.slice(0, 5) !== 'audio') { // Legacy video
+          const formats = info.format
+            .filter(format => format.averageBitrate)
+            .sort((a, b) => {
+              if (a && b) {
+                return b.averageBitrate! - a.averageBitrate!;
+              }
+
+              return 0;
+            });
+
+          format = formats.find(format => !format.bitrate) ?? formats[0];
+        }
       }
 
       if (!format) {
