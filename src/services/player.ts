@@ -439,11 +439,12 @@ export default class {
   }
 
   private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
+    this.stopFFmpeg();
+    this.isCached = false;
+
     if (song.source === MediaSource.HLS) {
       return this.createReadStream({url: song.url, cacheKey: song.url});
     }
-
-    this.stopFFmpeg();
 
     let ffmpegInput: string | null;
     const ffmpegInputOptions: string[] = [];
@@ -614,7 +615,7 @@ export default class {
       const returnedStream = capacitor.createReadStream();
       let hasReturnedStreamClosed = false;
 
-      this.currentFFmpeg = ffmpeg(options.url)
+      const stream = ffmpeg(options.url)
         .inputOptions(options?.ffmpegInputOptions ?? ['-re'])
         .noVideo()
         .audioCodec('libopus')
@@ -629,12 +630,14 @@ export default class {
           debug(`Spawned ffmpeg with ${command as string}`);
         });
 
-      this.currentFFmpeg.pipe(capacitor);
+      stream.pipe(capacitor);
 
       returnedStream.on('close', () => {
-        this.currentFFmpeg?.kill('SIGKILL');
+        stream.kill('SIGKILL');
         hasReturnedStreamClosed = true;
       });
+
+      this.currentFFmpeg = stream;
 
       resolve(returnedStream);
     });
