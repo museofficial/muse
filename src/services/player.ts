@@ -77,12 +77,10 @@ export default class {
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
-  private isCached = false;
 
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
   private disconnectTimer: NodeJS.Timeout | null = null;
-  private currentFFmpeg: ffmpeg.FfmpegCommand | null = null;
 
   constructor(fileCache: FileCacheProvider, guildId: string) {
     this.fileCache = fileCache;
@@ -128,8 +126,7 @@ export default class {
 
       this.loopCurrentSong = false;
       this.voiceConnection.destroy();
-      this.audioPlayer?.stop();
-      this.stopFFmpeg();
+      this.audioPlayer?.stop(true);
 
       this.voiceConnection = null;
       this.audioPlayer = null;
@@ -262,12 +259,6 @@ export default class {
     }
   }
 
-  stopFFmpeg(): void {
-    if (!this.isCached) {
-      this.currentFFmpeg?.kill('SIGKILL');
-    }
-  }
-
   pause(): void {
     if (this.status !== STATUS.PLAYING) {
       throw new Error('Not currently playing.');
@@ -289,8 +280,7 @@ export default class {
       if (this.getCurrent() && this.status !== STATUS.PAUSED) {
         await this.play();
       } else {
-        this.audioPlayer?.stop();
-        this.stopFFmpeg();
+        this.audioPlayer?.stop(true);
         this.status = STATUS.IDLE;
 
         const settings = await getGuildSettings(this.guildId);
@@ -439,8 +429,11 @@ export default class {
   }
 
   private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
-    this.stopFFmpeg();
-    this.isCached = false;
+    if (this.status === STATUS.PLAYING) {
+      this.audioPlayer?.stop();
+    } else if (this.status === STATUS.PAUSED) {
+      this.audioPlayer?.stop(true);
+    }
 
     if (song.source === MediaSource.HLS) {
       return this.createReadStream({url: song.url, cacheKey: song.url});
@@ -499,7 +492,6 @@ export default class {
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
       shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.videoDetails.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
-      this.isCached = shouldCacheVideo;
 
       debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
 
@@ -633,11 +625,12 @@ export default class {
       stream.pipe(capacitor);
 
       returnedStream.on('close', () => {
-        stream.kill('SIGKILL');
+        if (!options.cache) {
+          stream.kill('SIGKILL');
+        }
+
         hasReturnedStreamClosed = true;
       });
-
-      this.currentFFmpeg = stream;
 
       resolve(returnedStream);
     });
