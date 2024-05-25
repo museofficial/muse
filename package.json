@@ -108,7 +108,6 @@
     "libsodium-wrappers": "^0.7.9",
     "make-dir": "^3.1.0",
     "node-emoji": "^1.10.0",
-    "node-fetch": "^3.3.2",
     "nodesplash": "^0.1.1",
     "ora": "^6.1.0",
     "p-event": "^5.0.1",
