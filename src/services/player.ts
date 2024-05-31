@@ -76,7 +76,7 @@ export default class {
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
   private type: StreamType | undefined;
-  private loudness: number | undefined;
+  private loudness = 1;
 
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
@@ -451,27 +451,26 @@ export default class {
       // Not yet cached, must download
       const info = await video_info(song.url);
 
-      const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
       // Don't cache livestreams or long videos
+      const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
       shouldCacheVideo = !info.video_details.live && info.video_details.durationInSec < MAX_CACHE_LENGTH_SECONDS && !options.seek;
+
+      format = info.format.at(info.format.length - 1);
 
       if (!shouldCacheVideo) {
         const stream = await stream_from_info(info, {seek: options.seek});
         debug('Not caching video');
         debug('Spawned play-dl stream');
-        if (!info.video_details.live) {
-          this.loudness = info.format[info.format.length - 1].loudnessDb;
-          this.loudness = this.loudness ? 2 ** (-this.loudness / 10) : 1;
-          debug('Loudness:', this.loudness);
-        }
+        this.loudness = format?.loudnessDb ?? 0;
+        debug('isLive:', info.video_details.live);
+        debug('LoudnessDb:', this.loudness);
+        this.loudness = 2 ** (-this.loudness / 10);
 
         debug('Audio format:', stream.type);
         this.type = stream.type;
 
         return stream.stream;
       }
-
-      format = info.format.at(info.format.length - 1);
 
       if (format?.mimeType?.slice(0, 5) !== 'audio') { // Legacy video
         const formats = info.format
@@ -599,6 +598,8 @@ export default class {
 
   private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
     return new Promise((resolve, reject) => {
+      this.type = StreamType.WebmOpus;
+      this.loudness = 1;
       const capacitor = new WriteStream();
 
       if (options?.cache) {
@@ -640,7 +641,7 @@ export default class {
 
   private createAudioStream(stream: Readable) {
     return createAudioResource(stream, {
-      inputType: this.type ?? StreamType.WebmOpus,
+      inputType: this.type,
       inlineVolume: true,
     });
   }
@@ -655,7 +656,6 @@ export default class {
 
   private setAudioPlayerVolume(level?: number) {
     // Audio resource expects a float between 0 and 1 to represent level percentage
-    this.loudness = this.loudness ?? 1;
     this.audioResource?.volume?.setVolume((level ? level * this.loudness : (this.getVolume()) / 100) * this.loudness);
   }
 }
