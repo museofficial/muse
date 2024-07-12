@@ -19,7 +19,6 @@ FROM base AS dependencies
 WORKDIR /usr/app
 
 COPY package.json .
-COPY patches ./patches
 COPY yarn.lock .
 
 RUN yarn install --prod
