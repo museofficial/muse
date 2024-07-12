@@ -126,7 +126,7 @@
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "^4.11.5",
+    "@distube/ytdl-core": "^4.13.5",
     "ytsr": "^3.8.4"
   },
   "resolutions": {
