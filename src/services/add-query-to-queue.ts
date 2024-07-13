@@ -171,8 +171,7 @@ export default class AddQueryToQueue {
       await player.play();
     }
 
-    if(skipCurrentTrack)
-    {
+    if (skipCurrentTrack) {
       try {
         await player.forward(1);
       } catch (_: unknown) {

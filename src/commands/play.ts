@@ -32,7 +32,7 @@ export default class implements Command {
       .setDescription('if a track has chapters, split it'))
     .addBooleanOption(option => option
       .setName('skip')
-      .setDescription('skip the currently playing track'));  
+      .setDescription('skip the currently playing track'));
 
   public requiresVC = true;
 
