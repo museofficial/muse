@@ -280,8 +280,8 @@ export default class {
       if (this.getCurrent() && this.status !== STATUS.PAUSED) {
         await this.play();
       } else {
-        this.audioPlayer?.stop(true);
         this.status = STATUS.IDLE;
+        this.audioPlayer?.stop(true);
 
         const settings = await getGuildSettings(this.guildId);
 
