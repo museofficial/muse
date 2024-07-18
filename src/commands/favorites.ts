@@ -28,7 +28,10 @@ export default class implements Command {
         .setDescription('shuffle the input if you\'re adding multiple tracks'))
       .addBooleanOption(option => option
         .setName('split')
-        .setDescription('if a track has chapters, split it')))
+        .setDescription('if a track has chapters, split it'))
+      .addBooleanOption(option => option
+        .setName('skip')
+        .setDescription('skip the currently playing track')))
     .addSubcommand(subcommand => subcommand
       .setName('list')
       .setDescription('list all favorites'))
@@ -124,6 +127,7 @@ export default class implements Command {
       shuffleAdditions: interaction.options.getBoolean('shuffle') ?? false,
       addToFrontOfQueue: interaction.options.getBoolean('immediate') ?? false,
       shouldSplitChapters: interaction.options.getBoolean('split') ?? false,
+      skipCurrentTrack: interaction.options.getBoolean('skip') ?? false,
     });
   }
 

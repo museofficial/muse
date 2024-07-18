@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+-  A `skip` option to the `/play` command
+
 ### Fixed
 - Fixed playback issue
 - Audioplayer not stopping properly
