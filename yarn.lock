@@ -164,6 +164,13 @@
     tough-cookie "^4.1.4"
     undici "^6.19.2"
 
+"@distube/ytsr@^2.0.0":
+  version "2.0.4"
+  resolved "https://registry.yarnpkg.com/@distube/ytsr/-/ytsr-2.0.4.tgz#873b7ca767b5ff362bc0e136ae0d9ca5cbde8f7b"
+  integrity sha512-OiSWgARQ9LTj+dXt3jmMFzUH4l86VVCD4dVC4hEHNXdqp+DyU4QEzc+W6YY6//kWkvzTaUxOo7JUY7lBzwIF0A==
+  dependencies:
+    undici "^6.18.2"
+
 "@esbuild-kit/cjs-loader@^2.3.3":
   version "2.3.3"
   resolved "https://registry.npmjs.org/@esbuild-kit/cjs-loader/-/cjs-loader-2.3.3.tgz"
@@ -5023,7 +5030,7 @@ undici@^5.8.0:
   resolved "https://registry.npmjs.org/undici/-/undici-5.8.1.tgz"
   integrity sha512-iDRmWX4Zar/4A/t+1LrKQRm102zw2l9Wgat3LtTlTn8ykvMZmAmpq9tjyHEigx18FsY7IfATvyN3xSw9BDz0eA==
 
-undici@^6.19.2:
+undici@^6.18.2, undici@^6.19.2:
   version "6.19.2"
   resolved "https://registry.yarnpkg.com/undici/-/undici-6.19.2.tgz#231bc5de78d0dafb6260cf454b294576c2f3cd31"
   integrity sha512-JfjKqIauur3Q6biAtHJ564e3bWa8VvT+7cSiOJHFbX4Erv6CLGDpg8z+Fmg/1OI/47RA+GI2QZaF48SSaLvyBA==
