@@ -1,7 +1,7 @@
 import {VoiceChannel, Snowflake} from 'discord.js';
 import {Readable} from 'stream';
 import hasha from 'hasha';
-import ytdl, {videoFormat} from 'ytdl-core';
+import ytdl, {videoFormat} from '@distube/ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
@@ -280,8 +280,8 @@ export default class {
       if (this.getCurrent() && this.status !== STATUS.PAUSED) {
         await this.play();
       } else {
-        this.audioPlayer?.stop(true);
         this.status = STATUS.IDLE;
+        this.audioPlayer?.stop(true);
 
         const settings = await getGuildSettings(this.guildId);
 
