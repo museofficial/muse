@@ -15,7 +15,7 @@ import YoutubeAPI from './services/youtube-api.js';
 import SpotifyAPI from './services/spotify-api.js';
 
 // Commands
-import Command from './commands';
+import Command from './commands/index.js';
 import Clear from './commands/clear.js';
 import Config from './commands/config.js';
 import Disconnect from './commands/disconnect.js';

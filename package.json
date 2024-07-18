@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "repository": "git@github.com:codetheweb/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
@@ -9,7 +9,7 @@
   "types": "dts/types",
   "type": "module",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.17.0"
   },
   "files": [
     "src"
@@ -48,6 +48,7 @@
     "eslint": "^7.32.0",
     "eslint-config-xo": "^0.39.0",
     "eslint-config-xo-typescript": "^0.44.0",
+    "eslint-plugin-import": "2.29.1",
     "husky": "^4.3.8",
     "prisma": "4.16.0",
     "release-it": "^14.11.8",
@@ -63,12 +64,19 @@
     "parserOptions": {
       "project": "./tsconfig.json"
     },
+    "plugins": [
+      "import"
+    ],
     "rules": {
       "new-cap": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars-experimental": "error",
       "@typescript-eslint/prefer-readonly-parameter-types": "off",
-      "@typescript-eslint/no-implicit-any-catch": "off"
+      "@typescript-eslint/no-implicit-any-catch": "off",
+      "import/extensions": [
+        "error",
+        "ignorePackages"
+      ]
     }
   },
   "husky": {
@@ -82,6 +90,7 @@
     "@discordjs/rest": "1.0.1",
     "@discordjs/voice": "0.11.0",
     "@distube/ytsr": "^2.0.0",
+    "@distube/ytdl-core": "^4.13.5",
     "@prisma/client": "4.16.0",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
@@ -119,7 +128,7 @@
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "^4.11.5"
+    "ytsr": "^3.8.4"
   },
   "resolutions": {
     "@types/ws": "8.5.4"

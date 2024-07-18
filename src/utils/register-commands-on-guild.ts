@@ -1,6 +1,6 @@
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v10';
-import Command from '../commands';
+import Command from '../commands/index.js';
 
 interface RegisterCommandsOnGuildOptions {
   rest: REST;

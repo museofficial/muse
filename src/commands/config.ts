@@ -120,7 +120,7 @@ export default class implements Command {
         break;
       }
 
-      case 'set-queue-add-response-eph': {
+      case 'set-queue-add-response-hidden': {
         const value = interaction.options.getBoolean('value')!;
 
         await prisma.setting.update({

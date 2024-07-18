@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed playback issue
+- Audioplayer not stopping properly
+
+## [2.8.1] - 2024-04-28
+
+### Fixed
+
+- Fixed import issue that broke Muse inside of Docker. Thanks @sonroyaalmerol!
+
 ## [2.8.0] - 2024-04-28
 
 ### Added
@@ -35,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.4] - 2023-12-21
 
-- Optimized Docker container to run JS code directly with node instead of yarn, npm and tsx. Reduces memory usage. 
+- Optimized Docker container to run JS code directly with node instead of yarn, npm and tsx. Reduces memory usage.
 
 ## [2.4.3] - 2023-09-10
 
@@ -302,7 +312,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/codetheweb/muse/compare/v2.8.0...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.8.1...HEAD
+[2.8.1]: https://github.com/codetheweb/muse/compare/v2.8.0...v2.8.1
 [2.8.0]: https://github.com/codetheweb/muse/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/codetheweb/muse/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/codetheweb/muse/compare/v2.6.0...v2.7.0
