@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- bumped ytdl-core
+
 ## [2.9.0] - 2024-07-17
 
 ### Added
