@@ -28,6 +28,6 @@ export default class implements Command {
     }
 
     player.pause();
-    await interaction.reply('the stop-and-go light is now red');
+    await interaction.reply('player paused');
   }
 }

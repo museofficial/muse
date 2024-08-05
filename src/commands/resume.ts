@@ -38,7 +38,7 @@ export default class implements Command {
     await player.play();
 
     await interaction.reply({
-      content: 'the stop-and-go light is now green',
+      content: 'player resumed',
       embeds: [buildPlayingMessageEmbed(player)],
     });
   }
