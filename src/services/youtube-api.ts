@@ -1,7 +1,7 @@
 import {inject, injectable} from 'inversify';
 import {toSeconds, parse} from 'iso8601-duration';
 import got, {Got} from 'got';
-import ytsr, {Video} from 'ytsr';
+import ytsr, {Video} from '@distube/ytsr';
 import PQueue from 'p-queue';
 import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';

@@ -1,6 +1,6 @@
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {inject, injectable} from 'inversify';
-import Command from '.';
+import Command from './index.js';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';

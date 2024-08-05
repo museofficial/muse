@@ -28,6 +28,9 @@ model Setting {
   playlistLimit                  Int      @default(50)
   secondsToWaitAfterQueueEmpties Int      @default(30)
   leaveIfNoListeners             Boolean  @default(true)
+  queueAddResponseEphemeral      Boolean  @default(false)
+  autoAnnounceNextSong           Boolean  @default(false)
+  defaultVolume                  Int      @default(100)
   createdAt                      DateTime @default(now())
   updatedAt                      DateTime @updatedAt
 }

@@ -8,8 +8,15 @@ import {SlashCommandBuilder} from '@discordjs/builders';
 @injectable()
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
-    .setName('replay')
-    .setDescription('replay the current song');
+    .setName('volume')
+    .setDescription('set current player volume level')
+    .addIntegerOption(option =>
+      option.setName('level')
+        .setDescription('volume percentage (0 is muted, 100 is max & default)')
+        .setMinValue(0)
+        .setMaxValue(100)
+        .setRequired(true),
+    );
 
   public requiresVC = true;
 
@@ -28,15 +35,8 @@ export default class implements Command {
       throw new Error('nothing is playing');
     }
 
-    if (currentSong.isLive) {
-      throw new Error('can\'t replay a livestream');
-    }
-
-    await Promise.all([
-      player.seek(0),
-      interaction.deferReply(),
-    ]);
-
-    await interaction.editReply('👍 replayed the current song');
+    const level = interaction.options.getInteger('level') ?? 100;
+    player.setVolume(level);
+    await interaction.reply(`Set volume to ${level}%`);
   }
 }

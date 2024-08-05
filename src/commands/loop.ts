@@ -2,9 +2,9 @@ import {ChatInputCommandInteraction} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
-import Command from '.';
+import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {STATUS} from '../services/player';
+import {STATUS} from '../services/player.js';
 
 @injectable()
 export default class implements Command {
@@ -25,6 +25,10 @@ export default class implements Command {
 
     if (player.status === STATUS.IDLE) {
       throw new Error('no song to loop!');
+    }
+
+    if (player.loopCurrentQueue) {
+      player.loopCurrentQueue = false;
     }
 
     player.loopCurrentSong = !player.loopCurrentSong;

@@ -15,13 +15,14 @@ import YoutubeAPI from './services/youtube-api.js';
 import SpotifyAPI from './services/spotify-api.js';
 
 // Commands
-import Command from './commands';
+import Command from './commands/index.js';
 import Clear from './commands/clear.js';
 import Config from './commands/config.js';
 import Disconnect from './commands/disconnect.js';
 import Favorites from './commands/favorites.js';
 import ForwardSeek from './commands/fseek.js';
-import Loop from './commands/loop';
+import LoopQueue from './commands/loop-queue.js';
+import Loop from './commands/loop.js';
 import Move from './commands/move.js';
 import Next from './commands/next.js';
 import NowPlaying from './commands/now-playing.js';
@@ -36,6 +37,7 @@ import Shuffle from './commands/shuffle.js';
 import Skip from './commands/skip.js';
 import Stop from './commands/stop.js';
 import Unskip from './commands/unskip.js';
+import Volume from './commands/volume.js';
 import ThirdParty from './services/third-party.js';
 import FileCacheProvider from './services/file-cache.js';
 import KeyValueCacheProvider from './services/key-value-cache.js';
@@ -68,6 +70,7 @@ container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingleton
   Disconnect,
   Favorites,
   ForwardSeek,
+  LoopQueue,
   Loop,
   Move,
   Next,
@@ -83,6 +86,7 @@ container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingleton
   Skip,
   Stop,
   Unskip,
+  Volume,
 ].forEach(command => {
   container.bind<Command>(TYPES.Command).to(command).inSingletonScope();
 });

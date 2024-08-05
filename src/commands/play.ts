@@ -3,7 +3,7 @@ import {URL} from 'url';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {inject, injectable} from 'inversify';
 import Spotify from 'spotify-web-api-node';
-import Command from '.';
+import Command from './index.js';
 import {TYPES} from '../types.js';
 import ThirdParty from '../services/third-party.js';
 import getYouTubeAndSpotifySuggestionsFor from '../utils/get-youtube-and-spotify-suggestions-for.js';
@@ -29,7 +29,10 @@ export default class implements Command {
       .setDescription('shuffle the input if you\'re adding multiple tracks'))
     .addBooleanOption(option => option
       .setName('split')
-      .setDescription('if a track has chapters, split it'));
+      .setDescription('if a track has chapters, split it'))
+    .addBooleanOption(option => option
+      .setName('skip')
+      .setDescription('skip the currently playing track'));
 
   public requiresVC = true;
 
@@ -52,6 +55,7 @@ export default class implements Command {
       addToFrontOfQueue: interaction.options.getBoolean('immediate') ?? false,
       shuffleAdditions: interaction.options.getBoolean('shuffle') ?? false,
       shouldSplitChapters: interaction.options.getBoolean('split') ?? false,
+      skipCurrentTrack: interaction.options.getBoolean('skip') ?? false,
     });
   }
 

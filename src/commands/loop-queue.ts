@@ -4,12 +4,13 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {STATUS} from '../services/player.js';
 
 @injectable()
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
-    .setName('replay')
-    .setDescription('replay the current song');
+    .setName('loop-queue')
+    .setDescription('toggle looping the entire queue');
 
   public requiresVC = true;
 
@@ -22,21 +23,20 @@ export default class implements Command {
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const player = this.playerManager.get(interaction.guild!.id);
 
-    const currentSong = player.getCurrent();
-
-    if (!currentSong) {
-      throw new Error('nothing is playing');
+    if (player.status === STATUS.IDLE) {
+      throw new Error('no songs to loop!');
     }
 
-    if (currentSong.isLive) {
-      throw new Error('can\'t replay a livestream');
+    if (player.queueSize() < 2) {
+      throw new Error('not enough songs to loop a queue!');
     }
 
-    await Promise.all([
-      player.seek(0),
-      interaction.deferReply(),
-    ]);
+    if (player.loopCurrentSong) {
+      player.loopCurrentSong = false;
+    }
 
-    await interaction.editReply('👍 replayed the current song');
+    player.loopCurrentQueue = !player.loopCurrentQueue;
+
+    await interaction.reply((player.loopCurrentQueue ? 'looped queue :)' : 'stopped looping queue :('));
   }
 }

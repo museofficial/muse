@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "2.4.3",
+  "version": "2.9.1",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "repository": "git@github.com:codetheweb/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
@@ -9,7 +9,7 @@
   "types": "dts/types",
   "type": "module",
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.17.0"
   },
   "files": [
     "src"
@@ -25,8 +25,11 @@
     "migrations:generate": "npm run prisma:with-env migrate dev",
     "migrations:run": "npm run prisma:with-env migrate deploy",
     "prisma:with-env": "npm run env:set-database-url prisma",
+    "prisma:generate": "prisma generate",
     "env:set-database-url": "tsx src/scripts/run-with-database-url.ts",
-    "release": "release-it"
+    "release": "release-it",
+    "build": "tsc",
+    "postinstall": "patch-package"
   },
   "devDependencies": {
     "@release-it/keep-a-changelog": "^2.3.0",
@@ -45,8 +48,9 @@
     "eslint": "^7.32.0",
     "eslint-config-xo": "^0.39.0",
     "eslint-config-xo-typescript": "^0.44.0",
+    "eslint-plugin-import": "2.29.1",
     "husky": "^4.3.8",
-    "prisma": "^3.14.0",
+    "prisma": "4.16.0",
     "release-it": "^14.11.8",
     "type-fest": "^2.12.0",
     "typescript": "^4.6.4"
@@ -60,12 +64,19 @@
     "parserOptions": {
       "project": "./tsconfig.json"
     },
+    "plugins": [
+      "import"
+    ],
     "rules": {
       "new-cap": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars-experimental": "error",
       "@typescript-eslint/prefer-readonly-parameter-types": "off",
-      "@typescript-eslint/no-implicit-any-catch": "off"
+      "@typescript-eslint/no-implicit-any-catch": "off",
+      "import/extensions": [
+        "error",
+        "ignorePackages"
+      ]
     }
   },
   "husky": {
@@ -78,7 +89,9 @@
     "@discordjs/opus": "^0.8.0",
     "@discordjs/rest": "1.0.1",
     "@discordjs/voice": "0.11.0",
-    "@prisma/client": "^4.1.1",
+    "@distube/ytdl-core": "^4.13.7",
+    "@distube/ytsr": "^2.0.0",
+    "@prisma/client": "4.16.0",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
     "debug": "^4.3.3",
@@ -105,14 +118,16 @@
     "p-retry": "4.6.2",
     "pagination.djs": "^4.0.10",
     "parse-duration": "1.0.2",
+    "patch-package": "^8.0.0",
+    "postinstall-postinstall": "^2.1.0",
     "read-pkg": "7.1.0",
     "reflect-metadata": "^0.1.13",
+    "sponsorblock-api": "^0.2.4",
     "spotify-uri": "^3.0.2",
     "spotify-web-api-node": "^5.0.2",
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "git+https://github.com/khlevon/node-ytdl-core.git#v4.11.4-patch.2",
     "ytsr": "^3.8.4"
   },
   "resolutions": {
