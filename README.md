@@ -2,7 +2,7 @@
   <img width="250" height="250" src="https://raw.githubusercontent.com/codetheweb/muse/master/.github/logo.png">
 </p>
 
-🚨: v1.0.0 was a breaking change. Please take a look at the [release notes](https://github.com/codetheweb/muse/releases/tag/v1.0.0) for upgrade instructions
+**🔎 I'm currently looking for maintainers.** Check out [this issue](https://github.com/codetheweb/muse/issues/1063) for details.
 
 ------
 
