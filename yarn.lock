@@ -152,17 +152,17 @@
     tslib "^2.5.0"
     ws "^8.13.0"
 
-"@distube/ytdl-core@^4.13.7":
-  version "4.13.7"
-  resolved "https://registry.yarnpkg.com/@distube/ytdl-core/-/ytdl-core-4.13.7.tgz#4b48e009eb8df6ea21623c18999a4dd76d893fbf"
-  integrity sha512-xpovwZVPwQ0R4Mrwt/fhh1rqmBjiZ5qj30ck5kz+mQJ5XPzW9dUiTDz89qCxO3YvgbCAqaC5BNNnWiFC2uCV5Q==
+"@distube/ytdl-core@^4.14.4":
+  version "4.14.4"
+  resolved "https://registry.npmjs.org/@distube/ytdl-core/-/ytdl-core-4.14.4.tgz"
+  integrity sha512-dHb4GW3qATIjRsS6VIhm3Pop7FdUcDFhsnyQlsPeXW7UhTPuNS0BmraKiTpFbpp0Ky+rxBQjJBfPRFsM+dT1fg==
   dependencies:
     http-cookie-agent "^6.0.5"
     m3u8stream "^0.8.6"
     miniget "^4.2.3"
     sax "^1.4.1"
     tough-cookie "^4.1.4"
-    undici "^6.19.2"
+    undici five
 
 "@distube/ytsr@^2.0.0":
   version "2.0.4"
