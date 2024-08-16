@@ -162,7 +162,7 @@
     miniget "^4.2.3"
     sax "^1.4.1"
     tough-cookie "^4.1.4"
-    undici five
+    undici "^6.19.2"
 
 "@distube/ytsr@^2.0.0":
   version "2.0.4"
