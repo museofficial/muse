@@ -59,6 +59,8 @@ jobs:
           path: /tmp/digests
           pattern: digests-*
           merge-multiple: true
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GH_PAT }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
