@@ -5,6 +5,9 @@ on:
     tags:
     - 'v*'
 
+env:
+  REGISTRY_IMAGE: ghcr.io/museofficial/muse
+
 jobs:
   publish:
     strategy:
@@ -53,7 +56,7 @@ jobs:
           push: true
           tags: |
             codetheweb/muse:${{ github.sha }}-${{ matrix.tagged-platform }}
-            ghcr.io/museofficial/muse:${{ github.sha }}-${{ matrix.tagged-platform }}
+            ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-${{ matrix.tagged-platform }}
           platforms: ${{ matrix.build-arch }}
           build-args: |
             COMMIT_HASH=${{ github.sha }}
@@ -92,13 +95,13 @@ jobs:
         id: get-tags-ghcr
         uses: Surgo/docker-smart-tag-action@v1
         with:
-          docker_image: codetheweb/muse
+          docker_image: ${{ env.REGISTRY_IMAGE }}
 
       - name: Combine tags (Docker Hub)
         run: docker buildx imagetools create $(echo '${{ steps.get-tags-dockerhub.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') 'codetheweb/muse:${{ github.sha }}-arm64' 'codetheweb/muse:${{ github.sha }}-amd64'
 
       - name: Combine tags (GitHub Container Registry)
-        run: docker buildx imagetools create $(echo '${{ steps.get-tags-ghcr.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') 'ghcr.io/museofficial/muse:${{ github.sha }}-arm64' 'ghcr.io/museofficial/muse:${{ github.sha }}-amd64'
+        run: docker buildx imagetools create $(echo '${{ steps.get-tags-ghcr.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-arm64' '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-amd64'
 
       - name: Update Docker Hub description
         uses: peter-evans/dockerhub-description@v2.4.3

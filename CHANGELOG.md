@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Muse has new maintainers! I ([@codetheweb](https://github.com/codetheweb)) am stepping aside as I haven't used Muse myself for a few years and haven't been able to spend as much time on Muse as I'd like. See [this issue](https://github.com/museofficial/muse/issues/1063) for details. Welcome @museofficial/maintainers!
+- This repository has been moved to museofficial/muse.
+- Docker images are now published to `ghcr.io/museofficial/muse`. **Please update your image source if you use Docker**.
+
 ## [2.9.1] - 2024-08-04
 
 ### Fixed
