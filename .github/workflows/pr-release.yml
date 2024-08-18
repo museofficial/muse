@@ -51,16 +51,15 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GH_PAT }}
 
-      - name: Read the sha.txt file
-        id: sha_reader
-        uses: juliangruber/read-file-action@v1.0.0
-        with:
-          path: /tmp/SHA/sha/sha.txt
+      - name: Read SHA
+        shell: bash
+        run: |
+          echo "SHA=$(cat /tmp/SHA/sha/sha.txt | tr -d '\n')" >> $GITHUB_ENV
 
       - name: Push images
         run: |
-          docker push ${{ env.REGISTRY_IMAGE }}:${{ steps.sha_reader.outputs.content }}-amd64
-          docker push ${{ env.REGISTRY_IMAGE }}:${{ steps.sha_reader.outputs.content }}-arm64
+          docker push ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-amd64
+          docker push ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-arm64
 
       - name: Download Docker metadata
         uses: actions/download-artifact@v4
@@ -93,7 +92,7 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(cat /tmp/metadata/metadata/metadata.json | jq -cr '.tags | map("-t " + .) | join(" ")') ${{ env.REGISTRY_IMAGE }}:${{ steps.sha_reader.outputs.content }}-amd64 ${{ env.REGISTRY_IMAGE }}:${{ steps.sha_reader.outputs.content }}-arm64
+          docker buildx imagetools create $(cat /tmp/metadata/metadata/metadata.json | jq -cr '.tags | map("-t " + .) | join(" ")') ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-amd64 ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-arm64
 
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v2
@@ -107,4 +106,4 @@ jobs:
 
             Images are available for x86_64 and ARM64.
 
-            > Latest commit: ${{ steps.sha_reader.outputs.content }}
+            > Latest commit: ${{ env.SHA }}
