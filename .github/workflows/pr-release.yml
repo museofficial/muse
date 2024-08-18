@@ -5,6 +5,9 @@ on:
     types:
       - completed
 
+env:
+  REGISTRY_IMAGE: ghcr.io/museofficial/muse
+
 jobs:
   release-and-comment:
     name: Release snapshot and comment in PR
@@ -76,7 +79,7 @@ jobs:
           message: |
             #### :package: :robot: A new release has been made for this pull request.
 
-            To play around with this PR, pull `ghcr.io/museofficial/muse:pr-${{ github.event.number }}` or `ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}`.
+            To play around with this PR, pull `${{ env.REGISTRY_IMAGE }}:pr-${{ github.event.number }}` or `${{ env.REGISTRY_IMAGE }}:${{ github.event.pull_request.head.sha }}`.
 
             Images are available for x86_64 and ARM64.
 
