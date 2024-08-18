@@ -11,12 +11,12 @@ jobs:
       matrix:
         runner-platform:
           - ubuntu-latest
-          - macos-14 # ARM
+          - namespace-profile-default-arm64
         include:
           - runner-platform: ubuntu-latest
             build-arch: linux/amd64
             tagged-platform: amd64
-          - runner-platform: macos-14
+          - runner-platform: namespace-profile-default-arm64
             build-arch: linux/arm64
             tagged-platform: arm64
     runs-on: ${{ matrix.runner-platform }}

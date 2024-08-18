@@ -1,60 +1,48 @@
-name: PR Workflow
-
-on: pull_request_target
+name: Release snapshot of PR
+on:
+  workflow_run:
+    workflows: ["Build snapshot of PR"]
+    types:
+      - completed
 
 jobs:
-  release-snapshot:
-    name: Release snapshot
-    strategy:
-      matrix:
-        runner-platform:
-          - ubuntu-latest
-          - macos-14 # ARM
-        include:
-          - runner-platform: ubuntu-latest
-            build-arch: linux/amd64
-            tagged-platform: amd64
-          - runner-platform: macos-14
-            build-arch: linux/arm64
-            tagged-platform: arm64
-    runs-on: ${{ matrix.runner-platform }}
+  release-and-comment:
+    name: Release snapshot and comment in PR
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
       attestations: write
       id-token: write
     steps:
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Download images
+        uses: actions/download-artifact@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          path: /tmp/images
+          pattern: image-*
+          merge-multiple: true
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.WORKFLOW_PAT }}
 
-      - name: Get current time
-        uses: josStorer/get-current-time@v2
-        id: current-time
+      - name: Load image
+        run: |
+          docker load --input /tmp/images/image-amd64.tar
+          docker load --input /tmp/images/image-arm64.tar
 
-      - name: Build and push
-        id: docker_build
-        uses: docker/build-push-action@v6
+      - name: Download PR number
+        uses: actions/download-artifact@v4
         with:
-          context: .
-          push: true
-          tags: ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}-${{ matrix.tagged-platform }}
-          platforms: ${{ matrix.build-arch }}
-          build-args: |
-            COMMIT_HASH=${{ github.sha }}
-            BUILD_DATE=${{ steps.current-time.outputs.time }}
+          path: /tmp/pull_request_number
+          pattern: pull_request_number
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.WORKFLOW_PAT }}
 
-  combine-and-comment:
-    name: Combine platform tags and leave comment
-    runs-on: ubuntu-latest
-    needs: release-snapshot
-    steps:
+      - name: Read the pull_request_number.txt file
+        id: pull_request_number_reader
+        uses: juliangruber/read-file-action@v1.0.0
+        with:
+          path: ./pull_request_number/pull_request_number.txt
+
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v1
 
@@ -71,13 +59,15 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Combine tags
+      - name: Push
+        working-directory: /tmp/digests
         run: docker buildx imagetools create -t 'ghcr.io/museofficial/muse:pr-${{ github.event.number }}' -t 'ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}' 'ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}-arm64' 'ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}-amd64'
 
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: "pr-release"
+          number: ${{ steps.pull_request_number_reader.outputs.content }}
           message: |
             #### :package: A new release has been made for this pull request.
 
