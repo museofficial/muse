@@ -83,11 +83,10 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GH_PAT }}
 
-      - name: Read the pull_request_number.txt file
-        id: pull_request_number_reader
-        uses: juliangruber/read-file-action@v1.0.0
-        with:
-          path: /tmp/pull_request_number/pull_request_number/pull_request_number.txt
+      - name: Read PR number
+        shell: bash
+        run: |
+          echo "PR_NUMBER=$(cat /tmp/pull_request_number/pull_request_number/pull_request_number.txt | tr -d '\n')" >> $GITHUB_ENV
 
       - name: Create manifest list and push
         run: |
@@ -97,12 +96,12 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: "pr-release"
-          number: ${{ steps.pull_request_number_reader.outputs.content }}
+          number: ${{ env.PR_NUMBER }}
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           message: |
             #### :package: :robot: A new release has been made for this pull request.
 
-            To play around with this PR, pull `${{ env.REGISTRY_IMAGE }}:pr-${{ steps.pull_request_number_reader.outputs.content }}`.
+            To play around with this PR, pull `${{ env.REGISTRY_IMAGE }}:pr-${{ env.PR_NUMBER }}`.
 
             Images are available for x86_64 and ARM64.
 
