@@ -34,8 +34,8 @@ jobs:
         shell: bash
         id: load-image
         run: |
-          echo "AMD64_IMAGE_SHA=$(docker image import --platform linux/amd64 /tmp/images/image-linux-amd64.tar)" >> $GITHUB_ENV"
-          echo "ARM64_IMAGE_SHA=$(docker image import --platform linux/arm64 /tmp/images/image-linux-arm64.tar)" >> $GITHUB_ENV"
+          echo "AMD64_IMAGE_SHA=$(docker image import --platform linux/amd64 /tmp/images/image-linux-amd64.tar)" >> $GITHUB_ENV
+          echo "ARM64_IMAGE_SHA=$(docker image import --platform linux/arm64 /tmp/images/image-linux-arm64.tar)" >> $GITHUB_ENV
 
       - name: Download Docker metadata
         uses: actions/download-artifact@v4
