@@ -34,8 +34,8 @@ jobs:
         shell: bash
         id: load-image
         run: |
-          docker image import --platform linux/amd64 /tmp/images/image-linux-amd64.tar
-          docker image import --platform linux/arm64 /tmp/images/image-linux-arm64.tar
+          echo "AMD64_IMAGE_SHA=$(docker image import --platform linux/amd64 /tmp/images/image-linux-amd64.tar)" >> $GITHUB_ENV"
+          echo "ARM64_IMAGE_SHA=$(docker image import --platform linux/arm64 /tmp/images/image-linux-arm64.tar)" >> $GITHUB_ENV"
 
       - name: Download Docker metadata
         uses: actions/download-artifact@v4
@@ -85,7 +85,8 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(cat /tmp/metadata/metadata/metadata.json | jq -cr '.tags | map("-t " + .) | join(" ")') \
-            $(echo ${{ steps.load-image.outputs }} | sed 's/sha256://g' | tr '\n' ' ')
+            $(echo ${{ steps.load-image.outputs.AMD64_IMAGE_SHA }} | sed 's/sha256://g' | tr '\n' ' ') \
+            $(echo ${{ steps.load-image.outputs.ARM64_IMAGE_SHA }} | sed 's/sha256://g' | tr '\n' ' ')
 
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v2
