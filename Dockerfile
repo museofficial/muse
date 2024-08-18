@@ -48,9 +48,9 @@ COPY . .
 ARG COMMIT_HASH=unknown
 ARG BUILD_DATE=unknown
 
-ENV DATA_DIR /data
-ENV NODE_ENV production
-ENV COMMIT_HASH $COMMIT_HASH
-ENV BUILD_DATE $BUILD_DATE
+ENV DATA_DIR=/data
+ENV NODE_ENV=production
+ENV COMMIT_HASH=$COMMIT_HASH
+ENV BUILD_DATE=$BUILD_DATE
 
 CMD ["tini", "--", "node", "--enable-source-maps", "dist/scripts/migrate-and-start.js"]
