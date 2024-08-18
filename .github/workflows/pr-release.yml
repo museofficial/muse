@@ -31,6 +31,8 @@ jobs:
         uses: docker/setup-buildx-action@v1
 
       - name: Load image
+        shell: bash
+        id: load-image
         run: |
           docker image import --platform linux/amd64 /tmp/images/image-linux-amd64.tar
           docker image import --platform linux/arm64 /tmp/images/image-linux-arm64.tar
@@ -83,7 +85,7 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(cat /tmp/metadata/metadata/metadata.json | jq -cr '.tags | map("-t " + .) | join(" ")') \
-            $(printf '${{ env.REGISTRY_IMAGE }}:%s ' *)
+            $(echo ${{ steps.load-image.outputs }} | sed 's/sha256://g' | tr '\n' ' ')
 
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v2
