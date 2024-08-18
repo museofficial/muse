@@ -16,10 +16,8 @@ jobs:
         include:
           - runner-platform: ubuntu-latest
             build-arch: linux/amd64
-            tagged-platform: amd64
           - runner-platform: namespace-profile-default-arm64
             build-arch: linux/arm64
-            tagged-platform: arm64
     runs-on: ${{ matrix.runner-platform }}
     steps:
       - name: Prepare
@@ -52,24 +50,41 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          outputs: type=docker,dest=/tmp/image.tar
-          tags: ${{ steps.meta.outputs.tags }}
+          outputs: type=docker,dest=/tmp/image-${{ env.PLATFORM_PAIR }}.tar
           platforms: ${{ matrix.build-arch }}
+          tags: |
+            ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-${{ env.PLATFORM_PAIR }}
           build-args: |
             COMMIT_HASH=${{ github.sha }}
             BUILD_DATE=${{ steps.current-time.outputs.time }}
 
-      - name: Export digest
+      - name: Export Docker meta output
+        shell: bash
+        run: echo $DOCKER_METADATA_OUTPUT_JSON > /tmp/metadata.json
+
+      - name: Upload metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: metadata
+          path: /tmp/metadata.json
+          overwrite: true
+
+      - name: Export SHA
         run: |
-          mkdir -p /tmp/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          echo "${{ github.sha }}" > /tmp/sha.txt
+
+      - name: Upload SHA
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha
+          path: /tmp/sha.txt
+          overwrite: true
 
       - name: Upload image
         uses: actions/upload-artifact@v4
         with:
           name: image-${{ env.PLATFORM_PAIR }}
-          path: /tmp/image.tar
+          path: /tmp/image-${{ env.PLATFORM_PAIR }}.tar
           if-no-files-found: error
           retention-days: 1
 
