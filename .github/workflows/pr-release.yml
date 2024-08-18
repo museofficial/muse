@@ -44,7 +44,7 @@ jobs:
         id: pull_request_number_reader
         uses: juliangruber/read-file-action@v1.0.0
         with:
-          path: ./pull_request_number/pull_request_number.txt
+          path: /tmp/pull_request_number/pull_request_number
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
