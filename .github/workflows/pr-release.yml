@@ -19,15 +19,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /tmp/images
-          pattern: image-*
+          pattern: image-linux-*
           merge-multiple: true
           run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.WORKFLOW_PAT }}
+          github-token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v1
 
       - name: Load image
         run: |
-          docker load --input /tmp/images/image-amd64.tar
-          docker load --input /tmp/images/image-arm64.tar
+          docker load --input /tmp/images/image-linux-amd64.tar
+          docker load --input /tmp/images/image-linux-arm64.tar
 
       - name: Download PR number
         uses: actions/download-artifact@v4
@@ -35,22 +38,13 @@ jobs:
           path: /tmp/pull_request_number
           pattern: pull_request_number
           run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.WORKFLOW_PAT }}
+          github-token: ${{ secrets.GH_PAT }}
 
       - name: Read the pull_request_number.txt file
         id: pull_request_number_reader
         uses: juliangruber/read-file-action@v1.0.0
         with:
           path: ./pull_request_number/pull_request_number.txt
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -59,9 +53,18 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Create manifest list and push
         working-directory: /tmp/digests
-        run: docker buildx imagetools create -t 'ghcr.io/museofficial/muse:pr-${{ github.event.number }}' -t 'ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}' 'ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}-arm64' 'ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}-amd64'
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
 
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v2
@@ -69,7 +72,7 @@ jobs:
           header: "pr-release"
           number: ${{ steps.pull_request_number_reader.outputs.content }}
           message: |
-            #### :package: A new release has been made for this pull request.
+            #### :package: :robot: A new release has been made for this pull request.
 
             To play around with this PR, pull `ghcr.io/museofficial/muse:pr-${{ github.event.number }}` or `ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}`.
 
