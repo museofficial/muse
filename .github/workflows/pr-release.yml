@@ -1,0 +1,78 @@
+name: Release snapshot of PR
+on:
+  workflow_run:
+    workflows: ["Build snapshot of PR"]
+    types:
+      - completed
+
+jobs:
+  release-and-comment:
+    name: Release snapshot and comment in PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+      - name: Download images
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/images
+          pattern: image-*
+          merge-multiple: true
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.WORKFLOW_PAT }}
+
+      - name: Load image
+        run: |
+          docker load --input /tmp/images/image-amd64.tar
+          docker load --input /tmp/images/image-arm64.tar
+
+      - name: Download PR number
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/pull_request_number
+          pattern: pull_request_number
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.WORKFLOW_PAT }}
+
+      - name: Read the pull_request_number.txt file
+        id: pull_request_number_reader
+        uses: juliangruber/read-file-action@v1.0.0
+        with:
+          path: ./pull_request_number/pull_request_number.txt
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push
+        working-directory: /tmp/digests
+        run: docker buildx imagetools create -t 'ghcr.io/museofficial/muse:pr-${{ github.event.number }}' -t 'ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}' 'ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}-arm64' 'ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}-amd64'
+
+      - name: Create comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: "pr-release"
+          number: ${{ steps.pull_request_number_reader.outputs.content }}
+          message: |
+            #### :package: A new release has been made for this pull request.
+
+            To play around with this PR, pull `ghcr.io/museofficial/muse:pr-${{ github.event.number }}` or `ghcr.io/museofficial/muse:${{ github.event.pull_request.head.sha }}`.
+
+            Images are available for x86_64 and ARM64.
+
+            > Latest commit: ${{ github.event.pull_request.head.sha }}
