@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.2] - 2024-08-18
+
 ### Changed
 
 - Muse has new maintainers! I ([@codetheweb](https://github.com/codetheweb)) am stepping aside as I haven't used Muse myself for a few years and haven't been able to spend as much time on Muse as I'd like. See [this issue](https://github.com/museofficial/muse/issues/1063) for details. Welcome @museofficial/maintainers!
@@ -329,7 +331,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/codetheweb/muse/compare/v2.9.1...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.9.2...HEAD
+[2.9.2]: https://github.com/codetheweb/muse/compare/v2.9.1...v2.9.2
 [2.9.1]: https://github.com/codetheweb/muse/compare/v2.9.0...v2.9.1
 [2.9.0]: https://github.com/codetheweb/muse/compare/v2.8.1...v2.9.0
 [2.8.1]: https://github.com/codetheweb/muse/compare/v2.8.0...v2.8.1
