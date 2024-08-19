@@ -126,16 +126,16 @@
   resolved "https://registry.npmjs.org/@discordjs/util/-/util-0.3.1.tgz"
   integrity sha512-HxXKYKg7vohx2/OupUN/4Sd02Ev3PBJ5q0gtjdcvXb0ErCva8jNHWfe/v5sU3UKjIB/uxOhc+TDOnhqffj9pRA==
 
-"@discordjs/voice@0.11.0":
-  version "0.11.0"
-  resolved "https://registry.npmjs.org/@discordjs/voice/-/voice-0.11.0.tgz"
-  integrity sha512-6+9cj1dxzBJm7WJ9qyG2XZZQ8rcLl6x2caW0C0OxuTtMLAaEDntpb6lqMTFiBg/rDc4Rd59g1w0gJmib33CuHw==
+"@discordjs/voice@^0.17.0":
+  version "0.17.0"
+  resolved "https://registry.npmjs.org/@discordjs/voice/-/voice-0.17.0.tgz"
+  integrity sha512-hArn9FF5ZYi1IkxdJEVnJi+OxlwLV0NJYWpKXsmNOojtGtAZHxmsELA+MZlu2KW1F/K1/nt7lFOfcMXNYweq9w==
   dependencies:
-    "@types/ws" "^8.5.3"
-    discord-api-types "^0.36.2"
-    prism-media "^1.3.4"
-    tslib "^2.4.0"
-    ws "^8.8.1"
+    "@types/ws" "^8.5.10"
+    discord-api-types "0.37.83"
+    prism-media "^1.3.5"
+    tslib "^2.6.2"
+    ws "^8.16.0"
 
 "@discordjs/ws@^0.8.3":
   version "0.8.3"
@@ -152,10 +152,10 @@
     tslib "^2.5.0"
     ws "^8.13.0"
 
-"@distube/ytdl-core@^4.13.7":
-  version "4.13.7"
-  resolved "https://registry.yarnpkg.com/@distube/ytdl-core/-/ytdl-core-4.13.7.tgz#4b48e009eb8df6ea21623c18999a4dd76d893fbf"
-  integrity sha512-xpovwZVPwQ0R4Mrwt/fhh1rqmBjiZ5qj30ck5kz+mQJ5XPzW9dUiTDz89qCxO3YvgbCAqaC5BNNnWiFC2uCV5Q==
+"@distube/ytdl-core@^4.14.4":
+  version "4.14.4"
+  resolved "https://registry.npmjs.org/@distube/ytdl-core/-/ytdl-core-4.14.4.tgz"
+  integrity sha512-dHb4GW3qATIjRsS6VIhm3Pop7FdUcDFhsnyQlsPeXW7UhTPuNS0BmraKiTpFbpp0Ky+rxBQjJBfPRFsM+dT1fg==
   dependencies:
     http-cookie-agent "^6.0.5"
     m3u8stream "^0.8.6"
