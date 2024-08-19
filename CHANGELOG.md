@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- bumped @discordjs/voice
+- bumped @distube/ytdl-core
+
 ## [2.9.2] - 2024-08-18
 
 ### Changed
