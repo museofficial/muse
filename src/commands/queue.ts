@@ -16,7 +16,7 @@ export default class implements Command {
       .setDescription('page of queue to show [default: 1]')
       .setRequired(false))
     .addIntegerOption(option => option
-      .setName('pageSize')
+      .setName('page-size')
       .setDescription('how many items to display per page [default: 10]')
       .setRequired(false));
 
@@ -32,7 +32,7 @@ export default class implements Command {
     const embed = buildQueueEmbed(
       player,
       interaction.options.getInteger('page') ?? 1,
-      interaction.options.getInteger('pageSize') ?? 10,
+      interaction.options.getInteger('page-size') ?? 10,
     );
 
     await interaction.reply({embeds: [embed]});
