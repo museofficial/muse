@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added 
+- An optional `pageSize` to `/queue` command 
+
 ## [2.9.3] - 2024-08-19
 
 ### Fixed

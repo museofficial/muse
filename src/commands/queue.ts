@@ -14,6 +14,10 @@ export default class implements Command {
     .addIntegerOption(option => option
       .setName('page')
       .setDescription('page of queue to show [default: 1]')
+      .setRequired(false))
+    .addIntegerOption(option => option
+      .setName('pageSize')
+      .setDescription('how many items to display per page [default: 10]')
       .setRequired(false));
 
   private readonly playerManager: PlayerManager;
@@ -25,7 +29,11 @@ export default class implements Command {
   public async execute(interaction: ChatInputCommandInteraction) {
     const player = this.playerManager.get(interaction.guild!.id);
 
-    const embed = buildQueueEmbed(player, interaction.options.getInteger('page') ?? 1);
+    const embed = buildQueueEmbed(
+      player,
+      interaction.options.getInteger('page') ?? 1,
+      interaction.options.getInteger('pageSize') ?? 10,
+    );
 
     await interaction.reply({embeds: [embed]});
   }
