@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added 
 - An optional `page-size` to `/queue` command 
+- Add `default-queue-page-size` setting
 
 ## [2.9.3] - 2024-08-19
 
