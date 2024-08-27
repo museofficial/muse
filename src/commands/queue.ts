@@ -20,7 +20,7 @@ export default class implements Command {
       .setName('page-size')
       .setDescription('how many items to display per page [default: 10, max: 50]')
       .setMinValue(1)
-      .setMaxValue(50)
+      .setMaxValue(30)
       .setRequired(false));
 
   private readonly playerManager: PlayerManager;

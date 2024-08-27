@@ -63,7 +63,7 @@ export default class implements Command {
         .setName('page-size')
         .setDescription('page size of the /queue command')
         .setMinValue(1)
-        .setMaxValue(50)
+        .setMaxValue(30)
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('get')
