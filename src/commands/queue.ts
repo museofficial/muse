@@ -18,7 +18,7 @@ export default class implements Command {
       .setRequired(false))
     .addIntegerOption(option => option
       .setName('page-size')
-      .setDescription('how many items to display per page [default: 10, max: 50]')
+      .setDescription('how many items to display per page [default: 10, max: 30]')
       .setMinValue(1)
       .setMaxValue(30)
       .setRequired(false));
