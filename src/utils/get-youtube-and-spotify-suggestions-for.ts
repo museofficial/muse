@@ -15,12 +15,11 @@ const filterDuplicates = <T extends {name: string}>(items: T[]) => {
 };
 
 const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: SpotifyWebApi, limit = 10): Promise<APIApplicationCommandOptionChoice[]> => {
-  
   // Only search Spotify if enabled
-  let spotifySuggestionPromise = spotify !== undefined 
-    ? spotify.search(query, ['album', 'track'], {limit})
-    : undefined;
-    
+  const spotifySuggestionPromise = spotify === undefined
+    ? undefined
+    : spotify.search(query, ['album', 'track'], {limit});
+
   const youtubeSuggestions = await getYouTubeSuggestionsFor(query);
 
   const totalYouTubeResults = youtubeSuggestions.length;
@@ -36,11 +35,9 @@ const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: Spoti
         value: suggestion,
       }),
       ));
-  
-  
+
   if (spotify !== undefined && spotifySuggestionPromise !== undefined) {
-    
-    const spotifyResponse = (await spotifySuggestionPromise).body
+    const spotifyResponse = (await spotifySuggestionPromise).body;
     const spotifyAlbums = filterDuplicates(spotifyResponse.albums?.items ?? []);
     const spotifyTracks = filterDuplicates(spotifyResponse.tracks?.items ?? []);
 
@@ -51,14 +48,13 @@ const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: Spoti
     const maxSpotifySuggestions = Math.floor(limit / 2);
     const numOfSpotifySuggestions = Math.min(maxSpotifySuggestions, totalSpotifyResults);
 
-
     const maxSpotifyAlbums = Math.floor(numOfSpotifySuggestions / 2);
     const numOfSpotifyAlbums = Math.min(maxSpotifyAlbums, spotifyResponse.albums?.items.length ?? 0);
     const maxSpotifyTracks = numOfSpotifySuggestions - numOfSpotifyAlbums;
 
-    // make room for spotify results
+    // Make room for spotify results
     const maxYouTubeSuggestions = limit - numOfSpotifySuggestions;
-    suggestions = suggestions.slice(0, maxYouTubeSuggestions)
+    suggestions = suggestions.slice(0, maxYouTubeSuggestions);
 
     suggestions.push(
       ...spotifyAlbums.slice(0, maxSpotifyAlbums).map(album => ({
@@ -66,14 +62,13 @@ const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: Spoti
         value: `spotify:album:${album.id}`,
       })),
     );
-  
+
     suggestions.push(
       ...spotifyTracks.slice(0, maxSpotifyTracks).map(track => ({
         name: `Spotify: 🎵 ${track.name}${track.artists.length > 0 ? ` - ${track.artists[0].name}` : ''}`,
         value: `spotify:track:${track.id}`,
       })),
     );
-
   }
 
   return suggestions;

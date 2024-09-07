@@ -18,7 +18,7 @@ export default class {
   }
 
   async getSongs(query: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], string]> {
-    let newSongs: SongMetadata[] = [];
+    const newSongs: SongMetadata[] = [];
     let extraMsg = '';
 
     // Test if it's a complete URL
@@ -49,7 +49,7 @@ export default class {
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
         if (this.spotifyAPI === undefined) {
-          throw new Error('Spotify is not enabled!')
+          throw new Error('Spotify is not enabled!');
         }
 
         const [convertedSongs, nSongsNotFound, totalSongs] = await this.spotifySource(query, playlistLimit, shouldSplitChapters);
@@ -81,7 +81,7 @@ export default class {
         }
       }
     } catch (err: any) {
-      if (err = 'spotify not enabled') {
+      if (err instanceof Error && err.message === 'Spotify is not enabled!') {
         throw err;
       }
 
@@ -112,7 +112,7 @@ export default class {
 
   private async spotifySource(url: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], number, number]> {
     if (this.spotifyAPI === undefined) {
-      return [[], 0, 0]; 
+      return [[], 0, 0];
     }
 
     const parsed = spotifyURI.parse(url);
