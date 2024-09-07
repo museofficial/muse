@@ -57,11 +57,20 @@ container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
 
+// Config values
+container.bind(TYPES.Config).toConstantValue(new ConfigProvider());
+
 // Services
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();
 container.bind<AddQueryToQueue>(TYPES.Services.AddQueryToQueue).to(AddQueryToQueue).inSingletonScope();
 container.bind<YoutubeAPI>(TYPES.Services.YoutubeAPI).to(YoutubeAPI).inSingletonScope();
-container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingletonScope();
+
+// Only instanciate spotify dependencies if the Spotify client ID and secret are set
+const config = container.get<ConfigProvider>(TYPES.Config);
+if (config.SPOTIFY_CLIENT_ID !== '' && config.SPOTIFY_CLIENT_SECRET !== '') {
+  container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingletonScope();
+  container.bind(TYPES.ThirdParty).to(ThirdParty);
+}
 
 // Commands
 [
@@ -91,12 +100,7 @@ container.bind<SpotifyAPI>(TYPES.Services.SpotifyAPI).to(SpotifyAPI).inSingleton
   container.bind<Command>(TYPES.Command).to(command).inSingletonScope();
 });
 
-// Config values
-container.bind(TYPES.Config).toConstantValue(new ConfigProvider());
-
 // Static libraries
-container.bind(TYPES.ThirdParty).to(ThirdParty);
-
 container.bind(TYPES.FileCache).to(FileCacheProvider);
 container.bind(TYPES.KeyValueCache).to(KeyValueCacheProvider);
 
