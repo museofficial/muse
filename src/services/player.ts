@@ -20,6 +20,7 @@ import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import Config from './config.js';
 
 export enum MediaSource {
   Youtube,
@@ -82,9 +83,13 @@ export default class {
   private readonly fileCache: FileCacheProvider;
   private disconnectTimer: NodeJS.Timeout | null = null;
 
-  constructor(fileCache: FileCacheProvider, guildId: string) {
+  private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
+  private readonly config: Config;
+
+  constructor(fileCache: FileCacheProvider, guildId: string, config: Config) {
     this.fileCache = fileCache;
     this.guildId = guildId;
+    this.config = config;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -96,6 +101,7 @@ export default class {
     this.voiceConnection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
+      selfDeaf: false,
       adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
 
@@ -115,6 +121,9 @@ export default class {
       /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 
       this.currentChannel = channel;
+      if (newState.status === VoiceConnectionStatus.Ready) {
+        this.registerVoiceActivityListener();
+      }
     });
   }
 
@@ -299,6 +308,62 @@ export default class {
     } catch (error: unknown) {
       this.queuePosition--;
       throw error;
+    }
+  }
+
+  registerVoiceActivityListener(): void {
+    if (!this.config.TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK || !this.voiceConnection) {
+      return;
+    }
+
+    this.voiceConnection.receiver.speaking.on('start', (userId: string) => {
+      if (!this.currentChannel) {
+        return;
+      }
+
+      const member = this.currentChannel.members.get(userId);
+      const channelId = this.currentChannel?.id;
+
+      if (member) {
+        if (!this.channelToSpeakingUsers.has(channelId)) {
+          this.channelToSpeakingUsers.set(channelId, new Set());
+        }
+
+        this.channelToSpeakingUsers.get(channelId)?.add(member.id);
+      }
+
+      this.suppressVoiceWhenPeopleAreSpeaking();
+    });
+
+    this.voiceConnection.receiver.speaking.on('end', (userId: string) => {
+      if (!this.currentChannel) {
+        return;
+      }
+
+      const member = this.currentChannel.members.get(userId);
+      const channelId = this.currentChannel.id;
+      if (member) {
+        if (!this.channelToSpeakingUsers.has(channelId)) {
+          this.channelToSpeakingUsers.set(channelId, new Set());
+        }
+
+        this.channelToSpeakingUsers.get(channelId)?.delete(member.id);
+      }
+
+      this.suppressVoiceWhenPeopleAreSpeaking();
+    });
+  }
+
+  suppressVoiceWhenPeopleAreSpeaking(): void {
+    if (!this.currentChannel) {
+      return;
+    }
+
+    const speakingUsers = this.channelToSpeakingUsers.get(this.currentChannel.id);
+    if (speakingUsers && speakingUsers.size > 0) {
+      this.setVolume(this.config.TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK_TARGET);
+    } else {
+      this.setVolume(this.defaultVolume);
     }
   }
 

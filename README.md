@@ -141,3 +141,10 @@ In the default state, Muse has the status "Online" and the text "Listening to Mu
 ### Bot-wide commands
 
 If you have Muse running in a lot of guilds (10+) you may want to switch to registering commands bot-wide rather than for each guild. (The downside to this is that command updates can take up to an hour to propagate.) To do this, set the environment variable `REGISTER_COMMANDS_ON_BOT` to `true`.
+
+### Automatically turn down volume when people speak
+
+You can let the bot automatically turn down the volume when people are speaking
+in the channel though environment variable:
+- `TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK=true`
+- `TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK_TARGET=70` (optional, default is 70%)
