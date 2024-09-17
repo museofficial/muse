@@ -41,7 +41,7 @@
     "@types/node": "^17.0.0",
     "@types/node-emoji": "^1.8.1",
     "@types/spotify-web-api-node": "^5.0.2",
-    "@types/validator": "^13.1.4",
+    "@types/validator": "^13.12.2",
     "@types/ws": "8.5.4",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
