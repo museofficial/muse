@@ -126,9 +126,9 @@
   resolved "https://registry.npmjs.org/@discordjs/util/-/util-0.3.1.tgz"
   integrity sha512-HxXKYKg7vohx2/OupUN/4Sd02Ev3PBJ5q0gtjdcvXb0ErCva8jNHWfe/v5sU3UKjIB/uxOhc+TDOnhqffj9pRA==
 
-"@discordjs/voice@^0.17.0":
+"@discordjs/voice@0.17.0":
   version "0.17.0"
-  resolved "https://registry.npmjs.org/@discordjs/voice/-/voice-0.17.0.tgz"
+  resolved "https://registry.yarnpkg.com/@discordjs/voice/-/voice-0.17.0.tgz#37be97c20dc4144c4c4d27d8ad02f29373da7ea6"
   integrity sha512-hArn9FF5ZYi1IkxdJEVnJi+OxlwLV0NJYWpKXsmNOojtGtAZHxmsELA+MZlu2KW1F/K1/nt7lFOfcMXNYweq9w==
   dependencies:
     "@types/ws" "^8.5.10"
@@ -363,15 +363,46 @@
   dependencies:
     "@prisma/engines-version" "4.16.0-66.b20ead4d3ab9e78ac112966e242ded703f4a052c"
 
+"@prisma/debug@5.21.0":
+  version "5.21.0"
+  resolved "https://registry.yarnpkg.com/@prisma/debug/-/debug-5.21.0.tgz#6e53df6963b31bf5c4dd5d996b85a51e9106c796"
+  integrity sha512-8gX68E36OKImh7LBz5fFIuTRLZgM1ObnDA8ukhC1kZvTK7k7Unti6pJe3ZiudzuFAxae06PV1rhq1u9DZbXVnQ==
+
 "@prisma/engines-version@4.16.0-66.b20ead4d3ab9e78ac112966e242ded703f4a052c":
   version "4.16.0-66.b20ead4d3ab9e78ac112966e242ded703f4a052c"
   resolved "https://registry.npmjs.org/@prisma/engines-version/-/engines-version-4.16.0-66.b20ead4d3ab9e78ac112966e242ded703f4a052c.tgz"
   integrity sha512-tMWAF/qF00fbUH1HB4Yjmz6bjh7fzkb7Y3NRoUfMlHu6V+O45MGvqwYxqwBjn1BIUXkl3r04W351D4qdJjrgvA==
 
-"@prisma/engines@4.16.0":
-  version "4.16.0"
-  resolved "https://registry.npmjs.org/@prisma/engines/-/engines-4.16.0.tgz"
-  integrity sha512-M6XoMRXnqL0rqZGQS8ZpNiHYG4G1fKBdoqW/oBtHnr1in5UYgerZqal3CXchmd6OBD/770PE9dtjQuqcilZJUA==
+"@prisma/engines-version@5.21.0-36.08713a93b99d58f31485621c634b04983ae01d95":
+  version "5.21.0-36.08713a93b99d58f31485621c634b04983ae01d95"
+  resolved "https://registry.yarnpkg.com/@prisma/engines-version/-/engines-version-5.21.0-36.08713a93b99d58f31485621c634b04983ae01d95.tgz#3b8a6b2c5cb137c04474f5b19e14e359493ee6e1"
+  integrity sha512-hfq7c8MnkhcZTY0bGXG6bV5Cr7OsnHLERNy4xkZy6rbpWnhtfjuj3yUVM4u1GKXd6uWmFbg0+HDw8KXTgTVepQ==
+
+"@prisma/engines@5.21.0":
+  version "5.21.0"
+  resolved "https://registry.yarnpkg.com/@prisma/engines/-/engines-5.21.0.tgz#aacfda471a8c8d22e214e3f0ede334a9634ca383"
+  integrity sha512-IBewQJiDnFiz39pl8kEIzmzV4RAoBPBD2DoLDntMMXObg1an90Dp+xeb1mmwrTgRDE3elu/LYxyVPEkKw9LZ7A==
+  dependencies:
+    "@prisma/debug" "5.21.0"
+    "@prisma/engines-version" "5.21.0-36.08713a93b99d58f31485621c634b04983ae01d95"
+    "@prisma/fetch-engine" "5.21.0"
+    "@prisma/get-platform" "5.21.0"
+
+"@prisma/fetch-engine@5.21.0":
+  version "5.21.0"
+  resolved "https://registry.yarnpkg.com/@prisma/fetch-engine/-/fetch-engine-5.21.0.tgz#89654b782b35d14e39e2dc8e8621f249909e5add"
+  integrity sha512-nXKJrsxVKng6yjJzl7vBjrr3S34cOmWQ9SiGTo9xidVTmVSgg5GCTwDL4r2be8DE3RntqK5BW2LWQ1gF80eINw==
+  dependencies:
+    "@prisma/debug" "5.21.0"
+    "@prisma/engines-version" "5.21.0-36.08713a93b99d58f31485621c634b04983ae01d95"
+    "@prisma/get-platform" "5.21.0"
+
+"@prisma/get-platform@5.21.0":
+  version "5.21.0"
+  resolved "https://registry.yarnpkg.com/@prisma/get-platform/-/get-platform-5.21.0.tgz#4241418a6c86ffd265748186e0774eac5eff2bf7"
+  integrity sha512-NAyaAcHJhs0IysGYJtM6Fm3ccEs/LkCZqz/8riVkkJswFrRtFV93jAUIVKWO/wj1Ca1gO7HaMd/tr6e/9Xmvww==
+  dependencies:
+    "@prisma/debug" "5.21.0"
 
 "@release-it/keep-a-changelog@^2.3.0":
   version "2.5.0"
@@ -573,7 +604,7 @@
   resolved "https://registry.npmjs.org/@types/validator/-/validator-13.7.2.tgz"
   integrity sha512-KFcchQ3h0OPQgFirBRPZr5F/sVjxZsOrQHedj3zi8AH3Zv/hOLx2OLR4hxR5HcfoU+33n69ZuOfzthKVdMoTiw==
 
-"@types/ws@8.5.4", "@types/ws@^8.5.3", "@types/ws@^8.5.4":
+"@types/ws@8.5.4", "@types/ws@^8.5.10", "@types/ws@^8.5.4":
   version "8.5.4"
   resolved "https://registry.npmjs.org/@types/ws/-/ws-8.5.4.tgz"
   integrity sha512-zdQDHKUgcX/zBc4GrwsE/7dVdAD8JR4EuiAXiiUhhfyIJXXb2+PrGshFyeXWQPMmmZ2XxgaqclgpIC7eTXc1mg==
@@ -1452,7 +1483,12 @@ discord-api-types@0.32.1:
   resolved "https://registry.npmjs.org/discord-api-types/-/discord-api-types-0.32.1.tgz"
   integrity sha512-/ewl0CPYT5xjOC+SJ7wADJKjtpZfiiUaYXOP/Ns54lnBcv4Xqa4iKSqRF/w1fjiUvWTYN9W8UuOiyCHtmu5fJw==
 
-discord-api-types@^0.36.2, discord-api-types@^0.36.3:
+discord-api-types@0.37.83:
+  version "0.37.83"
+  resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.37.83.tgz#a22a799729ceded8176ea747157837ddf4708b1f"
+  integrity sha512-urGGYeWtWNYMKnYlZnOnDHm8fVRffQs3U0SpE8RHeiuLKb/u92APS8HoQnPTFbnXmY1vVnXjXO4dOxcAn3J+DA==
+
+discord-api-types@^0.36.3:
   version "0.36.3"
   resolved "https://registry.npmjs.org/discord-api-types/-/discord-api-types-0.36.3.tgz"
   integrity sha512-bz/NDyG0KBo/tY14vSkrwQ/n3HKPf87a0WFW/1M9+tXYK+vp5Z5EksawfCWo2zkAc6o7CClc0eff1Pjrqznlwg==
@@ -2273,7 +2309,7 @@ fs.realpath@^1.0.0:
   resolved "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz"
   integrity sha1-FQStJSMVjKpA20onh8sBQRmU6k8=
 
-fsevents@~2.3.2:
+fsevents@2.3.3, fsevents@~2.3.2:
   version "2.3.3"
   resolved "https://registry.yarnpkg.com/fsevents/-/fsevents-2.3.3.tgz#cac6407785d03675a2a5e1a5305c697b347d90d6"
   integrity sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==
@@ -3988,17 +4024,19 @@ prepend-http@^2.0.0:
   resolved "https://registry.npmjs.org/prepend-http/-/prepend-http-2.0.0.tgz"
   integrity sha1-6SQ0v6XqjBn0HN/UAddBo8gZ2Jc=
 
-prism-media@^1.3.4:
-  version "1.3.4"
-  resolved "https://registry.npmjs.org/prism-media/-/prism-media-1.3.4.tgz"
-  integrity sha512-eW7LXORkTCQznZs+eqe9VjGOrLBxcBPXgNyHXMTSRVhphvd/RrxgIR7WaWt4fkLuhshcdT5KHL88LAfcvS3f5g==
+prism-media@^1.3.5:
+  version "1.3.5"
+  resolved "https://registry.yarnpkg.com/prism-media/-/prism-media-1.3.5.tgz#ea1533229f304a1b774b158de40e98c765db0aa6"
+  integrity sha512-IQdl0Q01m4LrkN1EGIE9lphov5Hy7WWlH6ulf5QdGePLlPas9p2mhgddTEHrlaXYjjFToM1/rWuwF37VF4taaA==
 
-prisma@4.16.0:
-  version "4.16.0"
-  resolved "https://registry.npmjs.org/prisma/-/prisma-4.16.0.tgz"
-  integrity sha512-kSCwbTm3LCephyGfZMJYqBXpPJXdJStg5xwfzeFmR5C05zfkOURK9pQpJF6uUQvFWm3lI9ZMSNkObmFkAPnB+g==
+prisma@5.21.0:
+  version "5.21.0"
+  resolved "https://registry.yarnpkg.com/prisma/-/prisma-5.21.0.tgz#4f3d070e873f8f2a584eb060b27a9ffa815b03b7"
+  integrity sha512-Pc/xn2eZPiANbFFGp+YoCQSKQ5t9W/dBzQ+3HrcfrOWZAzt7n77VsVCPa9WdfTjim4CuodkCFyiP2+uGY5/gqw==
   dependencies:
-    "@prisma/engines" "4.16.0"
+    "@prisma/engines" "5.21.0"
+  optionalDependencies:
+    fsevents "2.3.3"
 
 progress@^2.0.0:
   version "2.0.3"
@@ -4895,6 +4933,11 @@ tslib@^2.5.0:
   resolved "https://registry.npmjs.org/tslib/-/tslib-2.6.0.tgz"
   integrity sha512-7At1WUettjcSRHXCyYtTselblcHl9PJFFVKiCAy/bY97+BPZXSQ2wbq0P9s8tK2G7dFQfNnlJnPAiArVBVBsfA==
 
+tslib@^2.6.2:
+  version "2.8.0"
+  resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.8.0.tgz#d124c86c3c05a40a91e6fdea4021bd31d377971b"
+  integrity sha512-jWVzBLplnCmoaTr13V9dYbiQ99wvZRd0vNWaDRg+aVYRcjDF3nDksxFDE/+fkXnKhpnUUkmx5pK/v8mCtLVqZA==
+
 tsutils@^3.21.0:
   version "3.21.0"
   resolved "https://registry.npmjs.org/tsutils/-/tsutils-3.21.0.tgz"
@@ -5266,10 +5309,10 @@ ws@^8.13.0:
   resolved "https://registry.npmjs.org/ws/-/ws-8.13.0.tgz"
   integrity sha512-x9vcZYTrFPC7aSIbj7sRCYo7L/Xb8Iy+pW0ng0wt2vCJv7M9HOMy0UoN3rr+IFC7hb7vXoqS+P9ktyLLLhO+LA==
 
-ws@^8.8.1:
-  version "8.8.1"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.8.1.tgz"
-  integrity sha512-bGy2JzvzkPowEJV++hF07hAD6niYSr0JzBNo/J29WsB57A2r7Wlc1UFcTR9IzrPvuNVO4B8LGqF8qcpsVOhJCA==
+ws@^8.16.0:
+  version "8.18.0"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-8.18.0.tgz#0d7505a6eafe2b0e712d232b42279f53bc289bbc"
+  integrity sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==
 
 xbytes@^1.7.0:
   version "1.7.0"
