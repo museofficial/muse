@@ -61,6 +61,8 @@ docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='
 
 This starts Muse and creates a data directory in your current directory.
 
+You can also store your tokens in an environment file and make it available to your container. By default, the container will look for a `/config` environment file. You can customize this path with the `ENV_FILE` environment variable to use with, for example, [docker secrets](https://docs.docker.com/engine/swarm/secrets/). 
+
 **Docker Compose**:
 
 ```yaml
