@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.4] - 2024-08-28
+
+### Added 
+- An optional `page-size` to `/queue` command 
+- Add `default-queue-page-size` setting
+
 ## [2.9.3] - 2024-08-19
 
 ### Fixed
@@ -338,7 +344,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/codetheweb/muse/compare/v2.9.3...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.9.4...HEAD
+[2.9.4]: https://github.com/codetheweb/muse/compare/v2.9.3...v2.9.4
 [2.9.3]: https://github.com/codetheweb/muse/compare/v2.9.2...v2.9.3
 [2.9.2]: https://github.com/codetheweb/muse/compare/v2.9.1...v2.9.2
 [2.9.1]: https://github.com/codetheweb/muse/compare/v2.9.0...v2.9.1
