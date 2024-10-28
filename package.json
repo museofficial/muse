@@ -114,7 +114,7 @@
     "ora": "^6.1.0",
     "p-event": "^5.0.1",
     "p-limit": "^4.0.0",
-    "p-queue": "^7.2.0",
+    "p-queue": "^8.0.1",
     "p-retry": "4.6.2",
     "pagination.djs": "^4.0.10",
     "parse-duration": "1.0.2",
