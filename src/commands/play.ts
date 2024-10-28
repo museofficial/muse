@@ -1,6 +1,6 @@
 import {AutocompleteInteraction, ChatInputCommandInteraction} from 'discord.js';
 import {URL} from 'url';
-import {SlashCommandBuilder} from '@discordjs/builders';
+import {SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder} from '@discordjs/builders';
 import {inject, injectable, optional} from 'inversify';
 import Spotify from 'spotify-web-api-node';
 import Command from './index.js';
@@ -13,26 +13,7 @@ import AddQueryToQueue from '../services/add-query-to-queue.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
-    .setName('play')
-    .setDescription('play a song')
-    .addStringOption(option => option
-      .setName('query')
-      .setDescription('YouTube URL, Spotify URL, or search query')
-      .setAutocomplete(true)
-      .setRequired(true))
-    .addBooleanOption(option => option
-      .setName('immediate')
-      .setDescription('add track to the front of the queue'))
-    .addBooleanOption(option => option
-      .setName('shuffle')
-      .setDescription('shuffle the input if you\'re adding multiple tracks'))
-    .addBooleanOption(option => option
-      .setName('split')
-      .setDescription('if a track has chapters, split it'))
-    .addBooleanOption(option => option
-      .setName('skip')
-      .setDescription('skip the currently playing track'));
+  public readonly slashCommand: Partial<SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder> & Pick<SlashCommandBuilder, 'toJSON'>;
 
   public requiresVC = true;
 
@@ -44,6 +25,31 @@ export default class implements Command {
     this.spotify = thirdParty?.spotify;
     this.cache = cache;
     this.addQueryToQueue = addQueryToQueue;
+
+    const queryDescription = thirdParty === undefined
+      ? 'YouTube URL or search query'
+      : 'YouTube URL, Spotify URL, or search query';
+
+    this.slashCommand = new SlashCommandBuilder()
+      .setName('play')
+      .setDescription('play a song')
+      .addStringOption(option => option
+        .setName('query')
+        .setDescription(queryDescription)
+        .setAutocomplete(true)
+        .setRequired(true))
+      .addBooleanOption(option => option
+        .setName('immediate')
+        .setDescription('add track to the front of the queue'))
+      .addBooleanOption(option => option
+        .setName('shuffle')
+        .setDescription('shuffle the input if you\'re adding multiple tracks'))
+      .addBooleanOption(option => option
+        .setName('split')
+        .setDescription('if a track has chapters, split it'))
+      .addBooleanOption(option => option
+        .setName('skip')
+        .setDescription('skip the currently playing track'));
   }
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
