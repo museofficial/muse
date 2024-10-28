@@ -1,15 +1,15 @@
 {
   "name": "muse",
-  "version": "2.8.1",
+  "version": "2.9.4",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
-  "repository": "git@github.com:codetheweb/muse.git",
+  "repository": "git@github.com:museofficial/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
   "license": "MIT",
   "private": true,
   "types": "dts/types",
   "type": "module",
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.17.0"
   },
   "files": [
     "src"
@@ -88,7 +88,9 @@
     "@discordjs/builders": "1.1.0",
     "@discordjs/opus": "^0.8.0",
     "@discordjs/rest": "1.0.1",
-    "@discordjs/voice": "0.11.0",
+    "@discordjs/voice": "0.17.0",
+    "@distube/ytdl-core": "^4.14.4",
+    "@distube/ytsr": "^2.0.0",
     "@prisma/client": "4.16.0",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
@@ -126,7 +128,6 @@
     "sync-fetch": "^0.3.1",
     "tsx": "3.8.2",
     "xbytes": "^1.7.0",
-    "ytdl-core": "^4.11.5",
     "ytsr": "^3.8.4"
   },
   "resolutions": {

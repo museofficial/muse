@@ -1,8 +1,10 @@
 <p align="center">
-  <img width="250" height="250" src="https://raw.githubusercontent.com/codetheweb/muse/master/.github/logo.png">
+  <img width="250" height="250" src="https://raw.githubusercontent.com/museofficial/muse/master/.github/logo.png">
 </p>
 
-🚨: v1.0.0 was a breaking change. Please take a look at the [release notes](https://github.com/codetheweb/muse/releases/tag/v1.0.0) for upgrade instructions
+> [!WARNING]
+> I ([@codetheweb](https://github.com/codetheweb)) am no longer the primary maintainer of Muse. **If you use the Docker image, update your image source to `ghcr.io/museofficial/muse`.** We are currently publishing new releases to both `ghcr.io/museofficial/muse` and `codetheweb/muse`, but this may change in the future.
+> Thank you to all the people who stepped up to help maintain Muse!
 
 ------
 
@@ -42,7 +44,7 @@ A 64-bit OS is required to run Muse.
 
 The `master` branch acts as the developing / bleeding edge branch and is not guaranteed to be stable.
 
-When running a production instance, I recommend that you use the [latest release](https://github.com/codetheweb/muse/releases/).
+When running a production instance, I recommend that you use the [latest release](https://github.com/museofficial/muse/releases/).
 
 
 ### 🐳 Docker
@@ -56,7 +58,7 @@ There are a variety of image tags available:
 (Replace empty config strings with correct values.)
 
 ```bash
-docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' codetheweb/muse:latest
+docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' ghcr.io/museofficial/muse:latest
 ```
 
 This starts Muse and creates a data directory in your current directory.
@@ -70,7 +72,7 @@ version: '3.4'
 
 services:
   muse:
-    image: codetheweb/muse:latest
+    image: ghcr.io/museofficial/muse:latest
     restart: always
     volumes:
       - ./muse:/data
@@ -84,16 +86,16 @@ services:
 ### Node.js
 
 **Prerequisites**:
-* Node.js (16.x is recommended because it's the current LTS version)
+* Node.js (18.17.0 or later is required and latest 18.x.x LTS is recommended)
 * ffmpeg (4.1 or later)
 
-1. `git clone https://github.com/codetheweb/muse.git && cd muse`
+1. `git clone https://github.com/museofficial/muse.git && cd muse`
 2. Copy `.env.example` to `.env` and populate with values
 3. I recommend checking out a tagged release with `git checkout v[latest release]`
 4. `yarn install` (or `npm i`)
 5. `yarn start` (or `npm run start`)
 
-**Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/codetheweb/muse/issues/345) for details.
+**Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/museofficial/muse/issues/345) for details.
 
 ## ⚙️ Additional configuration (advanced)
 

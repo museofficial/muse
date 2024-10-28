@@ -38,12 +38,14 @@ export default class AddQueryToQueue {
     addToFrontOfQueue,
     shuffleAdditions,
     shouldSplitChapters,
+    skipCurrentTrack,
     interaction,
   }: {
     query: string;
     addToFrontOfQueue: boolean;
     shuffleAdditions: boolean;
     shouldSplitChapters: boolean;
+    skipCurrentTrack: boolean;
     interaction: ChatInputCommandInteraction;
   }): Promise<void> {
     const guildId = interaction.guild!.id;
@@ -169,6 +171,14 @@ export default class AddQueryToQueue {
       await player.play();
     }
 
+    if (skipCurrentTrack) {
+      try {
+        await player.forward(1);
+      } catch (_: unknown) {
+        throw new Error('no song to skip to');
+      }
+    }
+
     // Build response message
     if (statusMsg !== '') {
       if (extraMsg === '') {
@@ -183,9 +193,9 @@ export default class AddQueryToQueue {
     }
 
     if (newSongs.length === 1) {
-      await interaction.editReply(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${extraMsg}`);
+      await interaction.editReply(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`);
     } else {
-      await interaction.editReply(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${extraMsg}`);
+      await interaction.editReply(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`);
     }
   }
 

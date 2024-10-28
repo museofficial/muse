@@ -6,7 +6,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.4] - 2024-08-28
+
+### Added 
+- An optional `page-size` to `/queue` command 
+- Add `default-queue-page-size` setting
+
+## [2.9.3] - 2024-08-19
+
 ### Fixed
+
+- bumped @discordjs/voice
+- bumped @distube/ytdl-core
+
+## [2.9.2] - 2024-08-18
+
+### Changed
+
+- Muse has new maintainers! I ([@codetheweb](https://github.com/codetheweb)) am stepping aside as I haven't used Muse myself for a few years and haven't been able to spend as much time on Muse as I'd like. See [this issue](https://github.com/museofficial/muse/issues/1063) for details. Welcome @museofficial/maintainers!
+- This repository has been moved to museofficial/muse.
+- Docker images are now published to `ghcr.io/museofficial/muse`. **Please update your image source if you use Docker**.
+
+## [2.9.1] - 2024-08-04
+
+### Fixed
+
+- bumped ytdl-core
+
+## [2.9.0] - 2024-07-17
+
+### Added
+-  A `skip` option to the `/play` command
+
+### Fixed
+- Fixed playback issue
 - Audioplayer not stopping properly
 
 ## [2.8.1] - 2024-04-28
@@ -311,7 +344,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/codetheweb/muse/compare/v2.8.1...HEAD
+[unreleased]: https://github.com/codetheweb/muse/compare/v2.9.4...HEAD
+[2.9.4]: https://github.com/codetheweb/muse/compare/v2.9.3...v2.9.4
+[2.9.3]: https://github.com/codetheweb/muse/compare/v2.9.2...v2.9.3
+[2.9.2]: https://github.com/codetheweb/muse/compare/v2.9.1...v2.9.2
+[2.9.1]: https://github.com/codetheweb/muse/compare/v2.9.0...v2.9.1
+[2.9.0]: https://github.com/codetheweb/muse/compare/v2.8.1...v2.9.0
 [2.8.1]: https://github.com/codetheweb/muse/compare/v2.8.0...v2.8.1
 [2.8.0]: https://github.com/codetheweb/muse/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/codetheweb/muse/compare/v2.7.0...v2.7.1

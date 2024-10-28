@@ -1,0 +1,108 @@
+name: Release snapshot of PR
+on:
+  workflow_run:
+    workflows: ["Build snapshot of PR"]
+    types:
+      - completed
+
+env:
+  REGISTRY_IMAGE: ghcr.io/museofficial/muse
+
+jobs:
+  release-and-comment:
+    name: Release snapshot and comment in PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Download images
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/images
+          pattern: image-linux-*
+          merge-multiple: true
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GH_PAT }}
+
+      - name: Load image
+        shell: bash
+        run: |
+          docker load -i /tmp/images/image-linux-amd64.tar
+          docker load -i /tmp/images/image-linux-arm64.tar
+
+      - name: Download SHA
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/SHA
+          pattern: sha
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GH_PAT }}
+
+      - name: Read SHA
+        shell: bash
+        run: |
+          echo "SHA=$(cat /tmp/SHA/sha/sha.txt | tr -d '\n')" >> $GITHUB_ENV
+
+      - name: Push images
+        run: |
+          docker push ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-amd64
+          docker push ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-arm64
+
+      - name: Download Docker metadata
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/metadata
+          pattern: metadata
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GH_PAT }}
+
+      - name: Read the metadata.json file
+        id: metadata_reader
+        uses: juliangruber/read-file-action@v1.0.0
+        with:
+          path: /tmp/metadata/metadata/metadata.json
+
+      - name: Download PR number
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/pull_request_number
+          pattern: pull_request_number
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GH_PAT }}
+
+      - name: Read PR number
+        shell: bash
+        run: |
+          echo "PR_NUMBER=$(cat /tmp/pull_request_number/pull_request_number/pull_request_number.txt | tr -d '\n')" >> $GITHUB_ENV
+
+      - name: Create manifest list and push
+        run: |
+          docker buildx imagetools create $(cat /tmp/metadata/metadata/metadata.json | jq -cr '.tags | map("-t " + .) | join(" ")') ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-amd64 ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-arm64
+
+      - name: Create comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: "pr-release"
+          number: ${{ env.PR_NUMBER }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          message: |
+            #### :package: :robot: A new release has been made for this pull request.
+
+            To play around with this PR, pull `${{ env.REGISTRY_IMAGE }}:pr-${{ env.PR_NUMBER }}`.
+
+            Images are available for x86_64 and ARM64.
+
+            > Latest commit: ${{ env.SHA }}
