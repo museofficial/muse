@@ -75,6 +75,10 @@ export default class AddQueryToQueue {
         'www.music.youtube.com',
       ];
 
+      const SOUNDCLOUD_HOSTS = [
+        'soundcloud.com',
+      ];
+
       if (YOUTUBE_HOSTS.includes(url.host)) {
         // YouTube source
         if (url.searchParams.get('list')) {
@@ -82,6 +86,19 @@ export default class AddQueryToQueue {
           newSongs.push(...await this.getSongs.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters));
         } else {
           const songs = await this.getSongs.youtubeVideo(url.href, shouldSplitChapters);
+
+          if (songs) {
+            newSongs.push(...songs);
+          } else {
+            throw new Error('that doesn\'t exist');
+          }
+        }
+      } else if (SOUNDCLOUD_HOSTS.includes(url.host)) {
+        if (url.pathname.includes('/sets/')) {
+          const songs = await this.getSongs.soundcloudPlaylist(url.href);
+          newSongs.push(...songs);
+        } else {
+          const songs = await this.getSongs.soundcloudVideo(url.href);
 
           if (songs) {
             newSongs.push(...songs);

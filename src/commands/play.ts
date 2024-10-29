@@ -18,7 +18,7 @@ export default class implements Command {
     .setDescription('play a song')
     .addStringOption(option => option
       .setName('query')
-      .setDescription('YouTube URL, Spotify URL, or search query')
+      .setDescription('YouTube URL, Spotify URL, SoundCloud URL, or search query')
       .setAutocomplete(true)
       .setRequired(true))
     .addBooleanOption(option => option

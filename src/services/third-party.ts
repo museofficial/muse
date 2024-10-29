@@ -1,5 +1,6 @@
 import {inject, injectable} from 'inversify';
 import SpotifyWebApi from 'spotify-web-api-node';
+import {Soundcloud} from 'soundcloud.ts';
 import pRetry from 'p-retry';
 import {TYPES} from '../types.js';
 import Config from './config.js';
@@ -7,6 +8,7 @@ import Config from './config.js';
 @injectable()
 export default class ThirdParty {
   readonly spotify: SpotifyWebApi;
+  readonly soundcloud: Soundcloud;
 
   private spotifyTokenTimerId?: NodeJS.Timeout;
 
@@ -15,6 +17,8 @@ export default class ThirdParty {
       clientId: config.SPOTIFY_CLIENT_ID,
       clientSecret: config.SPOTIFY_CLIENT_SECRET,
     });
+
+    this.soundcloud = new Soundcloud({});
 
     void this.refreshSpotifyToken();
   }

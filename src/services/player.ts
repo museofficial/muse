@@ -20,10 +20,13 @@ import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import ThirdParty from './third-party.js';
+import Soundcloud from 'soundcloud.ts';
 
 export enum MediaSource {
   Youtube,
   HLS,
+  SoundCloud,
 }
 
 export interface QueuedPlaylist {
@@ -80,9 +83,11 @@ export default class {
 
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
+  private readonly soundcloud: Soundcloud;
   private disconnectTimer: NodeJS.Timeout | null = null;
 
-  constructor(fileCache: FileCacheProvider, guildId: string) {
+  constructor(thirdParty: ThirdParty, fileCache: FileCacheProvider, guildId: string) {
+    this.soundcloud = thirdParty.soundcloud;
     this.fileCache = fileCache;
     this.guildId = guildId;
   }
@@ -439,6 +444,11 @@ export default class {
       return this.createReadStream({url: song.url, cacheKey: song.url});
     }
 
+    if (song.source === MediaSource.SoundCloud) {
+      const scSong = await this.soundcloud.util.streamTrack(song.url) as Readable;
+      return this.createReadStream({url: scSong, cacheKey: song.url});
+    }
+
     let ffmpegInput: string | null;
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
@@ -595,7 +605,7 @@ export default class {
     }
   }
 
-  private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
+  private async createReadStream(options: {url: string | Readable; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
 

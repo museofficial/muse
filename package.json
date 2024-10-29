@@ -122,6 +122,7 @@
     "postinstall-postinstall": "^2.1.0",
     "read-pkg": "7.1.0",
     "reflect-metadata": "^0.1.13",
+    "soundcloud.ts": "^0.5.2",
     "sponsorblock-api": "^0.2.4",
     "spotify-uri": "^3.0.2",
     "spotify-web-api-node": "^5.0.2",
