@@ -99,7 +99,7 @@
     "discord-api-types": "0.32.1",
     "discord.js": "14.11.0",
     "dotenv": "^16.4.5",
-    "execa": "^6.1.0",
+    "execa": "^9.5.1",
     "fluent-ffmpeg": "^2.1.2",
     "fs-capacitor": "^7.0.1",
     "get-youtube-id": "^1.0.1",
