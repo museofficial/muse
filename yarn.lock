@@ -3149,10 +3149,10 @@ isexe@^2.0.0:
   resolved "https://registry.npmjs.org/isexe/-/isexe-2.0.0.tgz"
   integrity sha1-6PvzdNxVb/iUehDcsFctYz8s+hA=
 
-iso8601-duration@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.npmjs.org/iso8601-duration/-/iso8601-duration-1.3.0.tgz"
-  integrity sha512-K4CiUBzo3YeWk76FuET/dQPH03WE04R94feo5TSKQCXpoXQt9E4yx2CnY737QZnSAI3PI4WlKo/zfqizGx52QQ==
+iso8601-duration@^2.1.2:
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/iso8601-duration/-/iso8601-duration-2.1.2.tgz#b13f14068fe5890c91b91e1f74e474a49f355028"
+  integrity sha512-yXteYUiKv6x8seaDzyBwnZtPpmx766KfvQuaVNyPifYOjmPdOo3ajd4phDNa7Y5mTQGnXsNEcXFtVun1FjYXxQ==
 
 iterate-iterator@^1.0.1:
   version "1.0.2"
@@ -4972,7 +4972,7 @@ tslib@^2.6.2:
   version "2.8.0"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.8.0.tgz#d124c86c3c05a40a91e6fdea4021bd31d377971b"
   integrity sha512-jWVzBLplnCmoaTr13V9dYbiQ99wvZRd0vNWaDRg+aVYRcjDF3nDksxFDE/+fkXnKhpnUUkmx5pK/v8mCtLVqZA==
-  
+
 tsutils@^3.21.0:
   version "3.21.0"
   resolved "https://registry.npmjs.org/tsutils/-/tsutils-3.21.0.tgz"
