@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - Dependency update
-- Pull request #1081 merged
+- Pull request #1040 merged (Used incorrect PR number, apoligies)
 
 ## [2.9.4] - 2024-08-28
 
