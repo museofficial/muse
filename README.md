@@ -63,6 +63,8 @@ docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='
 
 This starts Muse and creates a data directory in your current directory.
 
+You can also store your tokens in an environment file and make it available to your container. By default, the container will look for a `/config` environment file. You can customize this path with the `ENV_FILE` environment variable to use with, for example, [docker secrets](https://docs.docker.com/engine/swarm/secrets/). 
+
 **Docker Compose**:
 
 ```yaml
@@ -144,7 +146,9 @@ If you have Muse running in a lot of guilds (10+) you may want to switch to regi
 
 ### Automatically turn down volume when people speak
 
-You can let the bot automatically turn down the volume when people are speaking
-in the channel though environment variable:
-- `TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK=true`
-- `TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK_TARGET=70` (optional, default is 70%)
+You can configure the bot to automatically turn down the volume when people are speaking in the channel using the following commands:
+
+- `/config set-reduce-vol-when-voice true` - Enable automatic volume reduction
+- `/config set-reduce-vol-when-voice false` - Disable automatic volume reduction
+- `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 70)
+
