@@ -20,7 +20,7 @@ import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
-import Config from './config.js';
+import {Setting} from '@prisma/client';
 
 export enum MediaSource {
   Youtube,
@@ -84,12 +84,10 @@ export default class {
   private disconnectTimer: NodeJS.Timeout | null = null;
 
   private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
-  private readonly config: Config;
 
-  constructor(fileCache: FileCacheProvider, guildId: string, config: Config) {
+  constructor(fileCache: FileCacheProvider, guildId: string) {
     this.fileCache = fileCache;
     this.guildId = guildId;
-    this.config = config;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -104,6 +102,8 @@ export default class {
       selfDeaf: false,
       adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
+
+    const guildSettings = await getGuildSettings(this.guildId);
 
     // Workaround to disable keepAlive
     this.voiceConnection.on('stateChange', (oldState, newState) => {
@@ -122,7 +122,7 @@ export default class {
 
       this.currentChannel = channel;
       if (newState.status === VoiceConnectionStatus.Ready) {
-        this.registerVoiceActivityListener();
+        this.registerVoiceActivityListener(guildSettings);
       }
     });
   }
@@ -311,8 +311,9 @@ export default class {
     }
   }
 
-  registerVoiceActivityListener(): void {
-    if (!this.config.TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK || !this.voiceConnection) {
+  registerVoiceActivityListener(guildSettings: Setting) {
+    const {turnDownVolumeWhenPeopleSpeak, turnDownVolumeWhenPeopleSpeakTarget} = guildSettings;
+    if (!turnDownVolumeWhenPeopleSpeak || !this.voiceConnection) {
       return;
     }
 
@@ -332,7 +333,7 @@ export default class {
         this.channelToSpeakingUsers.get(channelId)?.add(member.id);
       }
 
-      this.suppressVoiceWhenPeopleAreSpeaking();
+      this.suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget);
     });
 
     this.voiceConnection.receiver.speaking.on('end', (userId: string) => {
@@ -350,18 +351,18 @@ export default class {
         this.channelToSpeakingUsers.get(channelId)?.delete(member.id);
       }
 
-      this.suppressVoiceWhenPeopleAreSpeaking();
+      this.suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget);
     });
   }
 
-  suppressVoiceWhenPeopleAreSpeaking(): void {
+  suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget: number): void {
     if (!this.currentChannel) {
       return;
     }
 
     const speakingUsers = this.channelToSpeakingUsers.get(this.currentChannel.id);
     if (speakingUsers && speakingUsers.size > 0) {
-      this.setVolume(this.config.TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK_TARGET);
+      this.setVolume(turnDownVolumeWhenPeopleSpeakTarget);
     } else {
       this.setVolume(this.defaultVolume);
     }
