@@ -5,7 +5,7 @@ import path from 'path';
 import xbytes from 'xbytes';
 import {ConditionalKeys} from 'type-fest';
 import {ActivityType, PresenceStatusData} from 'discord.js';
-dotenv.config();
+dotenv.config({path: process.env.ENV_FILE ?? path.resolve(process.cwd(), '.env')});
 
 export const DATA_DIR = path.resolve(process.env.DATA_DIR ? process.env.DATA_DIR : './data');
 
@@ -14,8 +14,6 @@ const CONFIG_MAP = {
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
   SPOTIFY_CLIENT_ID: process.env.SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET: process.env.SPOTIFY_CLIENT_SECRET,
-  TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK: process.env.TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK === 'true',
-  TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK_TARGET: process.env.TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK_TARGET ?? 20,
   REGISTER_COMMANDS_ON_BOT: process.env.REGISTER_COMMANDS_ON_BOT === 'true',
   DATA_DIR,
   CACHE_DIR: path.join(DATA_DIR, 'cache'),
@@ -45,8 +43,6 @@ export default class Config {
   readonly DATA_DIR!: string;
   readonly CACHE_DIR!: string;
   readonly CACHE_LIMIT_IN_BYTES!: number;
-  readonly TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK!: boolean;
-  readonly TURN_DOWN_VOLUME_WHEN_PEOPLE_SPEAK_TARGET!: number;
   readonly BOT_STATUS!: PresenceStatusData;
   readonly BOT_ACTIVITY_TYPE!: Exclude<ActivityType, ActivityType.Custom>;
   readonly BOT_ACTIVITY_URL!: string;
