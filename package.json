@@ -104,7 +104,7 @@
     "fs-capacitor": "^7.0.1",
     "get-youtube-id": "^1.0.1",
     "got": "^12.0.2",
-    "hasha": "^5.2.2",
+    "hasha": "^6.0.0",
     "inversify": "^6.0.1",
     "iso8601-duration": "^2.1.2",
     "libsodium-wrappers": "^0.7.9",
