@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - New `/config set-reduce-vol-when-voice` command to automatically turn down the volume when people are speaking in the channel
 - New `/config set-reduce-vol-when-voice-target` command to set the target volume percentage (0-100) when people are speaking in the channel
-
+- Support for using only YouTube, spotify credentials are now optional.
+- Dependency update
 
 ## [2.9.5] - 2024-10-29
 - Dependency update
