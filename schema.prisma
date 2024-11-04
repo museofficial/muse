@@ -24,16 +24,18 @@ model KeyValueCache {
 }
 
 model Setting {
-  guildId                        String   @id
-  playlistLimit                  Int      @default(50)
-  secondsToWaitAfterQueueEmpties Int      @default(30)
-  leaveIfNoListeners             Boolean  @default(true)
-  queueAddResponseEphemeral      Boolean  @default(false)
-  autoAnnounceNextSong           Boolean  @default(false)
-  defaultVolume                  Int      @default(100)
-  defaultQueuePageSize           Int      @default(10)
-  createdAt                      DateTime @default(now())
-  updatedAt                      DateTime @updatedAt
+  guildId                             String   @id
+  playlistLimit                       Int      @default(50)
+  secondsToWaitAfterQueueEmpties      Int      @default(30)
+  leaveIfNoListeners                  Boolean  @default(true)
+  queueAddResponseEphemeral           Boolean  @default(false)
+  autoAnnounceNextSong                Boolean  @default(false)
+  defaultVolume                       Int      @default(100)
+  defaultQueuePageSize                Int      @default(10)
+  turnDownVolumeWhenPeopleSpeak       Boolean  @default(false)
+  turnDownVolumeWhenPeopleSpeakTarget Int      @default(20)
+  createdAt                           DateTime @default(now())
+  updatedAt                           DateTime @updatedAt
 }
 
 model FavoriteQuery {
