@@ -32,7 +32,7 @@
     "postinstall": "patch-package"
   },
   "devDependencies": {
-    "@release-it/keep-a-changelog": "^2.3.0",
+    "@release-it/keep-a-changelog": "^5.0.0",
     "@types/bluebird": "^3.5.35",
     "@types/debug": "^4.1.5",
     "@types/fluent-ffmpeg": "^2.1.17",
@@ -51,7 +51,7 @@
     "eslint-plugin-import": "2.29.1",
     "husky": "^4.3.8",
     "prisma": "5.21.1",
-    "release-it": "^14.11.8",
+    "release-it": "^17.10.0",
     "type-fest": "^2.12.0",
     "typescript": "^4.6.4"
   },
