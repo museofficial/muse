@@ -71,10 +71,10 @@
   dependencies:
     discord-api-types "^0.37.41"
 
-"@discordjs/node-pre-gyp@^0.4.4":
-  version "0.4.4"
-  resolved "https://registry.npmjs.org/@discordjs/node-pre-gyp/-/node-pre-gyp-0.4.4.tgz"
-  integrity sha512-x569MMtdk6jdGo2S58iiZoyv4p/N2Ju8Nh6vvzZb1wyouV7IE3VuU0hg2kqUmTfD0z6r4uD6acvMTuc+iA3f8g==
+"@discordjs/node-pre-gyp@^0.4.5":
+  version "0.4.5"
+  resolved "https://registry.yarnpkg.com/@discordjs/node-pre-gyp/-/node-pre-gyp-0.4.5.tgz#b33e38cedd821268c75923641783c68fcd1b55ae"
+  integrity sha512-YJOVVZ545x24mHzANfYoy0BJX5PDyeZlpiJjDkUBM/V/Ao7TFX9lcUvCN4nr0tbr5ubeaXxtEBILUrHtTphVeQ==
   dependencies:
     detect-libc "^2.0.0"
     https-proxy-agent "^5.0.0"
@@ -86,12 +86,12 @@
     semver "^7.3.5"
     tar "^6.1.11"
 
-"@discordjs/opus@^0.8.0":
-  version "0.8.0"
-  resolved "https://registry.npmjs.org/@discordjs/opus/-/opus-0.8.0.tgz"
-  integrity sha512-uHE7OmHEmP8YM0yvsH3iSdacdeghO0qTkF0CIkV07Tg0qdyOLUVkoZHj5Zcpge9rC4qb/JvTS2xRgttSZLM43Q==
+"@discordjs/opus@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@discordjs/opus/-/opus-0.9.0.tgz#bbd9f78bd6bc399885bcb48645c6d2b1f0efa0c5"
+  integrity sha512-NEE76A96FtQ5YuoAVlOlB3ryMPrkXbUCTQICHGKb8ShtjXyubGicjRMouHtP1RpuDdm16cDa+oI3aAMo1zQRUQ==
   dependencies:
-    "@discordjs/node-pre-gyp" "^0.4.4"
+    "@discordjs/node-pre-gyp" "^0.4.5"
     node-addon-api "^5.0.0"
 
 "@discordjs/rest@1.0.1":
