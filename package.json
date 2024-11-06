@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@release-it/keep-a-changelog": "^2.3.0",
-    "@types/bluebird": "^3.5.35",
+    "@types/bluebird": "^3.5.42",
     "@types/debug": "^4.1.5",
     "@types/fluent-ffmpeg": "^2.1.17",
     "@types/fs-capacitor": "^2.0.0",
