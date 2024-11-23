@@ -5,8 +5,6 @@ import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
 import {truncate} from './string.js';
 
-const PAGE_SIZE = 10;
-
 const getMaxSongTitleLength = (title: string) => {
   // eslint-disable-next-line no-control-regex
   const nonASCII = /[^\x00-\x7F]+/;
@@ -77,7 +75,7 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   return message;
 };
 
-export const buildQueueEmbed = (player: Player, page: number): EmbedBuilder => {
+export const buildQueueEmbed = (player: Player, page: number, pageSize: number): EmbedBuilder => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
@@ -85,14 +83,14 @@ export const buildQueueEmbed = (player: Player, page: number): EmbedBuilder => {
   }
 
   const queueSize = player.queueSize();
-  const maxQueuePage = Math.ceil((queueSize + 1) / PAGE_SIZE);
+  const maxQueuePage = Math.ceil((queueSize + 1) / pageSize);
 
   if (page > maxQueuePage) {
     throw new Error('the queue isn\'t that big');
   }
 
-  const queuePageBegin = (page - 1) * PAGE_SIZE;
-  const queuePageEnd = queuePageBegin + PAGE_SIZE;
+  const queuePageBegin = (page - 1) * pageSize;
+  const queuePageEnd = queuePageBegin + pageSize;
   const queuedSongs = player
     .getQueue()
     .slice(queuePageBegin, queuePageEnd)
