@@ -1,11 +1,11 @@
-import {URL} from 'url';
-import {inject, injectable} from 'inversify';
+import shuffle from 'array-shuffle';
+import { inject, injectable } from 'inversify';
 import * as spotifyURI from 'spotify-uri';
 import Spotify from 'spotify-web-api-node';
-import {TYPES} from '../types.js';
+import { URL } from 'url';
+import { TYPES } from '../types.js';
+import { QueuedPlaylist } from './player.js';
 import ThirdParty from './third-party.js';
-import shuffle from 'array-shuffle';
-import {QueuedPlaylist} from './player.js';
 
 export interface SpotifyTrack {
   name: string;
@@ -32,13 +32,14 @@ export default class {
   async getPlaylist(url: string, playlistLimit: number): Promise<[SpotifyTrack[], QueuedPlaylist]> {
     const uri = spotifyURI.parse(url) as spotifyURI.Playlist;
 
+    // eslint-disable-next-line prefer-const
     let [{body: playlistResponse}, {body: tracksResponse}] = await Promise.all([this.spotify.getPlaylist(uri.id), this.spotify.getPlaylistTracks(uri.id, {limit: 50})]);
 
     const items = tracksResponse.items.map(playlistItem => playlistItem.track);
     const playlist = {title: playlistResponse.name, source: playlistResponse.href};
 
     while (tracksResponse.next) {
-      // eslint-disable-next-line no-await-in-loop
+       
       ({body: tracksResponse} = await this.spotify.getPlaylistTracks(uri.id, {
         limit: parseInt(new URL(tracksResponse.next).searchParams.get('limit') ?? '50', 10),
         offset: parseInt(new URL(tracksResponse.next).searchParams.get('offset') ?? '0', 10),

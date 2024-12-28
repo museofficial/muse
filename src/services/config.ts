@@ -1,10 +1,10 @@
+import { ActivityType, PresenceStatusData } from 'discord.js';
 import dotenv from 'dotenv';
-import 'reflect-metadata';
-import {injectable} from 'inversify';
+import { injectable } from 'inversify';
 import path from 'path';
+import 'reflect-metadata';
+import { ConditionalKeys } from 'type-fest';
 import xbytes from 'xbytes';
-import {ConditionalKeys} from 'type-fest';
-import {ActivityType, PresenceStatusData} from 'discord.js';
 dotenv.config({path: process.env.ENV_FILE ?? path.resolve(process.cwd(), '.env')});
 
 export const DATA_DIR = path.resolve(process.env.DATA_DIR ? process.env.DATA_DIR : './data');
@@ -65,8 +65,8 @@ export default class Config {
       if (typeof value === 'number') {
         this[key as ConditionalKeys<typeof CONFIG_MAP, number>] = value;
       } else if (typeof value === 'string') {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        (this as any)[key] = value.trim();
+         
+        (this as unknown as Record<string, string>)[key] = value.trim();
       } else if (typeof value === 'boolean') {
         this[key as ConditionalKeys<typeof CONFIG_MAP, boolean>] = value;
       } else {

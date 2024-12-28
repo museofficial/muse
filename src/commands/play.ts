@@ -1,15 +1,15 @@
-import {AutocompleteInteraction, ChatInputCommandInteraction} from 'discord.js';
-import {URL} from 'url';
-import {SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder} from '@discordjs/builders';
-import {inject, injectable, optional} from 'inversify';
+import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder } from '@discordjs/builders';
+import { AutocompleteInteraction, ChatInputCommandInteraction } from 'discord.js';
+import { inject, injectable, optional } from 'inversify';
 import Spotify from 'spotify-web-api-node';
-import Command from './index.js';
-import {TYPES} from '../types.js';
-import ThirdParty from '../services/third-party.js';
-import getYouTubeAndSpotifySuggestionsFor from '../utils/get-youtube-and-spotify-suggestions-for.js';
-import KeyValueCacheProvider from '../services/key-value-cache.js';
-import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
+import { URL } from 'url';
 import AddQueryToQueue from '../services/add-query-to-queue.js';
+import KeyValueCacheProvider from '../services/key-value-cache.js';
+import ThirdParty from '../services/third-party.js';
+import { TYPES } from '../types.js';
+import { ONE_HOUR_IN_SECONDS } from '../utils/constants.js';
+import getYouTubeAndSpotifySuggestionsFor from '../utils/get-youtube-and-spotify-suggestions-for.js';
+import Command from './index.js';
 
 @injectable()
 export default class implements Command {
@@ -75,14 +75,16 @@ export default class implements Command {
 
     try {
       // Don't return suggestions for URLs
-      // eslint-disable-next-line no-new
+       
       new URL(query);
       await interaction.respond([]);
       return;
-    } catch {}
+    } catch {
+      // Ignore
+    }
 
     const suggestions = await this.cache.wrap(
-      getYouTubeAndSpotifySuggestionsFor,
+      async (...args: unknown[]) => getYouTubeAndSpotifySuggestionsFor(args[0] as string, args[1] as Spotify, args[2] as number),
       query,
       this.spotify,
       10,

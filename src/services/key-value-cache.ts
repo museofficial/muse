@@ -1,5 +1,5 @@
-import {injectable} from 'inversify';
-import {prisma} from '../utils/db.js';
+import { injectable } from 'inversify';
+import { prisma } from '../utils/db.js';
 import debug from '../utils/debug.js';
 
 type Seconds = number;
@@ -13,7 +13,10 @@ const futureTimeToDate = (time: Seconds) => new Date(new Date().getTime() + (tim
 
 @injectable()
 export default class KeyValueCacheProvider {
-  async wrap<T extends [...any[], Options], F>(func: (...options: any) => Promise<F>, ...options: T): Promise<F> {
+  async wrap<T extends [...unknown[], Options], F>(
+    func: (...options: unknown[]) => Promise<F>,
+    ...options: T
+  ): Promise<F> {
     if (options.length === 0) {
       throw new Error('Missing cache options');
     }
@@ -50,7 +53,7 @@ export default class KeyValueCacheProvider {
 
     debug(`Cache miss: ${key}`);
 
-    const result = await func(...options as any[]);
+    const result = await func(...(options as unknown[]));
 
     // Save result
     const value = JSON.stringify(result);

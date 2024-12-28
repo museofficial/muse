@@ -1,4 +1,4 @@
-import {ChannelType, Guild, GuildMember, User, VoiceChannel} from 'discord.js';
+import { ChannelType, Guild, GuildMember, User, VoiceChannel } from 'discord.js';
 
 export const isUserInVoice = (guild: Guild, user: User): boolean => {
   let inVoice = false;
@@ -39,7 +39,8 @@ export const getMostPopularVoiceChannel = (guild: Guild): [VoiceChannel, number]
   }
 
   const voiceChannels: PopularResult[] = [];
-
+  
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   for (const [_, channel] of guild.channels.cache) {
     if (channel.type === ChannelType.GuildVoice) {
       const size = getSizeWithoutBots(channel);

@@ -1,12 +1,12 @@
-import {promises as fs, createWriteStream} from 'fs';
-import path from 'path';
-import {inject, injectable} from 'inversify';
-import {TYPES} from '../types.js';
-import Config from './config.js';
+import { FileCache } from '@prisma/client';
+import { createWriteStream, promises as fs } from 'fs';
+import { inject, injectable } from 'inversify';
 import PQueue from 'p-queue';
+import path from 'path';
+import { TYPES } from '../types.js';
+import { prisma } from '../utils/db.js';
 import debug from '../utils/debug.js';
-import {prisma} from '../utils/db.js';
-import {FileCache} from '@prisma/client';
+import Config from './config.js';
 
 @injectable()
 export default class FileCacheProvider {
@@ -37,6 +37,7 @@ export default class FileCacheProvider {
 
     try {
       await fs.access(resolvedPath);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_: unknown) {
       await prisma.fileCache.delete({
         where: {
@@ -115,7 +116,7 @@ export default class FileCacheProvider {
     let totalSizeBytes = await this.getDiskUsageInBytes();
     let numOfEvictedFiles = 0;
     // Continue to evict until we're under the limit
-    /* eslint-disable no-await-in-loop */
+     
     while (totalSizeBytes > this.config.CACHE_LIMIT_IN_BYTES) {
       const oldest = await prisma.fileCache.findFirst({
         orderBy: {
@@ -137,7 +138,7 @@ export default class FileCacheProvider {
 
       totalSizeBytes = await this.getDiskUsageInBytes();
     }
-    /* eslint-enable no-await-in-loop */
+     
 
     if (numOfEvictedFiles > 0) {
       debug(`${numOfEvictedFiles} files have been evicted`);

@@ -1,18 +1,18 @@
-/* eslint-disable complexity */
-import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
-import {inject, injectable} from 'inversify';
+ 
 import shuffle from 'array-shuffle';
-import {TYPES} from '../types.js';
-import GetSongs from '../services/get-songs.js';
-import {MediaSource, SongMetadata, STATUS} from './player.js';
+import { ChatInputCommandInteraction, GuildMember } from 'discord.js';
+import { inject, injectable } from 'inversify';
+import { SponsorBlock } from 'sponsorblock-api';
 import PlayerManager from '../managers/player.js';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
-import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
-import {getGuildSettings} from '../utils/get-guild-settings.js';
-import {SponsorBlock} from 'sponsorblock-api';
+import GetSongs from '../services/get-songs.js';
+import { TYPES } from '../types.js';
+import { buildPlayingMessageEmbed } from '../utils/build-embed.js';
+import { getMemberVoiceChannel, getMostPopularVoiceChannel } from '../utils/channels.js';
+import { ONE_HOUR_IN_SECONDS } from '../utils/constants.js';
+import { getGuildSettings } from '../utils/get-guild-settings.js';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
-import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
+import { MediaSource, SongMetadata, STATUS } from './player.js';
 
 @injectable()
 export default class AddQueryToQueue {
@@ -106,6 +106,7 @@ export default class AddQueryToQueue {
     if (skipCurrentTrack) {
       try {
         await player.forward(1);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_: unknown) {
         throw new Error('no song to skip to');
       }

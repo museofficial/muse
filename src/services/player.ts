@@ -1,10 +1,3 @@
-import {VoiceChannel, Snowflake} from 'discord.js';
-import {Readable} from 'stream';
-import hasha from 'hasha';
-import ytdl, {videoFormat} from '@distube/ytdl-core';
-import {WriteStream} from 'fs-capacitor';
-import ffmpeg from 'fluent-ffmpeg';
-import shuffle from 'array-shuffle';
 import {
   AudioPlayer,
   AudioPlayerState,
@@ -16,11 +9,18 @@ import {
   VoiceConnection,
   VoiceConnectionStatus,
 } from '@discordjs/voice';
-import FileCacheProvider from './file-cache.js';
+import ytdl, { videoFormat } from '@distube/ytdl-core';
+import { Setting } from '@prisma/client';
+import shuffle from 'array-shuffle';
+import { Snowflake, VoiceChannel } from 'discord.js';
+import ffmpeg from 'fluent-ffmpeg';
+import { WriteStream } from 'fs-capacitor';
+import hasha from 'hasha';
+import { Readable } from 'stream';
+import { buildPlayingMessageEmbed } from '../utils/build-embed.js';
 import debug from '../utils/debug.js';
-import {getGuildSettings} from '../utils/get-guild-settings.js';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
-import {Setting} from '@prisma/client';
+import { getGuildSettings } from '../utils/get-guild-settings.js';
+import FileCacheProvider from './file-cache.js';
 
 export enum MediaSource {
   Youtube,
@@ -107,18 +107,19 @@ export default class {
 
     // Workaround to disable keepAlive
     this.voiceConnection.on('stateChange', (oldState, newState) => {
-      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+       
       const oldNetworking = Reflect.get(oldState, 'networking');
       const newNetworking = Reflect.get(newState, 'networking');
 
-      const networkStateChangeHandler = (_: any, newNetworkState: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const networkStateChangeHandler = (_: any, newNetworkState: any): void => {
         const newUdp = Reflect.get(newNetworkState, 'udp');
         clearInterval(newUdp?.keepAliveInterval);
       };
 
       oldNetworking?.off('stateChange', networkStateChangeHandler);
       newNetworking?.on('stateChange', networkStateChangeHandler);
-      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+       
 
       this.currentChannel = channel;
       if (newState.status === VoiceConnectionStatus.Ready) {

@@ -1,15 +1,15 @@
-import {inject, injectable} from 'inversify';
-import {toSeconds, parse} from 'iso8601-duration';
-import got, {Got} from 'got';
-import ytsr, {Video} from '@distube/ytsr';
+import ytsr, { Video } from '@distube/ytsr';
+import getYouTubeID from 'get-youtube-id';
+import got, { Got } from 'got';
+import { inject, injectable } from 'inversify';
+import { parse, toSeconds } from 'iso8601-duration';
 import PQueue from 'p-queue';
-import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
-import {TYPES} from '../types.js';
+import { TYPES } from '../types.js';
+import { ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS } from '../utils/constants.js';
+import { parseTime } from '../utils/time.js';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
-import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
-import {parseTime} from '../utils/time.js';
-import getYouTubeID from 'get-youtube-id';
+import { MediaSource, QueuedPlaylist, SongMetadata } from './player.js';
 
 interface VideoDetailsResponse {
   id: string;
@@ -75,7 +75,7 @@ export default class {
 
   async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
-      ytsr,
+      async (...args) => ytsr(args[0] as string, args[1] as ytsr.Options),
       query,
       {
         limit: 10,
@@ -149,7 +149,7 @@ export default class {
         },
       };
 
-      // eslint-disable-next-line no-await-in-loop
+       
       const {items, nextPageToken} = await this.cache.wrap(
         async () => this.got('playlistItems', playlistItemsParams).json() as Promise<PlaylistItemsResponse>,
         playlistItemsParams,
@@ -182,6 +182,8 @@ export default class {
           queuedPlaylist,
           shouldSplitChapters,
         }));
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_: unknown) {
         // Private and deleted videos are sometimes in playlists, duration of these
         // is not returned and they should not be added to the queue.
