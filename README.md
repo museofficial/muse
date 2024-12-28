@@ -43,10 +43,10 @@ The `master` branch acts as the developing / bleeding edge branch and is not gua
 
 When running a production instance, I recommend that you use the [latest release](https://github.com/museofficial/muse/releases/).
 
-
 ### 🐳 Docker
 
 There are a variety of image tags available:
+
 - `:2`: versions >= 2.0.0
 - `:2.1`: versions >= 2.1.0 and < 2.2.0
 - `:2.1.1`: an exact version specifier
@@ -60,7 +60,7 @@ docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='
 
 This starts Muse and creates a data directory in your current directory.
 
-You can also store your tokens in an environment file and make it available to your container. By default, the container will look for a `/config` environment file. You can customize this path with the `ENV_FILE` environment variable to use with, for example, [docker secrets](https://docs.docker.com/engine/swarm/secrets/). 
+You can also store your tokens in an environment file and make it available to your container. By default, the container will look for a `/config` environment file. You can customize this path with the `ENV_FILE` environment variable to use with, for example, [docker secrets](https://docs.docker.com/engine/swarm/secrets/).
 
 **Docker Compose**:
 
@@ -81,8 +81,9 @@ services:
 ### Node.js
 
 **Prerequisites**:
-* Node.js (18.17.0 or later is required and latest 18.x.x LTS is recommended)
-* ffmpeg (4.1 or later)
+
+- Node.js (18.17.0 or later is required and latest 18.x.x LTS is recommended)
+- ffmpeg (4.1 or later)
 
 1. `git clone https://github.com/museofficial/muse.git && cd muse`
 2. Copy `.env.example` to `.env` and populate with values
@@ -125,11 +126,13 @@ In the default state, Muse has the status "Online" and the text "Listening to Mu
 #### Examples
 
 **Muse is watching a movie and is DND**:
+
 - `BOT_STATUS=dnd`
 - `BOT_ACTIVITY_TYPE=WATCHING`
 - `BOT_ACTIVITY=a movie`
 
 **Muse is streaming Monstercat**:
+
 - `BOT_STATUS=online`
 - `BOT_ACTIVITY_TYPE=STREAMING`
 - `BOT_ACTIVITY_URL=https://www.twitch.tv/monstercat`
@@ -147,3 +150,54 @@ You can configure the bot to automatically turn down the volume when people are 
 - `/config set-reduce-vol-when-voice false` - Disable automatic volume reduction
 - `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 70)
 
+------
+
+## Workflow section
+
+## Database Workflow via Prisma using Node.js
+
+muse uses [Prisma](https://www.prisma.io/) as an Object-Relational Mapping (ORM) tool to interact with a database. To properly set up and manage the database, you'll need to run a few commands.
+
+### Generating Migrations
+
+Whenever you make changes to some database schema defined in the Prisma schema file (see: [`schema.prisma`](schema.prisma)), you're gonna need to generate migration files. For this run:
+
+```bash
+npm run migrations:generate
+```
+
+This command will generate new migration files based on the changes you've made to the schema.
+
+### Applying Migrations
+
+After generating migration files, you need to apply them to your database to update its schema. Run the following command to apply pending migrations:
+
+```bash
+npm run migrations:run
+```
+
+This command will execute the migration files and bring your database schema up to date.
+
+### Starting the Bot
+
+To start the bot and ensure that the database is properly set up, use the following command:
+
+```bash
+npm start
+```
+
+This command will set the necessary environment variables, apply any pending migrations, and then start the bot.
+
+### Generating Prisma Client
+
+If you make changes to the Prisma schema, you'll need to regenerate the Prisma client to update the TypeScript types and client code. Run the following command to generate the Prisma client:
+
+```bash
+npm run prisma:generate
+```
+
+This command will generate the updated Prisma client based on your current schema.
+
+### Environment Variables
+
+The `prisma:with-env` script is a helper command that sets the `DATABASE_URL` environment variable and then runs the `prisma` command. Make sure you have the correct database URL set in your environment - see [`.env.example`] (example.env) - variables before running any Prisma-related commands.
