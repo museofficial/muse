@@ -685,7 +685,7 @@ export default class {
           }
         })
         .on('start', command => {
-          debug(`Spawned ffmpeg with ${command as string}`);
+          debug(`Spawned ffmpeg with ${command}`);
         });
 
       stream.pipe(capacitor);

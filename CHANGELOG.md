@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Updated distube for YT support.
 
 ## [2.10.0] - 2024-11-04
 - New `/config set-reduce-vol-when-voice` command to automatically turn down the volume when people are speaking in the channel
