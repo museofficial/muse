@@ -77,7 +77,7 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
 
 export const buildUnplayableSongsEmbed = (songs: UnplayableSong[]): EmbedBuilder => {
   const songsList: string[] = [];
-  for (let song of songs) {
+  for (const song of songs) {
     songsList.push(`- \`${song.playlistIndex + 1}\` - *${song.status}*`);
   }
 
@@ -92,7 +92,7 @@ export const buildUnplayableSongsEmbed = (songs: UnplayableSong[]): EmbedBuilder
     .setFooter({text: 'Indices of the songs in the playlist and their privacy status.'});
 
   return message;
-}
+};
 
 export const buildQueueEmbed = (player: Player, page: number, pageSize: number): EmbedBuilder => {
   const currentlyPlaying = player.getCurrent();
