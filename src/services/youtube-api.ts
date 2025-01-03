@@ -3,7 +3,7 @@ import {toSeconds, parse} from 'iso8601-duration';
 import got, {Got} from 'got';
 import ytsr, {Video} from '@distube/ytsr';
 import PQueue from 'p-queue';
-import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
+import {SongMetadata, UnplayableSong, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
@@ -49,6 +49,9 @@ interface PlaylistItem {
   id: string;
   contentDetails: {
     videoId: string;
+  };
+  status: {
+    privacyStatus: string;
   };
 }
 
@@ -112,7 +115,7 @@ export default class {
     return this.getMetadataFromVideo({video, shouldSplitChapters});
   }
 
-  async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<[SongMetadata[], UnplayableSong[]]> {
     const playlistParams = {
       searchParams: {
         part: 'id, snippet, contentDetails',
@@ -136,13 +139,15 @@ export default class {
     const playlistVideos: PlaylistItem[] = [];
     const videoDetailsPromises: Array<Promise<void>> = [];
     const videoDetails: VideoDetailsResponse[] = [];
+    const unplayableSongs: UnplayableSong[] = [];
 
     let nextToken: string | undefined;
+    let iterationCount = 0;
 
-    while (playlistVideos.length < playlist.contentDetails.itemCount) {
+    while ((playlistVideos.length + unplayableSongs.length) < playlist.contentDetails.itemCount) {
       const playlistItemsParams = {
         searchParams: {
-          part: 'id, contentDetails',
+          part: 'id, contentDetails, status',
           playlistId: listId,
           maxResults: '50',
           pageToken: nextToken,
@@ -158,7 +163,21 @@ export default class {
         },
       );
 
+      const toRemove = this.findUnplayableVideosInPlaylistItems(items);
+      for (let i = 0; i < toRemove.length; i++) {
+        const removed: UnplayableSong = {
+          playlistIndex: toRemove[i] + (iterationCount * 50),
+          status: items.splice(toRemove[i] - i, 1)[0].status.privacyStatus,
+        };
+        if (removed.status === 'privacyStatusUnspecified') {
+          removed.status = 'unspecified status (probably deleted)';
+        }
+
+        unplayableSongs.push(removed);
+      }
+
       nextToken = nextPageToken;
+      iterationCount++;
       playlistVideos.push(...items);
 
       // Start fetching extra details about videos
@@ -188,7 +207,7 @@ export default class {
       }
     }
 
-    return songsToReturn;
+    return [songsToReturn, unplayableSongs];
   }
 
   private getMetadataFromVideo({
@@ -294,5 +313,20 @@ export default class {
       },
     );
     return videos;
+  }
+
+  private findUnplayableVideosInPlaylistItems(playlistItems: PlaylistItem[]): number[] {
+    const unplayableVideos: number[] = [];
+
+    for (let i = 0; i < playlistItems.length; i++) {
+      const status = playlistItems[i].status.privacyStatus;
+      if (status === 'private' || status === 'privacyStatusUnspecified') {
+        unplayableVideos.push(i);
+      } else if (status !== 'unlisted' && status !== 'public') {
+        console.log('got unknown privacyStatus value in playlist item at %d: %s', i, status);
+      }
+    }
+
+    return unplayableVideos;
   }
 }
