@@ -33,6 +33,8 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 - `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` can be acquired [here](https://developer.spotify.com/dashboard/applications) with 'Create a Client ID' (Optional).
 - `YOUTUBE_API_KEY` can be acquired by [creating a new project](https://console.developers.google.com) in Google's Developer Console, enabling the YouTube API, and creating an API key under credentials.
 
+While preparing to play a playlist from YouTube, Muse will check the region restictions of its videos. For this reason you need to set `IP_COUNTRY_CODE` to the two character country code (like 'US', 'IT', 'DE', 'ES', [etc](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2#AD)) of the country you are running Muse in.
+
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 
 A 64-bit OS is required to run Muse.
@@ -76,6 +78,7 @@ services:
       - YOUTUBE_API_KEY=
       - SPOTIFY_CLIENT_ID=
       - SPOTIFY_CLIENT_SECRET=
+      - IP_COUNTRY_CODE=
 ```
 
 ### Node.js

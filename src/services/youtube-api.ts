@@ -16,6 +16,9 @@ interface VideoDetailsResponse {
   contentDetails: {
     videoId: string;
     duration: string;
+    regionRestriction?: {
+      blocked?: string[];
+    };
   };
   snippet: {
     title: string;
@@ -58,12 +61,14 @@ interface PlaylistItem {
 @injectable()
 export default class {
   private readonly youtubeKey: string;
+  private readonly ipCountryCode: string;
   private readonly cache: KeyValueCacheProvider;
   private readonly ytsrQueue: PQueue;
   private readonly got: Got;
 
   constructor(@inject(TYPES.Config) config: Config, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
     this.youtubeKey = config.YOUTUBE_API_KEY;
+    this.ipCountryCode = config.IP_COUNTRY_CODE;
     this.cache = cache;
     this.ytsrQueue = new PQueue({concurrency: 4});
 
@@ -111,6 +116,15 @@ export default class {
     if (!video) {
       throw new Error('Video could not be found.');
     }
+
+    /*
+    Why is the region restriction not enforced when playing a single video?
+    if (video.contentDetails.regionRestriction?.blocked !== undefined) {
+      if (video.contentDetails.regionRestriction.blocked.includes(this.ipCountryCode)) {
+        throw new Error('Video is region blocked.');
+      }
+    }
+    */
 
     return this.getMetadataFromVideo({video, shouldSplitChapters});
   }
@@ -194,10 +208,31 @@ export default class {
 
     const songsToReturn: SongMetadata[] = [];
 
-    for (const video of playlistVideos) {
+    const blockedSongs: UnplayableSong[] = [];
+    const getCorrectIndex = (idx: number): number => {
+      for (let i = 0; i < unplayableSongs.length; i++) {
+        if (unplayableSongs[i].playlistIndex > idx) {
+          return idx + i;
+        }
+      }
+
+      return idx + unplayableSongs.length;
+    };
+
+    for (let i = 0; i < playlistVideos.length; i++) {
+      const video = playlistVideos[i];
+      const details = videoDetails.find((ind: {id: string}) => ind.id === video.contentDetails.videoId)!;
+
+      if (details.contentDetails.regionRestriction?.blocked !== undefined) {
+        if (details.contentDetails.regionRestriction.blocked.includes(this.ipCountryCode)) {
+          blockedSongs.push({playlistIndex: getCorrectIndex(i), status: `region restricted [**${details.snippet.title}**]`});
+          continue;
+        }
+      }
+
       try {
         songsToReturn.push(...this.getMetadataFromVideo({
-          video: videoDetails.find((i: {id: string}) => i.id === video.contentDetails.videoId)!,
+          video: details,
           queuedPlaylist,
           shouldSplitChapters,
         }));
@@ -205,6 +240,11 @@ export default class {
         // Private and deleted videos are sometimes in playlists, duration of these
         // is not returned and they should not be added to the queue.
       }
+    }
+
+    if (blockedSongs.length > 0) {
+      unplayableSongs.push(...blockedSongs);
+      unplayableSongs.sort((a, b) => a.playlistIndex - b.playlistIndex);
     }
 
     return [songsToReturn, unplayableSongs];
