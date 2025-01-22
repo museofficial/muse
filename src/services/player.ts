@@ -515,7 +515,7 @@ export default class {
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await ytdl.getInfo(song.url, {playerClients: ['WEB_CREATOR', 'IOS']});
+      const info = await ytdl.getInfo(song.url);
 
       const formats = info.formats as YTDLVideoFormat[];
 
@@ -524,10 +524,6 @@ export default class {
       format = formats.find(filter);
 
       const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
-        if (formats.length < 1) {
-          return undefined;
-        }
-
         if (formats[0].isLive) {
           formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate); // Bad typings
 
