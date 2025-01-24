@@ -515,7 +515,7 @@ export default class {
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await ytdl.getInfo(song.url, {playerClients: ['WEB_CREATOR', 'IOS']});
+      const info = await ytdl.getInfo(song.url, {playerClients: ['TV']});
 
       const formats = info.formats as YTDLVideoFormat[];
 
@@ -689,7 +689,7 @@ export default class {
           }
         })
         .on('start', command => {
-          debug(`Spawned ffmpeg with ${command as string}`);
+          debug(`Spawned ffmpeg with ${command}`);
         });
 
       stream.pipe(capacitor);
