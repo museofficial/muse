@@ -1,7 +1,6 @@
 import {VoiceChannel, Snowflake} from 'discord.js';
 import {Readable} from 'stream';
 import hasha from 'hasha';
-import ytdl, {videoFormat} from '@distube/ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
@@ -21,6 +20,7 @@ import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {Setting} from '@prisma/client';
+import {execa} from 'execa';
 
 export enum MediaSource {
   Youtube,
@@ -58,7 +58,18 @@ export interface PlayerEvents {
   statusChange: (oldStatus: STATUS, newStatus: STATUS) => void;
 }
 
-type YTDLVideoFormat = videoFormat & {loudnessDb?: number};
+type VideoFormat = {
+  asr: number;
+  abr: number;
+  format_id: string;
+  vcodec: string;
+  acodec: string;
+  url: string;
+  audio_ext: string;
+  protocol: string;
+  filesize_approx: number;
+  resolution: string;
+};
 
 export const DEFAULT_VOLUME = 100;
 
@@ -509,41 +520,47 @@ export default class {
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
-    let format: YTDLVideoFormat | undefined;
+    let format: VideoFormat | undefined;
 
     ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await ytdl.getInfo(song.url, {playerClients: ['WEB_CREATOR', 'IOS']});
 
-      const formats = info.formats as YTDLVideoFormat[];
+      const result = await execa('yt-dlp', ['-j', song.url]);
 
-      const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
+      const info = JSON.parse(result.stdout) as {
+        title: string;
+        duration: number;
+        is_live: boolean;
+        formats: VideoFormat[];
+      };
 
-      format = formats.find(filter);
+      const filter = (format: VideoFormat): boolean => format.acodec === 'opus' && format.audio_ext === 'webm' && format.asr !== undefined && format.asr === 48000;
 
-      const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
+      format = info.formats.find(filter);
+
+      const nextBestFormat = (formats: VideoFormat[]): VideoFormat | undefined => {
         if (formats.length < 1) {
           return undefined;
         }
 
-        if (formats[0].isLive) {
-          formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate); // Bad typings
+        if (info.is_live) {
+          formats = formats.sort((a, b) => b.abr - a.abr);
 
-          return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10))); // Bad typings
+          return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.format_id, 10)));
         }
 
         formats = formats
-          .filter(format => format.averageBitrate)
+          .filter(format => format.abr)
           .sort((a, b) => {
             if (a && b) {
-              return b.averageBitrate! - a.averageBitrate!;
+              return b.abr - a.abr;
             }
 
             return 0;
           });
-        return formats.find(format => !format.bitrate) ?? formats[0];
+        return formats.find(format => !format.abr) ?? formats[0];
       };
 
       if (!format) {
@@ -561,7 +578,7 @@ export default class {
 
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-      shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.videoDetails.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
+      shouldCacheVideo = !info.is_live && info.duration < MAX_CACHE_LENGTH_SECONDS && !options.seek;
 
       debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
 
@@ -588,7 +605,7 @@ export default class {
       cacheKey: song.url,
       ffmpegInputOptions,
       cache: shouldCacheVideo,
-      volumeAdjustment: format?.loudnessDb ? `${-format.loudnessDb}dB` : undefined,
+      volumeAdjustment: undefined,
     });
   }
 

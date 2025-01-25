@@ -83,6 +83,7 @@ services:
 **Prerequisites**:
 * Node.js (18.17.0 or later is required and latest 18.x.x LTS is recommended)
 * ffmpeg (4.1 or later)
+* yt-dlp (2025.01.15 or later)
 
 1. `git clone https://github.com/museofficial/muse.git && cd muse`
 2. Copy `.env.example` to `.env` and populate with values

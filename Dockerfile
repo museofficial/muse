@@ -9,6 +9,9 @@ RUN apt-get update \
     tini \
     openssl \
     ca-certificates \
+    python3 \
+    python3-pip \
+    && pip3 install --no-cache-dir yt-dlp \
     && apt-get autoclean \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
