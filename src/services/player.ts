@@ -637,7 +637,7 @@ export default class {
   private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
     // Automatically advance queued song at end
     if (this.loopCurrentSong && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
-      await this.seek(0);      
+      await this.seek(0);
       return;
     }
 
@@ -660,14 +660,14 @@ export default class {
       if (autoAnnounceNextSong && this.currentChannel) {
         if (this.getCurrent()) {
           await this.currentChannel.send({
-            embeds: [buildPlayingMessageEmbed(this)]
+            embeds: [buildPlayingMessageEmbed(this)],
           });
         } else {
           await this.currentChannel.send({
-            content: "Queue is now empty, will leave in "
+            content: 'Queue is now empty',
           });
         }
-      }      
+      }
     }
   }
 
