@@ -81,7 +81,7 @@ services:
 ### Node.js
 
 **Prerequisites**:
-* Node.js (18.17.0 or later is required and latest 18.x.x LTS is recommended)
+* Node.js (18.17.0 or latest 18.xx.xx is required and latest 18.x.x LTS is recommended) (Version 18 due to opus dependency)
 * ffmpeg (4.1 or later)
 
 1. `git clone https://github.com/museofficial/muse.git && cd muse`
