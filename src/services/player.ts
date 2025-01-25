@@ -515,7 +515,7 @@ export default class {
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await ytdl.getInfo(song.url, {playerClients: ['WEB_CREATOR', 'IOS']});
+      const info = await ytdl.getInfo(song.url);
 
       const formats = info.formats as YTDLVideoFormat[];
 
