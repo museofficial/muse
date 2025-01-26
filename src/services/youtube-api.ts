@@ -1,16 +1,16 @@
-import {inject, injectable} from 'inversify';
-import {toSeconds, parse} from 'iso8601-duration';
-import got, {Got, HTTPError, RequestError} from 'got';
-import ytsr, {Video} from '@distube/ytsr';
+import { inject, injectable } from 'inversify';
+import { toSeconds, parse } from 'iso8601-duration';
+import got, { Got, HTTPError, RequestError } from 'got';
+import ytsr, { Video } from '@distube/ytsr';
 import PQueue from 'p-queue';
 import pRetry from 'p-retry';
 import crypto from 'crypto';
-import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
-import {TYPES} from '../types.js';
+import { SongMetadata, QueuedPlaylist, MediaSource } from './player.js';
+import { TYPES } from '../types.js';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
-import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
-import {parseTime} from '../utils/time.js';
+import { ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS } from '../utils/constants.js';
+import { parseTime } from '../utils/time.js';
 import getYouTubeID from 'get-youtube-id';
 import debug from '../utils/debug.js';
 
@@ -74,10 +74,13 @@ export default class {
   private readonly ytsrQueue: PQueue;
   private readonly got: Got;
 
-  constructor(@inject(TYPES.Config) config: Config, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
+  constructor(
+    @inject(TYPES.Config) config: Config,
+    @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider
+  ) {
     this.youtubeKey = config.YOUTUBE_API_KEY;
     this.cache = cache;
-    this.ytsrQueue = new PQueue({concurrency: YOUTUBE_SEARCH_CONCURRENCY});
+    this.ytsrQueue = new PQueue({ concurrency: YOUTUBE_SEARCH_CONCURRENCY });
 
     this.got = got.extend({
       prefixUrl: 'https://www.googleapis.com/youtube/v3/',
@@ -90,17 +93,19 @@ export default class {
 
   public async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     try {
-      const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
-        ytsr,
-        query,
-        {
-          limit: 10,
-        },
-        {
-          expiresIn: ONE_HOUR_IN_SECONDS,
-          key: this.createCacheKey('youtube-search', query),
-        },
-      ));
+      const { items } = await this.ytsrQueue.add(async () =>
+        this.cache.wrap(
+          ytsr,
+          query,
+          {
+            limit: 10,
+          },
+          {
+            expiresIn: ONE_HOUR_IN_SECONDS,
+            key: this.createCacheKey('youtube-search', query),
+          }
+        )
+      );
 
       let firstVideo: Video | undefined;
       for (const item of items) {
@@ -134,7 +139,7 @@ export default class {
       throw new Error('Video could not be found or is unavailable.');
     }
 
-    return this.getMetadataFromVideo({video, shouldSplitChapters});
+    return this.getMetadataFromVideo({ video, shouldSplitChapters });
   }
 
   public async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
@@ -146,13 +151,13 @@ export default class {
         },
       };
 
-      const {items: playlists} = await this.cache.wrap(
-        async () => this.executeYouTubeRequest<{items: PlaylistResponse[]}>('playlists', playlistParams),
+      const { items: playlists } = await this.cache.wrap(
+        async () => this.executeYouTubeRequest<{ items: PlaylistResponse[] }>('playlists', playlistParams),
         playlistParams,
         {
           expiresIn: ONE_MINUTE_IN_SECONDS,
           key: this.createCacheKey('youtube-playlist', listId),
-        },
+        }
       );
 
       const playlist = playlists.at(0);
@@ -177,39 +182,43 @@ export default class {
           {
             expiresIn: ONE_MINUTE_IN_SECONDS,
             key: this.createCacheKey('youtube-playlist-items', `${listId}-${token ?? 'initial'}`),
-          },
+          }
         );
       };
 
-      // Recursively fetch all playlist pages to avoid await-in-loop
+      // Recursively fetch all playlist pages
       const fetchAllPages = async (token?: string): Promise<PlaylistItem[]> => {
-        const {items, nextPageToken} = await fetchPlaylistPage(token);
+        const { items, nextPageToken } = await fetchPlaylistPage(token);
         if (!nextPageToken || items.length >= playlist.contentDetails.itemCount) {
           return items;
         }
-
         const nextItems = await fetchAllPages(nextPageToken);
         return [...items, ...nextItems];
       };
 
       const playlistVideos = await fetchAllPages();
-      const videoDetailPromises = playlistVideos.map(async item => 
-        this.getVideosByID([item.contentDetails.videoId]));
+
+      const videoDetailPromises = playlistVideos.map(async (item) =>
+        this.getVideosByID([item.contentDetails.videoId])
+      );
+
       const videoDetailChunks = await Promise.all(videoDetailPromises);
       const videoDetails = videoDetailChunks.flat();
 
-      const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
+      const queuedPlaylist = { title: playlist.snippet.title, source: playlist.id };
       const songsToReturn: SongMetadata[] = [];
 
       for (const video of playlistVideos) {
         try {
-          const videoDetail = videoDetails.find(i => i.id === video.contentDetails.videoId);
+          const videoDetail = videoDetails.find((i) => i.id === video.contentDetails.videoId);
           if (videoDetail) {
-            songsToReturn.push(...this.getMetadataFromVideo({
-              video: videoDetail,
-              queuedPlaylist,
-              shouldSplitChapters,
-            }));
+            songsToReturn.push(
+              ...this.getMetadataFromVideo({
+                video: videoDetail,
+                queuedPlaylist,
+                shouldSplitChapters,
+              })
+            );
           }
         } catch (error) {
           debug(`Skipping unavailable video in playlist: ${video.contentDetails.videoId}`);
@@ -254,13 +263,10 @@ export default class {
     return pRetry(
       async () => {
         try {
-          const response = await this.got(endpoint, params).json() as T;
+          const response = (await this.got(endpoint, params).json()) as T;
 
           if (!response) {
-            throw this.createYouTubeError(
-              'Empty response from YouTube API',
-              'NETWORK_ERROR',
-            );
+            throw this.createYouTubeError('Empty response from YouTube API', 'NETWORK_ERROR');
           }
 
           return response;
@@ -273,41 +279,26 @@ export default class {
                 throw this.createYouTubeError(
                   'YouTube API quota exceeded. Please try again later.',
                   'QUOTA_EXCEEDED',
-                  status,
+                  status
                 );
               case 429:
                 throw this.createYouTubeError(
                   'YouTube API rate limit reached. Please try again later.',
                   'RATE_LIMITED',
-                  status,
+                  status
                 );
               case 404:
-                throw this.createYouTubeError(
-                  'Resource not found on YouTube.',
-                  'NOT_FOUND',
-                  status,
-                );
+                throw this.createYouTubeError('Resource not found on YouTube.', 'NOT_FOUND', status);
               default:
                 if (status >= 500) {
-                  throw this.createYouTubeError(
-                    'YouTube API is temporarily unavailable.',
-                    'NETWORK_ERROR',
-                    status,
-                  );
+                  throw this.createYouTubeError('YouTube API is temporarily unavailable.', 'NETWORK_ERROR', status);
                 }
-                throw this.createYouTubeError(
-                  'YouTube API request failed.',
-                  'UNKNOWN',
-                  status,
-                );
+                throw this.createYouTubeError('YouTube API request failed.', 'UNKNOWN', status);
             }
           }
 
           if (error instanceof RequestError && error.code === 'ETIMEDOUT') {
-            throw this.createYouTubeError(
-              'YouTube API request timed out.',
-              'NETWORK_ERROR',
-            );
+            throw this.createYouTubeError('YouTube API request timed out.', 'NETWORK_ERROR');
           }
 
           throw error;
@@ -318,24 +309,27 @@ export default class {
         minTimeout: YOUTUBE_BASE_RETRY_DELAY_MS,
         factor: 2,
         randomize: true,
-        onFailedAttempt: error => {
-          const youTubeError = error.message && typeof error.message === 'object' && 'code' in error.message
-            ? error.message as YouTubeError
-            : null;
+        onFailedAttempt: (error) => {
+          const youTubeError =
+            error.message && typeof error.message === 'object' && 'code' in error.message
+              ? (error.message as YouTubeError)
+              : null;
 
-          debug([
-            `YouTube API request failed (attempt ${error.attemptNumber}/${YOUTUBE_MAX_RETRY_COUNT + 1})`,
-            `Error code: ${youTubeError?.code ?? 'UNKNOWN'}`,
-            `Status: ${youTubeError?.status ?? 'N/A'}`,
-            `Message: ${error.message}`,
-            `Retries left: ${error.retriesLeft}`,
-          ].join('\n'));
+          debug(
+            [
+              `YouTube API request failed (attempt ${error.attemptNumber}/${YOUTUBE_MAX_RETRY_COUNT + 1})`,
+              `Error code: ${youTubeError?.code ?? 'UNKNOWN'}`,
+              `Status: ${youTubeError?.status ?? 'N/A'}`,
+              `Message: ${error.message}`,
+              `Retries left: ${error.retriesLeft}`,
+            ].join('\n')
+          );
 
           if (youTubeError && !youTubeError.retryable) {
             throw error;
           }
         },
-      },
+      }
     );
   }
 
@@ -352,13 +346,13 @@ export default class {
     };
 
     try {
-      const {items: videos} = await this.cache.wrap(
-        async () => this.executeYouTubeRequest<{items: VideoDetailsResponse[]}>('videos', params),
+      const { items: videos } = await this.cache.wrap(
+        async () => this.executeYouTubeRequest<{ items: VideoDetailsResponse[] }>('videos', params),
         params,
         {
           expiresIn: ONE_HOUR_IN_SECONDS,
           key: this.createCacheKey('youtube-videos', videoIDs.join(',')),
-        },
+        }
       );
 
       return videos;
@@ -369,7 +363,6 @@ export default class {
           throw error;
         }
       }
-
       throw new Error('Failed to fetch video information. Please try again.');
     }
   }
@@ -404,7 +397,7 @@ export default class {
       return [base];
     }
 
-    return Array.from(chapters.entries()).map(([label, {offset, length}]) => ({
+    return Array.from(chapters.entries()).map(([label, { offset, length }]) => ({
       ...base,
       offset,
       length,
@@ -412,11 +405,14 @@ export default class {
     }));
   }
 
-  private parseChaptersFromDescription(description: string, videoDurationSeconds: number) {
-    const map = new Map<string, {offset: number; length: number}>();
+  private parseChaptersFromDescription(
+    description: string,
+    videoDurationSeconds: number
+  ) {
+    const map = new Map<string, { offset: number; length: number }>();
     let foundFirstTimestamp = false;
 
-    const foundTimestamps: Array<{name: string; offset: number}> = [];
+    const foundTimestamps: Array<{ name: string; offset: number }> = [];
     for (const line of description.split('\n')) {
       const timestamps = Array.from(line.matchAll(/(?:\d+:)+\d+/g));
       if (timestamps?.length !== 1) {
@@ -424,6 +420,7 @@ export default class {
       }
 
       if (!foundFirstTimestamp) {
+        // We expect the first timestamp to match something like "0:00" or "00:00"
         if (/0{1,2}:00/.test(timestamps[0][0])) {
           foundFirstTimestamp = true;
         } else {
@@ -435,18 +432,20 @@ export default class {
       const seconds = parseTime(timestamp);
       const chapterName = line.split(timestamp)[1].trim();
 
-      foundTimestamps.push({name: chapterName, offset: seconds});
+      foundTimestamps.push({ name: chapterName, offset: seconds });
     }
 
-    for (const [i, {name, offset}] of foundTimestamps.entries()) {
+    for (const [i, { name, offset }] of foundTimestamps.entries()) {
       map.set(name, {
         offset,
-        length: i === foundTimestamps.length - 1
-          ? videoDurationSeconds - offset
-          : foundTimestamps[i + 1].offset - offset,
+        length:
+          i === foundTimestamps.length - 1
+            ? videoDurationSeconds - offset
+            : foundTimestamps[i + 1].offset - offset,
       });
     }
 
     return map.size > 0 ? map : null;
   }
 }
+
