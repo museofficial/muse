@@ -14,20 +14,17 @@ import {parseTime} from '../utils/time.js';
 import getYouTubeID from 'get-youtube-id';
 import debug from '../utils/debug.js';
 
-// Define possible error types for better error handling and type safety
 interface YouTubeError extends Error {
   code: 'QUOTA_EXCEEDED' | 'RATE_LIMITED' | 'NOT_FOUND' | 'NETWORK_ERROR' | 'UNKNOWN';
   status?: number;
   retryable: boolean;
 }
 
-// Configuration constants for API interaction and reliability
 const YOUTUBE_MAX_RETRY_COUNT = 3;
 const YOUTUBE_BASE_RETRY_DELAY_MS = 1000;
 const YOUTUBE_SEARCH_CONCURRENCY = 4;
-const MAX_CACHE_KEY_LENGTH = 250;  // Prevent extremely long cache keys
+const MAX_CACHE_KEY_LENGTH = 250;
 
-// Response type definitions
 interface VideoDetailsResponse {
   id: string;
   contentDetails: {
@@ -162,41 +159,43 @@ export default class {
         throw new Error('Playlist could not be found.');
       }
 
-      const playlistVideos: PlaylistItem[] = [];
-      const videoDetailsPromises: Array<Promise<void>> = [];
-      const videoDetails: VideoDetailsResponse[] = [];
-      let nextToken: string | undefined;
-
-      while (playlistVideos.length < playlist.contentDetails.itemCount) {
+      // Helper function to fetch a single page of playlist items
+      const fetchPlaylistPage = async (token?: string) => {
         const playlistItemsParams = {
           searchParams: {
             part: 'id, contentDetails',
             playlistId: listId,
             maxResults: '50',
-            pageToken: nextToken,
+            pageToken: token,
           },
         };
 
-        const {items, nextPageToken} = await this.cache.wrap(
+        return this.cache.wrap(
           async () => this.executeYouTubeRequest<PlaylistItemsResponse>('playlistItems', playlistItemsParams),
           playlistItemsParams,
           {
             expiresIn: ONE_MINUTE_IN_SECONDS,
-            key: this.createCacheKey('youtube-playlist-items', `${listId}-${nextToken ?? 'initial'}`),
+            key: this.createCacheKey('youtube-playlist-items', `${listId}-${token ?? 'initial'}`),
           },
         );
+      };
 
-        nextToken = nextPageToken;
+      // Fetch all playlist items iteratively
+      const playlistVideos: PlaylistItem[] = [];
+      let nextToken: string | undefined;
+
+      do {
+        const {items, nextPageToken} = await fetchPlaylistPage(nextToken);
         playlistVideos.push(...items);
+        nextToken = nextPageToken;
+      } while (nextToken && playlistVideos.length < playlist.contentDetails.itemCount);
 
-        videoDetailsPromises.push((async () => {
-          const videoDetailItems = await this.getVideosByID(items.map(item => item.contentDetails.videoId));
-          videoDetails.push(...videoDetailItems);
-        })());
-      }
+      // Fetch video details in parallel
+      const videoDetailChunks = await Promise.all(
+        playlistVideos.map(item => this.getVideosByID([item.contentDetails.videoId])),
+      );
 
-      await Promise.all(videoDetailsPromises);
-
+      const videoDetails = videoDetailChunks.flat();
       const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
       const songsToReturn: SongMetadata[] = [];
 
@@ -212,7 +211,6 @@ export default class {
           }
         } catch (error) {
           debug(`Skipping unavailable video in playlist: ${video.contentDetails.videoId}`);
-          // Continue with next video
         }
       }
 
@@ -223,6 +221,7 @@ export default class {
       return songsToReturn;
     } catch (error) {
       debug('Playlist processing error:', error);
+
       if (error instanceof Error) {
         throw error;
       }
@@ -359,6 +358,7 @@ export default class {
           key: this.createCacheKey('youtube-videos', videoIDs.join(',')),
         },
       );
+
       return videos;
     } catch (error) {
       if (error instanceof Error && 'code' in error) {
@@ -367,6 +367,7 @@ export default class {
           throw error;
         }
       }
+
       throw new Error('Failed to fetch video information. Please try again.');
     }
   }
