@@ -1,6 +1,6 @@
 import {inject, injectable} from 'inversify';
 import {toSeconds, parse} from 'iso8601-duration';
-import got, {Got, HTTPError} from 'got';
+import got, {Got, HTTPError, RequestError} from 'got';
 import ytsr, {Video} from '@distube/ytsr';
 import PQueue from 'p-queue';
 import pRetry from 'p-retry';
@@ -160,7 +160,7 @@ export default class {
             }
           }
 
-          if (error instanceof got.TimeoutError) {
+          if (error instanceof RequestError && error.code === 'ETIMEDOUT') {
             throw this.createYouTubeError(
               'YouTube API request timed out.',
               'NETWORK_ERROR'
@@ -172,14 +172,12 @@ export default class {
       },
       {
         retries: YOUTUBE_MAX_RETRY_COUNT,
-        minTimeout: ({attemptNumber}) => {
-          const delay = YOUTUBE_BASE_RETRY_DELAY_MS * Math.pow(2, attemptNumber - 1);
-          const jitter = Math.random() * 200;
-          return delay + jitter;
-        },
+        minTimeout: YOUTUBE_BASE_RETRY_DELAY_MS,
+        factor: 2,
+        randomize: true,
         onFailedAttempt: error => {
-          const youTubeError = error instanceof Error && 'code' in error
-            ? error as YouTubeError
+          const youTubeError = error.message && typeof error.message === 'object' && 'code' in error.message
+            ? error.message as YouTubeError
             : null;
 
           debug(
@@ -191,7 +189,7 @@ export default class {
           );
 
           if (youTubeError && !youTubeError.retryable) {
-            throw new pRetry.AbortError(error.message);
+            throw error;
           }
         },
       }
