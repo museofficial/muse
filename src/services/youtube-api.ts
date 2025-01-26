@@ -75,7 +75,7 @@ export default class {
   private readonly got: Got;
 
   constructor(
-  @inject(TYPES.Config) config: Config,
+    @inject(TYPES.Config) config: Config,
     @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider,
   ) {
     this.youtubeKey = config.YOUTUBE_API_KEY;
