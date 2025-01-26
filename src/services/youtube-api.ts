@@ -4,6 +4,7 @@ import got, {Got, HTTPError, RequestError} from 'got';
 import ytsr, {Video} from '@distube/ytsr';
 import PQueue from 'p-queue';
 import pRetry from 'p-retry';
+import crypto from 'crypto';
 import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
@@ -89,114 +90,7 @@ export default class {
     });
   }
 
-  private createYouTubeError(message: string, code: YouTubeError['code'], status?: number): YouTubeError {
-    const error = new Error(message) as YouTubeError;
-    error.code = code;
-    error.status = status;
-    // Network errors and 5xx are retryable, most 4xx are not
-    error.retryable = code === 'NETWORK_ERROR' || (status ? status >= 500 : false);
-    return error;
-  }
-
-  private createCacheKey(prefix: string, key: string): string {
-    // Ensure cache keys don't exceed maximum length while remaining unique
-    const fullKey = `${prefix}-${key}`;
-    if (fullKey.length <= MAX_CACHE_KEY_LENGTH) {
-      return fullKey;
-    }
-    return `${prefix}-${key.slice(0, MAX_CACHE_KEY_LENGTH - prefix.length - 41)}-${require('crypto').createHash('sha1').update(key).digest('hex')}`;
-  }
-
-  private async executeYouTubeRequest<T>(endpoint: string, params: any): Promise<T> {
-    return pRetry(
-      async () => {
-        try {
-          const response = await this.got(endpoint, params).json() as T;
-          
-          if (!response) {
-            throw this.createYouTubeError(
-              'Empty response from YouTube API',
-              'NETWORK_ERROR'
-            );
-          }
-          
-          return response;
-        } catch (error) {
-          if (error instanceof HTTPError) {
-            const status = error.response.statusCode;
-            
-            switch (status) {
-              case 403:
-                throw this.createYouTubeError(
-                  'YouTube API quota exceeded. Please try again later.',
-                  'QUOTA_EXCEEDED',
-                  status
-                );
-              case 429:
-                throw this.createYouTubeError(
-                  'YouTube API rate limit reached. Please try again later.',
-                  'RATE_LIMITED',
-                  status
-                );
-              case 404:
-                throw this.createYouTubeError(
-                  'Resource not found on YouTube.',
-                  'NOT_FOUND',
-                  status
-                );
-              default:
-                if (status >= 500) {
-                  throw this.createYouTubeError(
-                    'YouTube API is temporarily unavailable.',
-                    'NETWORK_ERROR',
-                    status
-                  );
-                }
-                throw this.createYouTubeError(
-                  'YouTube API request failed.',
-                  'UNKNOWN',
-                  status
-                );
-            }
-          }
-
-          if (error instanceof RequestError && error.code === 'ETIMEDOUT') {
-            throw this.createYouTubeError(
-              'YouTube API request timed out.',
-              'NETWORK_ERROR'
-            );
-          }
-
-          throw error;
-        }
-      },
-      {
-        retries: YOUTUBE_MAX_RETRY_COUNT,
-        minTimeout: YOUTUBE_BASE_RETRY_DELAY_MS,
-        factor: 2,
-        randomize: true,
-        onFailedAttempt: error => {
-          const youTubeError = error.message && typeof error.message === 'object' && 'code' in error.message
-            ? error.message as YouTubeError
-            : null;
-
-          debug(
-            `YouTube API request failed (attempt ${error.attemptNumber}/${YOUTUBE_MAX_RETRY_COUNT + 1})\n` +
-            `Error code: ${youTubeError?.code ?? 'UNKNOWN'}\n` +
-            `Status: ${youTubeError?.status ?? 'N/A'}\n` +
-            `Message: ${error.message}\n` +
-            `Retries left: ${error.retriesLeft}`
-          );
-
-          if (youTubeError && !youTubeError.retryable) {
-            throw error;
-          }
-        },
-      }
-    );
-  }
-
-  async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  public async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     try {
       const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
         ytsr,
@@ -222,14 +116,14 @@ export default class {
         throw new Error('No matching videos found.');
       }
 
-      return this.getVideo(firstVideo.url, shouldSplitChapters);
+      return await this.getVideo(firstVideo.url, shouldSplitChapters);
     } catch (error) {
       debug('YouTube search error:', error);
       throw new Error('Failed to search YouTube. Please try again.');
     }
   }
 
-  async getVideo(url: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  public async getVideo(url: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     const videoId = getYouTubeID(url);
     if (!videoId) {
       throw new Error('Invalid YouTube URL.');
@@ -245,7 +139,7 @@ export default class {
     return this.getMetadataFromVideo({video, shouldSplitChapters});
   }
 
-  async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  public async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     try {
       const playlistParams = {
         searchParams: {
@@ -253,7 +147,7 @@ export default class {
           id: listId,
         },
       };
-      
+
       const {items: playlists} = await this.cache.wrap(
         async () => this.executeYouTubeRequest<{items: PlaylistResponse[]}>('playlists', playlistParams),
         playlistParams,
@@ -271,7 +165,6 @@ export default class {
       const playlistVideos: PlaylistItem[] = [];
       const videoDetailsPromises: Array<Promise<void>> = [];
       const videoDetails: VideoDetailsResponse[] = [];
-
       let nextToken: string | undefined;
 
       while (playlistVideos.length < playlist.contentDetails.itemCount) {
@@ -331,10 +224,118 @@ export default class {
     } catch (error) {
       debug('Playlist processing error:', error);
       if (error instanceof Error) {
-        throw error;  // Preserve user-friendly error messages
+        throw error;
       }
+
       throw new Error('Failed to process playlist. Please try again.');
     }
+  }
+
+  private createYouTubeError(message: string, code: YouTubeError['code'], status?: number): YouTubeError {
+    const error = new Error(message) as YouTubeError;
+    error.code = code;
+    error.status = status;
+    error.retryable = code === 'NETWORK_ERROR' || (status ? status >= 500 : false);
+    return error;
+  }
+
+  private createCacheKey(prefix: string, key: string): string {
+    const fullKey = `${prefix}-${key}`;
+    if (fullKey.length <= MAX_CACHE_KEY_LENGTH) {
+      return fullKey;
+    }
+
+    const hash = crypto.createHash('sha1').update(key).digest('hex');
+    return `${prefix}-${key.slice(0, MAX_CACHE_KEY_LENGTH - prefix.length - 41)}-${hash}`;
+  }
+
+  private async executeYouTubeRequest<T>(endpoint: string, params: any): Promise<T> {
+    return pRetry(
+      async () => {
+        try {
+          const response = await this.got(endpoint, params).json() as T;
+
+          if (!response) {
+            throw this.createYouTubeError(
+              'Empty response from YouTube API',
+              'NETWORK_ERROR',
+            );
+          }
+
+          return response;
+        } catch (error) {
+          if (error instanceof HTTPError) {
+            const status = error.response.statusCode;
+
+            switch (status) {
+              case 403:
+                throw this.createYouTubeError(
+                  'YouTube API quota exceeded. Please try again later.',
+                  'QUOTA_EXCEEDED',
+                  status,
+                );
+              case 429:
+                throw this.createYouTubeError(
+                  'YouTube API rate limit reached. Please try again later.',
+                  'RATE_LIMITED',
+                  status,
+                );
+              case 404:
+                throw this.createYouTubeError(
+                  'Resource not found on YouTube.',
+                  'NOT_FOUND',
+                  status,
+                );
+              default:
+                if (status >= 500) {
+                  throw this.createYouTubeError(
+                    'YouTube API is temporarily unavailable.',
+                    'NETWORK_ERROR',
+                    status,
+                  );
+                }
+                throw this.createYouTubeError(
+                  'YouTube API request failed.',
+                  'UNKNOWN',
+                  status,
+                );
+            }
+          }
+
+          if (error instanceof RequestError && error.code === 'ETIMEDOUT') {
+            throw this.createYouTubeError(
+              'YouTube API request timed out.',
+              'NETWORK_ERROR',
+            );
+          }
+
+          throw error;
+        }
+      },
+      {
+        retries: YOUTUBE_MAX_RETRY_COUNT,
+        minTimeout: YOUTUBE_BASE_RETRY_DELAY_MS,
+        factor: 2,
+        randomize: true,
+        onFailedAttempt: error => {
+          const youTubeError = error.message && typeof error.message === 'object' && 'code' in error.message
+            ? error.message as YouTubeError
+            : null;
+
+          debug([
+            `YouTube API request failed (attempt ${error.attemptNumber}/${YOUTUBE_MAX_RETRY_COUNT + 1})`,
+            `Error code: ${youTubeError?.code ?? 'UNKNOWN'}`,
+            `Status: ${youTubeError?.status ?? 'N/A'}`,
+            `Message: ${error.message}`,
+            `Retries left: ${error.retriesLeft}`,
+          ].join('\n'));
+
+          if (youTubeError && !youTubeError.retryable) {
+            throw error;
+          }
+        },
+      },
+    );
   }
 
   private async getVideosByID(videoIDs: string[]): Promise<VideoDetailsResponse[]> {
