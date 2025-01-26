@@ -14,6 +14,7 @@ import {parseTime} from '../utils/time.js';
 import getYouTubeID from 'get-youtube-id';
 import debug from '../utils/debug.js';
 
+// Define structured error type for better error handling
 interface YouTubeError extends Error {
   code: 'QUOTA_EXCEEDED' | 'RATE_LIMITED' | 'NOT_FOUND' | 'NETWORK_ERROR' | 'UNKNOWN';
   status?: number;
@@ -180,22 +181,23 @@ export default class {
         );
       };
 
-      // Fetch all playlist items iteratively
-      const playlistVideos: PlaylistItem[] = [];
-      let nextToken: string | undefined;
+      // Recursively fetch all playlist pages to avoid await-in-loop
+      const fetchAllPages = async (token?: string): Promise<PlaylistItem[]> => {
+        const {items, nextPageToken} = await fetchPlaylistPage(token);
+        if (!nextPageToken || items.length >= playlist.contentDetails.itemCount) {
+          return items;
+        }
 
-      do {
-        const {items, nextPageToken} = await fetchPlaylistPage(nextToken);
-        playlistVideos.push(...items);
-        nextToken = nextPageToken;
-      } while (nextToken && playlistVideos.length < playlist.contentDetails.itemCount);
+        const nextItems = await fetchAllPages(nextPageToken);
+        return [...items, ...nextItems];
+      };
 
-      // Fetch video details in parallel
-      const videoDetailChunks = await Promise.all(
-        playlistVideos.map(item => this.getVideosByID([item.contentDetails.videoId])),
-      );
-
+      const playlistVideos = await fetchAllPages();
+      const videoDetailPromises = playlistVideos.map(async item => 
+        this.getVideosByID([item.contentDetails.videoId]));
+      const videoDetailChunks = await Promise.all(videoDetailPromises);
       const videoDetails = videoDetailChunks.flat();
+
       const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
       const songsToReturn: SongMetadata[] = [];
 
