@@ -74,7 +74,7 @@ export default class {
   }
 
   async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
-    const {items}: ytsr.VideoResult | void = await this.ytsrQueue.add<ytsr.VideoResult>(async () => this.cache.wrap(
+    const result = await this.ytsrQueue.add<ytsr.VideoResult>(async () => this.cache.wrap(
       ytsr,
       query,
       {
@@ -85,13 +85,13 @@ export default class {
       },
     ));
 
-    if (!items) {
+    if (result === undefined) {
       return [];
     }
 
     let firstVideo: Video | undefined;
 
-    for (const item of items) {
+    for (const item of result.items) {
       if (item.type === 'video') {
         firstVideo = item;
         break;
