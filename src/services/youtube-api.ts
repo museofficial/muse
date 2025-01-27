@@ -74,7 +74,7 @@ export default class {
   }
 
   async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
-    const {items} = await this.ytsrQueue.add<ytsr.VideoResult>(async () => this.cache.wrap(
+    const {items}: ytsr.VideoResult | void = await this.ytsrQueue.add<ytsr.VideoResult>(async () => this.cache.wrap(
       ytsr,
       query,
       {
@@ -84,6 +84,10 @@ export default class {
         expiresIn: ONE_HOUR_IN_SECONDS,
       },
     ));
+
+    if (!items) {
+      return [];
+    }
 
     let firstVideo: Video | undefined;
 
