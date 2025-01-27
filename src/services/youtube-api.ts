@@ -74,7 +74,7 @@ export default class {
   }
 
   async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
-    const {items} = await this.ytsrQueue.add(async () => this.cache.wrap(
+    const {items} = await this.ytsrQueue.add<ytsr.VideoResult>(async () => this.cache.wrap(
       ytsr,
       query,
       {
