@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Remove Spotify requirement
 - Dependency update
-- Improve YouTube API error handling
 
 ## [2.10.0] - 2024-11-04
 - New `/config set-reduce-vol-when-voice` command to automatically turn down the volume when people are speaking in the channel
