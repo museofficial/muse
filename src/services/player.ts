@@ -658,9 +658,15 @@ export default class {
       const settings = await getGuildSettings(this.guildId);
       const {autoAnnounceNextSong} = settings;
       if (autoAnnounceNextSong && this.currentChannel) {
-        await this.currentChannel.send({
-          embeds: this.getCurrent() ? [buildPlayingMessageEmbed(this)] : [],
-        });
+        if (this.getCurrent()) {
+          await this.currentChannel.send({
+            embeds: [buildPlayingMessageEmbed(this)],
+          });
+        } else {
+          await this.currentChannel.send({
+            content: 'Queue is now empty',
+          });
+        }
       }
     }
   }
