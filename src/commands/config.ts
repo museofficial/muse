@@ -259,7 +259,7 @@ export default class implements Command {
             : `${config.secondsToWaitAfterQueueEmpties}s`,
           'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
           'Auto announce next song in queue': config.autoAnnounceNextSong ? 'yes' : 'no',
-          'Add to queue reponses show for requester only': config.autoAnnounceNextSong ? 'yes' : 'no',
+          'Add to queue responses show for requester only': config.queueAddResponseEphemeral ? 'yes' : 'no',
           'Default Volume': config.defaultVolume,
           'Default queue page size': config.defaultQueuePageSize,
           'Reduce volume when people speak': config.turnDownVolumeWhenPeopleSpeak ? 'yes' : 'no',
