@@ -2611,13 +2611,13 @@ has@^1.0.3:
   dependencies:
     function-bind "^1.1.1"
 
-hasha@^5.2.2:
-  version "5.2.2"
-  resolved "https://registry.npmjs.org/hasha/-/hasha-5.2.2.tgz"
-  integrity sha512-Hrp5vIK/xr5SkeN2onO32H0MgNZ0f17HRNH39WfL0SYUNOTZ5Lz1TJ8Pajo/87dYGEFlLMm7mIc/k/s6Bvz9HQ==
+hasha@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/hasha/-/hasha-6.0.0.tgz#bdf1231ae40b406121c09c13705e5b38c1bb607c"
+  integrity sha512-MLydoyGp9QJcjlhE5lsLHXYpWayjjWqkavzju2ZWD2tYa1CgmML1K1gWAu22BLFa2eZ0OfvJ/DlfoVjaD54U2Q==
   dependencies:
-    is-stream "^2.0.0"
-    type-fest "^0.8.0"
+    is-stream "^3.0.0"
+    type-fest "^4.7.1"
 
 hasown@^2.0.0, hasown@^2.0.1, hasown@^2.0.2:
   version "2.0.2"
@@ -5025,20 +5025,15 @@ type-fest@^0.4.1:
   resolved "https://registry.npmjs.org/type-fest/-/type-fest-0.4.1.tgz"
   integrity sha512-IwzA/LSfD2vC1/YDYMv/zHP4rDF1usCwllsDpbolT3D4fUepIO7f9K70jjmUewU/LmGUKJcwcVtDCpnKk4BPMw==
 
-type-fest@^0.8.0:
-  version "0.8.1"
-  resolved "https://registry.npmjs.org/type-fest/-/type-fest-0.8.1.tgz"
-  integrity sha512-4dbzIzqvjtgiM5rw1k5rEHtBANKmdudhGyBEajN01fEyhaAIhsoKNy6y7+IN93IfpFtwY9iqi7kD+xwKhQsNJA==
-
-type-fest@^2.0.0:
-  version "2.12.2"
-  resolved "https://registry.npmjs.org/type-fest/-/type-fest-2.12.2.tgz"
-  integrity sha512-qt6ylCGpLjZ7AaODxbpyBZSs9fCI9SkL3Z9q2oxMBQhs/uyY+VD8jHA8ULCGmWQJlBgqvO3EJeAngOHD8zQCrQ==
-
-type-fest@^2.12.0:
+type-fest@^2.0.0, type-fest@^2.12.0:
   version "2.19.0"
   resolved "https://registry.npmjs.org/type-fest/-/type-fest-2.19.0.tgz"
   integrity sha512-RAH822pAdBgcNMAfWnCBU3CFZcfZ/i1eZjwFU/dsLKumyuuP3niueg2UAukXYF0E2AAoc82ZSSf9J0WQBinzHA==
+
+type-fest@^4.7.1:
+  version "4.26.1"
+  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-4.26.1.tgz#a4a17fa314f976dd3e6d6675ef6c775c16d7955e"
+  integrity sha512-yOGpmOAL7CkKe/91I5O3gPICmJNLJ1G4zFYVAsRHg7M64biSnPtRj0WNQt++bRkjYOqjWXrhnUw1utzmVErAdg==
 
 typed-array-buffer@^1.0.2:
   version "1.0.2"
