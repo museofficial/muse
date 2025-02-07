@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.1] - 2025-01-28
+- Remove Spotify requirement
+- Dependency update
+
 ## [2.10.0] - 2024-11-04
 - New `/config set-reduce-vol-when-voice` command to automatically turn down the volume when people are speaking in the channel
 - New `/config set-reduce-vol-when-voice-target` command to set the target volume percentage (0-100) when people are speaking in the channel
@@ -354,7 +358,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/museofficial/muse/compare/v2.10.0...HEAD
+[unreleased]: https://github.com/museofficial/muse/compare/v2.10.1...HEAD
+[2.10.1]: https://github.com/museofficial/muse/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/museofficial/muse/compare/v2.9.5...v2.10.0
 [2.9.5]: https://github.com/museofficial/muse/compare/v2.9.4...v2.9.5
 [2.9.4]: https://github.com/codetheweb/muse/compare/v2.9.3...v2.9.4
