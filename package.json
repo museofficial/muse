@@ -87,7 +87,7 @@
   "dependencies": {
     "@discordjs/builders": "1.1.0",
     "@discordjs/opus": "^0.8.0",
-    "@discordjs/rest": "1.0.1",
+    "@discordjs/rest": "2.4.3",
     "@discordjs/voice": "0.17.0",
     "@distube/ytdl-core": "^4.15.9",
     "@distube/ytsr": "^2.0.4",
