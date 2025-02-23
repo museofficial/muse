@@ -3,7 +3,7 @@ import {toSeconds, parse} from 'iso8601-duration';
 import got, {Got} from 'got';
 import ytsr, {Video} from '@distube/ytsr';
 import PQueue from 'p-queue';
-import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
+import {SongMetadata, UnplayableSong, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
@@ -16,6 +16,9 @@ interface VideoDetailsResponse {
   contentDetails: {
     videoId: string;
     duration: string;
+    regionRestriction?: {
+      blocked?: string[];
+    };
   };
   snippet: {
     title: string;
@@ -50,17 +53,22 @@ interface PlaylistItem {
   contentDetails: {
     videoId: string;
   };
+  status: {
+    privacyStatus: string;
+  };
 }
 
 @injectable()
 export default class {
   private readonly youtubeKey: string;
+  private readonly ipCountryCode: string;
   private readonly cache: KeyValueCacheProvider;
   private readonly ytsrQueue: PQueue;
   private readonly got: Got;
 
   constructor(@inject(TYPES.Config) config: Config, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
     this.youtubeKey = config.YOUTUBE_API_KEY;
+    this.ipCountryCode = config.IP_COUNTRY_CODE;
     this.cache = cache;
     this.ytsrQueue = new PQueue({concurrency: 4});
 
@@ -113,10 +121,19 @@ export default class {
       throw new Error('Video could not be found.');
     }
 
+    /*
+    Why is the region restriction not enforced when playing a single video?
+    if (video.contentDetails.regionRestriction?.blocked !== undefined) {
+      if (video.contentDetails.regionRestriction.blocked.includes(this.ipCountryCode)) {
+        throw new Error('Video is region blocked.');
+      }
+    }
+    */
+
     return this.getMetadataFromVideo({video, shouldSplitChapters});
   }
 
-  async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<[SongMetadata[], UnplayableSong[]]> {
     const playlistParams = {
       searchParams: {
         part: 'id, snippet, contentDetails',
@@ -140,13 +157,15 @@ export default class {
     const playlistVideos: PlaylistItem[] = [];
     const videoDetailsPromises: Array<Promise<void>> = [];
     const videoDetails: VideoDetailsResponse[] = [];
+    const unplayableSongs: UnplayableSong[] = [];
 
     let nextToken: string | undefined;
+    let iterationCount = 0;
 
-    while (playlistVideos.length < playlist.contentDetails.itemCount) {
+    while ((playlistVideos.length + unplayableSongs.length) < playlist.contentDetails.itemCount) {
       const playlistItemsParams = {
         searchParams: {
-          part: 'id, contentDetails',
+          part: 'id, contentDetails, status',
           playlistId: listId,
           maxResults: '50',
           pageToken: nextToken,
@@ -162,7 +181,21 @@ export default class {
         },
       );
 
+      const toRemove = this.findUnplayableVideosInPlaylistItems(items);
+      for (let i = 0; i < toRemove.length; i++) {
+        const removed: UnplayableSong = {
+          playlistIndex: toRemove[i] + (iterationCount * 50),
+          status: items.splice(toRemove[i] - i, 1)[0].status.privacyStatus,
+        };
+        if (removed.status === 'privacyStatusUnspecified') {
+          removed.status = 'unspecified status (probably deleted)';
+        }
+
+        unplayableSongs.push(removed);
+      }
+
       nextToken = nextPageToken;
+      iterationCount++;
       playlistVideos.push(...items);
 
       // Start fetching extra details about videos
@@ -179,10 +212,31 @@ export default class {
 
     const songsToReturn: SongMetadata[] = [];
 
-    for (const video of playlistVideos) {
+    const blockedSongs: UnplayableSong[] = [];
+    const getCorrectIndex = (idx: number): number => {
+      for (let i = 0; i < unplayableSongs.length; i++) {
+        if (unplayableSongs[i].playlistIndex > idx) {
+          return idx + i;
+        }
+      }
+
+      return idx + unplayableSongs.length;
+    };
+
+    for (let i = 0; i < playlistVideos.length; i++) {
+      const video = playlistVideos[i];
+      const details = videoDetails.find((ind: {id: string}) => ind.id === video.contentDetails.videoId)!;
+
+      if (details.contentDetails.regionRestriction?.blocked !== undefined) {
+        if (details.contentDetails.regionRestriction.blocked.includes(this.ipCountryCode)) {
+          blockedSongs.push({playlistIndex: getCorrectIndex(i), status: `region restricted [**${details.snippet.title}**]`});
+          continue;
+        }
+      }
+
       try {
         songsToReturn.push(...this.getMetadataFromVideo({
-          video: videoDetails.find((i: {id: string}) => i.id === video.contentDetails.videoId)!,
+          video: details,
           queuedPlaylist,
           shouldSplitChapters,
         }));
@@ -192,7 +246,12 @@ export default class {
       }
     }
 
-    return songsToReturn;
+    if (blockedSongs.length > 0) {
+      unplayableSongs.push(...blockedSongs);
+      unplayableSongs.sort((a, b) => a.playlistIndex - b.playlistIndex);
+    }
+
+    return [songsToReturn, unplayableSongs];
   }
 
   private getMetadataFromVideo({
@@ -298,5 +357,20 @@ export default class {
       },
     );
     return videos;
+  }
+
+  private findUnplayableVideosInPlaylistItems(playlistItems: PlaylistItem[]): number[] {
+    const unplayableVideos: number[] = [];
+
+    for (let i = 0; i < playlistItems.length; i++) {
+      const status = playlistItems[i].status.privacyStatus;
+      if (status === 'private' || status === 'privacyStatusUnspecified') {
+        unplayableVideos.push(i);
+      } else if (status !== 'unlisted' && status !== 'public') {
+        console.log('got unknown privacyStatus value in playlist item at %d: %s', i, status);
+      }
+    }
+
+    return unplayableVideos;
   }
 }

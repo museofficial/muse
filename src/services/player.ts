@@ -48,6 +48,11 @@ export interface QueuedSong extends SongMetadata {
   requestedBy: string;
 }
 
+export interface UnplayableSong {
+  playlistIndex: number;
+  status: string;
+}
+
 export enum STATUS {
   PLAYING,
   PAUSED,

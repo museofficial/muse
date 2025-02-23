@@ -14,6 +14,7 @@ const CONFIG_MAP = {
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
   SPOTIFY_CLIENT_ID: process.env.SPOTIFY_CLIENT_ID ?? '',
   SPOTIFY_CLIENT_SECRET: process.env.SPOTIFY_CLIENT_SECRET ?? '',
+  IP_COUNTRY_CODE: process.env.IP_COUNTRY_CODE?.toUpperCase(),
   REGISTER_COMMANDS_ON_BOT: process.env.REGISTER_COMMANDS_ON_BOT === 'true',
   DATA_DIR,
   CACHE_DIR: path.join(DATA_DIR, 'cache'),
@@ -39,6 +40,7 @@ export default class Config {
   readonly YOUTUBE_API_KEY!: string;
   readonly SPOTIFY_CLIENT_ID!: string;
   readonly SPOTIFY_CLIENT_SECRET!: string;
+  readonly IP_COUNTRY_CODE!: string;
   readonly REGISTER_COMMANDS_ON_BOT!: boolean;
   readonly DATA_DIR!: string;
   readonly CACHE_DIR!: string;
@@ -60,6 +62,11 @@ export default class Config {
       if (key === 'BOT_ACTIVITY_TYPE') {
         this[key] = BOT_ACTIVITY_TYPE_MAP[(value as string).toUpperCase() as keyof typeof BOT_ACTIVITY_TYPE_MAP];
         continue;
+      } else if (key === 'IP_COUNTRY_CODE') {
+        this[key] = (value as string).toUpperCase();
+        if ((value as string).length !== 2) {
+          throw new Error(`IP_COUNTRY_CODE must be a 2 character country code (like 'US') but is '${this[key]}'`);
+        }
       }
 
       if (typeof value === 'number') {

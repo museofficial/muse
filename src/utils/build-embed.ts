@@ -1,6 +1,6 @@
 import getYouTubeID from 'get-youtube-id';
 import {EmbedBuilder} from 'discord.js';
-import Player, {MediaSource, QueuedSong, STATUS} from '../services/player.js';
+import Player, {MediaSource, QueuedSong, STATUS, UnplayableSong} from '../services/player.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
 import {truncate} from './string.js';
@@ -71,6 +71,25 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   if (thumbnailUrl) {
     message.setThumbnail(thumbnailUrl);
   }
+
+  return message;
+};
+
+export const buildUnplayableSongsEmbed = (songs: UnplayableSong[]): EmbedBuilder => {
+  const songsList: string[] = [];
+  for (const song of songs) {
+    songsList.push(`- \`${song.playlistIndex + 1}\` - *${song.status}*`);
+  }
+
+  const message = new EmbedBuilder();
+  message
+    .setColor('DarkOrange')
+    .setTitle('Found Unplayable Songs')
+    .setDescription(`
+      **Found ${songs.length} unplayable songs in the playlist:**
+      ${songsList.join('\n')}
+    `)
+    .setFooter({text: 'Indices of the songs in the playlist and their privacy status.'});
 
   return message;
 };

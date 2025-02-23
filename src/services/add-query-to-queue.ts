@@ -1,12 +1,12 @@
 /* eslint-disable complexity */
-import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
+import {ChatInputCommandInteraction, EmbedBuilder, GuildMember} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import shuffle from 'array-shuffle';
 import {TYPES} from '../types.js';
 import GetSongs from '../services/get-songs.js';
 import {MediaSource, SongMetadata, STATUS} from './player.js';
 import PlayerManager from '../managers/player.js';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {buildPlayingMessageEmbed, buildUnplayableSongsEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {SponsorBlock} from 'sponsorblock-api';
@@ -59,7 +59,12 @@ export default class AddQueryToQueue {
 
     await interaction.deferReply({ephemeral: queueAddResponseEphemeral});
 
-    let [newSongs, extraMsg] = await this.getSongs.getSongs(query, playlistLimit, shouldSplitChapters);
+    let [newSongs, extraMsg, unplayableSongs] = await this.getSongs.getSongs(query, playlistLimit, shouldSplitChapters);
+
+    const embeds: EmbedBuilder[] = [];
+    if (unplayableSongs !== null) {
+      embeds.push(buildUnplayableSongsEmbed(unplayableSongs));
+    }
 
     if (newSongs.length === 0) {
       throw new Error('no songs found');
@@ -95,9 +100,7 @@ export default class AddQueryToQueue {
         statusMsg = 'resuming playback';
       }
 
-      await interaction.editReply({
-        embeds: [buildPlayingMessageEmbed(player)],
-      });
+      embeds.push(buildPlayingMessageEmbed(player));
     } else if (player.status === STATUS.IDLE) {
       // Player is idle, start playback instead
       await player.play();
@@ -122,6 +125,10 @@ export default class AddQueryToQueue {
 
     if (extraMsg !== '') {
       extraMsg = ` (${extraMsg})`;
+    }
+
+    if (embeds.length > 0) {
+      await interaction.editReply({embeds});
     }
 
     if (newSongs.length === 1) {
