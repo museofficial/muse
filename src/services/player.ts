@@ -80,6 +80,7 @@ export default class {
   private audioResource: AudioResource | null = null;
   private volume?: number;
   private defaultVolume: number = DEFAULT_VOLUME;
+  private previousVolume: number = DEFAULT_VOLUME;
   private nowPlaying: QueuedSong | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
@@ -369,7 +370,7 @@ export default class {
     if (speakingUsers && speakingUsers.size > 0) {
       this.setVolume(turnDownVolumeWhenPeopleSpeakTarget);
     } else {
-      this.setVolume(this.defaultVolume);
+      this.setVolume(this.previousVolume);
     }
   }
 
@@ -486,6 +487,7 @@ export default class {
 
   setVolume(level: number): void {
     // Level should be a number between 0 and 100 = 0% => 100%
+    this.previousVolume = this.volume ?? this.defaultVolume;
     this.volume = level;
     this.setAudioPlayerVolume(level);
   }
