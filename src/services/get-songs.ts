@@ -1,6 +1,6 @@
 import {inject, injectable, optional} from 'inversify';
 import * as spotifyURI from 'spotify-uri';
-import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
+import {SongMetadata, UnplayableSong, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import ffmpeg from 'fluent-ffmpeg';
 import YoutubeAPI from './youtube-api.js';
@@ -17,9 +17,10 @@ export default class {
     this.spotifyAPI = spotifyAPI;
   }
 
-  async getSongs(query: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], string]> {
+  async getSongs(query: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], string, UnplayableSong[] | null]> {
     const newSongs: SongMetadata[] = [];
     let extraMsg = '';
+    const unplayableSongs: UnplayableSong[] = [];
 
     // Test if it's a complete URL
     try {
@@ -37,7 +38,9 @@ export default class {
         // YouTube source
         if (url.searchParams.get('list')) {
           // YouTube playlist
-          newSongs.push(...await this.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters));
+          const [songs, removed] = await this.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters);
+          newSongs.push(...songs);
+          unplayableSongs.push(...removed);
         } else {
           const songs = await this.youtubeVideo(url.href, shouldSplitChapters);
 
@@ -95,7 +98,7 @@ export default class {
       }
     }
 
-    return [newSongs, extraMsg];
+    return [newSongs, extraMsg, (unplayableSongs.length > 0 ? unplayableSongs : null)];
   }
 
   private async youtubeVideoSearch(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
@@ -106,7 +109,7 @@ export default class {
     return this.youtubeAPI.getVideo(url, shouldSplitChapters);
   }
 
-  private async youtubePlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  private async youtubePlaylist(listId: string, shouldSplitChapters: boolean): Promise<[SongMetadata[], UnplayableSong[]]> {
     return this.youtubeAPI.getPlaylist(listId, shouldSplitChapters);
   }
 
