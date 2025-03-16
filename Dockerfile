@@ -17,7 +17,7 @@ RUN apt-get update \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PYTHON /usr/bin/python3
+ENV PYTHON=/usr/bin/python3
 
 # Install dependencies
 FROM base AS dependencies
