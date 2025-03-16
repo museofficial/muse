@@ -665,17 +665,23 @@ export default class {
     }
   }
 
-  private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
+  private async createReadStream(options: {
+    url: string;
+    cacheKey: string;
+    ffmpegInputOptions?: string[];
+    cache?: boolean;
+    volumeAdjustment?: string;
+  }): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
+      let hasReturnedStreamClosed = false;
 
       if (options?.cache) {
         const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(options.cacheKey));
-        capacitor.createReadStream().pipe(cacheStream);
+        capacitor.createReadStream()?.pipe(cacheStream);
       }
 
       const returnedStream = capacitor.createReadStream();
-      let hasReturnedStreamClosed = false;
 
       const stream = ffmpeg(options.url)
         .inputOptions(options?.ffmpegInputOptions ?? ['-re'])
@@ -689,13 +695,13 @@ export default class {
           }
         })
         .on('start', command => {
-          debug(`Spawned ffmpeg with ${command as string}`);
+          debug(`Spawned ffmpeg with ${command}`);
         });
 
       stream.pipe(capacitor);
 
       returnedStream.on('close', () => {
-        if (!options.cache) {
+        if (!options?.cache) {
           stream.kill('SIGKILL');
         }
 

@@ -7,14 +7,20 @@ jobs:
     name: Type Check
     runs-on: ubuntu-latest
     steps:
-        - uses: actions/checkout@v1
-        - uses: actions/setup-node@v2
-          with:
-            node-version: '18'
-            cache: 'yarn'
-        - name: Install dependencies
-          run: yarn install
-        - name: Generate Prisma client
-          run: yarn prisma generate
-        - name: Run type check
-          run: yarn tsc
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: yarn prisma generate
+
+      - name: Run type check
+        run: yarn tsc
