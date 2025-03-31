@@ -162,10 +162,10 @@
     tslib "^2.5.0"
     ws "^8.13.0"
 
-"@distube/ytdl-core@^4.16.5":
-  version "4.16.5"
-  resolved "https://registry.npmjs.org/@distube/ytdl-core/-/ytdl-core-4.16.5.tgz#b5b6d7c43cf54a1309674801b42cb2eef2cb15ac"
-  integrity sha512-sl84k2iNVJSiONR+ZpXJOYKBqx4wnH/VrNClsQbMR7fIveBxLZnd6eBRP8IE6mwyaJTbbc7JEHarGB2i8eNH6A==
+"@distube/ytdl-core@^4.16.6":
+  version "4.16.6"
+  resolved "https://registry.yarnpkg.com/@distube/ytdl-core/-/ytdl-core-4.16.6.tgz#d433b0c8a8863c199f0f8be68b236e29479be6fe"
+  integrity sha512-+K88E2FRk/QPSC3l/U/qNq2LO0hPmFnDmK8CHK1Pzwh530aSacTLBhuZPgtoJAwNNncaTkmskP6lXoaw2eZjQw==
   dependencies:
     http-cookie-agent "^6.0.8"
     https-proxy-agent "^7.0.6"
