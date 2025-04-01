@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Dependency update
 
 ## [2.11.0] - 2025-03-31
 - Updated ytdl-core to 4.16.5 distubejs/ytdl-core@4.15.9...4.16.6 which includes distubejs/ytdl-core@1f57d78 fixing the sig parsing
