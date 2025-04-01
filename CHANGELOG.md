@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.11.0] - 2025-03-31
 - Updated ytdl-core to 4.16.5 distubejs/ytdl-core@4.15.9...4.16.6 which includes distubejs/ytdl-core@1f57d78 fixing the sig parsing
 - ytdl-core dropped node 18 support distubejs/ytdl-core@60f0ab1 so updated to latest Node LTS 22
 - Updated to @discordjs/opus v0.10.0 for Node 22 support
@@ -362,7 +364,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/museofficial/muse/compare/v2.10.1...HEAD
+[unreleased]: https://github.com/museofficial/muse/compare/v2.11.0...HEAD
+[2.11.0]: https://github.com/museofficial/muse/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/museofficial/muse/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/museofficial/muse/compare/v2.9.5...v2.10.0
 [2.9.5]: https://github.com/museofficial/muse/compare/v2.9.4...v2.9.5
