@@ -117,7 +117,7 @@
     "p-queue": "8.1.0",
     "p-retry": "6.2.0",
     "pagination.djs": "^4.0.10",
-    "parse-duration": "1.0.2",
+    "parse-duration": "2.1.4",
     "patch-package": "^8.0.0",
     "postinstall-postinstall": "^2.1.0",
     "read-pkg": "7.1.0",
