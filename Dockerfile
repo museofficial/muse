@@ -18,6 +18,16 @@ FROM base AS dependencies
 
 WORKDIR /usr/app
 
+# Add Python and build tools to compile native modules
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+    python3 \
+    python-is-python3 \
+    build-essential \
+    && apt-get autoclean \
+    && apt-get autoremove \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json .
 COPY yarn.lock .
 
