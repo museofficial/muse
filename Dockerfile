@@ -14,7 +14,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
-FROM node:22-bookworm AS dependencies
+FROM base AS dependencies
 
 WORKDIR /usr/app
 
