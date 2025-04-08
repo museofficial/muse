@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.11.1] - 2025-04-07
 - Revert Dockerfile to inherit dependencies image from base image
 
 ## [2.11.0] - 2025-03-31
@@ -365,7 +367,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/museofficial/muse/compare/v2.11.0...HEAD
+[unreleased]: https://github.com/museofficial/muse/compare/v2.11.1...HEAD
+[2.11.1]: https://github.com/museofficial/muse/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/museofficial/muse/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/museofficial/muse/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/museofficial/muse/compare/v2.9.5...v2.10.0
