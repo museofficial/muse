@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Lint and Type Check workflows to use actions/setup-node@v3 for setting up the Node.js environment.
 - 
 ## [2.11.1] - 2025-04-07
+
+## [2.11.1] - 2025-04-07
 - Revert Dockerfile to inherit dependencies image from base image
 
 ## [2.11.0] - 2025-03-31
