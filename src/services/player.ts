@@ -1,10 +1,3 @@
-import {VoiceChannel, Snowflake} from 'discord.js';
-import {Readable} from 'stream';
-import hasha from 'hasha';
-import ytdl, {videoFormat} from '@distube/ytdl-core';
-import {WriteStream} from 'fs-capacitor';
-import ffmpeg from 'fluent-ffmpeg';
-import shuffle from 'array-shuffle';
 import {
   AudioPlayer,
   AudioPlayerState,
@@ -16,11 +9,20 @@ import {
   VoiceConnection,
   VoiceConnectionStatus,
 } from '@discordjs/voice';
-import FileCacheProvider from './file-cache.js';
+
+import {Setting} from '@prisma/client';
+import shuffle from 'array-shuffle';
+import {Snowflake, VoiceChannel} from 'discord.js';
+import ffmpeg from 'fluent-ffmpeg';
+import {WriteStream} from 'fs-capacitor';
+import hasha from 'hasha';
+import {Readable} from 'stream';
+import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
-import {Setting} from '@prisma/client';
+import FileCacheProvider from './file-cache.js';
+import Innertube, {UniversalCache} from 'youtubei.js/agnostic';
+import {Format} from 'youtubei.js/dist/src/parser/misc.js';
 
 export enum MediaSource {
   Youtube,
@@ -58,8 +60,6 @@ export interface PlayerEvents {
   statusChange: (oldStatus: STATUS, newStatus: STATUS) => void;
 }
 
-type YTDLVideoFormat = videoFormat & {loudnessDb?: number};
-
 export const DEFAULT_VOLUME = 100;
 
 export default class {
@@ -90,6 +90,10 @@ export default class {
     this.guildId = guildId;
   }
 
+  public get isChannelEmpty(): boolean {
+    return this.currentChannel ? this.currentChannel.members.size === 0 : true;
+  }
+
   async connect(channel: VoiceChannel): Promise<void> {
     // Always get freshest default volume setting value
     const settings = await getGuildSettings(this.guildId);
@@ -102,6 +106,9 @@ export default class {
       selfDeaf: false,
       adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
+
+    // Set the current channel so the getter isChannelEmpty works correctly
+    this.currentChannel = channel;
 
     const guildSettings = await getGuildSettings(this.guildId);
 
@@ -120,7 +127,7 @@ export default class {
       newNetworking?.on('stateChange', networkStateChangeHandler);
       /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 
-      this.currentChannel = channel;
+      // currentChannel is already set above
       if (newState.status === VoiceConnectionStatus.Ready) {
         this.registerVoiceActivityListener(guildSettings);
       }
@@ -509,59 +516,25 @@ export default class {
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
-    let format: YTDLVideoFormat | undefined;
+    let format: Format | undefined;
 
     ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await ytdl.getInfo(song.url);
-
-      const formats = info.formats as YTDLVideoFormat[];
-
-      const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
-
-      format = formats.find(filter);
-
-      const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
-        if (formats.length < 1) {
-          return undefined;
-        }
-
-        if (formats[0].isLive) {
-          formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate); // Bad typings
-
-          return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10))); // Bad typings
-        }
-
-        formats = formats
-          .filter(format => format.averageBitrate)
-          .sort((a, b) => {
-            if (a && b) {
-              return b.averageBitrate! - a.averageBitrate!;
-            }
-
-            return 0;
-          });
-        return formats.find(format => !format.bitrate) ?? formats[0];
-      };
-
-      if (!format) {
-        format = nextBestFormat(info.formats);
-
-        if (!format) {
-          // If still no format is found, throw
-          throw new Error('Can\'t find suitable format.');
-        }
-      }
+      const innertube = await Innertube.create({cache: new UniversalCache(false)});
+      const info = await innertube.getInfo(song.url);
+      format = info.chooseFormat({codec: 'opus'});
 
       debug('Using format', format);
+      if (!format.url) {
+        throw new Error('No URL found for format.');
+      }
 
       ffmpegInput = format.url;
-
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-      shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.videoDetails.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
+      shouldCacheVideo = !info.basic_info.is_live && (info?.basic_info.duration ?? 0) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
 
       debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
 
@@ -588,7 +561,6 @@ export default class {
       cacheKey: song.url,
       ffmpegInputOptions,
       cache: shouldCacheVideo,
-      volumeAdjustment: format?.loudnessDb ? `${-format.loudnessDb}dB` : undefined,
     });
   }
 
@@ -617,17 +589,21 @@ export default class {
       return;
     }
 
-    if (this.voiceConnection.listeners(VoiceConnectionStatus.Disconnected).length === 0) {
-      this.voiceConnection.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
-    }
+    this.voiceConnection.on('stateChange', () => {
+      if (this.currentChannel?.members.size === 0) {
+        this.voiceConnection!.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
+      }
+    });
 
     if (!this.audioPlayer) {
       return;
     }
 
-    if (this.audioPlayer.listeners('stateChange').length === 0) {
-      this.audioPlayer.on(AudioPlayerStatus.Idle, this.onAudioPlayerIdle.bind(this));
-    }
+    this.audioPlayer.on('stateChange', () => {
+      if (this.currentChannel?.members.size === 0) {
+        this.audioPlayer!.on(AudioPlayerStatus.Idle, this.onAudioPlayerIdle.bind(this));
+      }
+    });
   }
 
   private onVoiceConnectionDisconnect(): void {
@@ -668,9 +644,11 @@ export default class {
   private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
-
       if (options?.cache) {
-        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(options.cacheKey));
+        const cacheStream = this.fileCache.createWriteStream(
+          this.getHashForCache(options.cacheKey),
+        );
+
         capacitor.createReadStream().pipe(cacheStream);
       }
 
