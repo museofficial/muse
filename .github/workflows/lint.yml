@@ -7,15 +7,15 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '22'
-          cache: 'yarn'
-          cache-dependency-path: '**/package.json'
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      - name: Generate Prisma client
-        run: yarn prisma generate
-      - name: Run lint
-        run: yarn lint
+        - uses: actions/checkout@v1
+        - uses: actions/setup-node@v2
+          with:
+            node-version: '22'
+            cache: 'yarn'
+            cache-dependency-path: '**/yarn.lock'
+        - name: Install dependencies
+          run: yarn install
+        - name: Generate Prisma client
+          run: yarn prisma generate
+        - name: Run lint
+          run: yarn lint
