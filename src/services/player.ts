@@ -522,7 +522,8 @@ export default class {
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await innertube.getInfo(song.url);
+      const inner = await innertube();
+      const info = await inner.getInfo(song.url);
       format = info.chooseFormat({codec: 'opus'});
       debug('Using format', format);
       if (!format.url) {
