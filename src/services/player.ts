@@ -524,7 +524,7 @@ export default class {
       // Not yet cached, must download
       const inner = await innertube();
       const info = await inner.getInfo(song.url);
-      format = info.chooseFormat({codec: 'opus'});
+      format = info.chooseFormat({});
       debug('Using format', format);
       if (!format.url) {
         throw new Error('No URL found for format.');
