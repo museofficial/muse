@@ -21,8 +21,8 @@ import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import FileCacheProvider from './file-cache.js';
-import Innertube, {UniversalCache} from 'youtubei.js/agnostic';
 import {Format} from 'youtubei.js/dist/src/parser/misc.js';
+import {innertube} from '../utils/innertube.js';
 
 export enum MediaSource {
   Youtube,
@@ -522,10 +522,8 @@ export default class {
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const innertube = await Innertube.create({cache: new UniversalCache(false)});
       const info = await innertube.getInfo(song.url);
       format = info.chooseFormat({codec: 'opus'});
-
       debug('Using format', format);
       if (!format.url) {
         throw new Error('No URL found for format.');
