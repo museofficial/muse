@@ -162,10 +162,10 @@
     tslib "^2.5.0"
     ws "^8.13.0"
 
-"@distube/ytdl-core@^4.16.6":
-  version "4.16.6"
-  resolved "https://registry.yarnpkg.com/@distube/ytdl-core/-/ytdl-core-4.16.6.tgz#d433b0c8a8863c199f0f8be68b236e29479be6fe"
-  integrity sha512-+K88E2FRk/QPSC3l/U/qNq2LO0hPmFnDmK8CHK1Pzwh530aSacTLBhuZPgtoJAwNNncaTkmskP6lXoaw2eZjQw==
+"@distube/ytdl-core@^4.16.8":
+  version "4.16.8"
+  resolved "https://registry.yarnpkg.com/@distube/ytdl-core/-/ytdl-core-4.16.8.tgz#b58ce2316296babb75c4fae62f8d478866c38ccc"
+  integrity sha512-Vl04TCOiSSwCFmOHVfzIX117tpT/eCobp2hwx4lo2EyeE70FMVrpQpKSEdh+EjywmVAHs/ZXIsaDy+wq1fMb+g==
   dependencies:
     http-cookie-agent "^6.0.8"
     https-proxy-agent "^7.0.6"
@@ -1611,15 +1611,15 @@ dir-glob@^3.0.1:
   dependencies:
     path-type "^4.0.0"
 
-discord-api-types@0.32.1:
-  version "0.32.1"
-  resolved "https://registry.npmjs.org/discord-api-types/-/discord-api-types-0.32.1.tgz#c468ec31a1ac2565673619ba1e0d35f01d339a65"
-  integrity sha512-/ewl0CPYT5xjOC+SJ7wADJKjtpZfiiUaYXOP/Ns54lnBcv4Xqa4iKSqRF/w1fjiUvWTYN9W8UuOiyCHtmu5fJw==
-
 discord-api-types@0.37.61:
   version "0.37.61"
   resolved "https://registry.npmjs.org/discord-api-types/-/discord-api-types-0.37.61.tgz#9dd8e58c624237e6f1b23be2d29579af268b8c5b"
   integrity sha512-o/dXNFfhBpYHpQFdT6FWzeO7pKc838QeeZ9d91CfVAtpr5XLK4B/zYxQbYgPdoMiTDvJfzcsLW5naXgmHGDNXw==
+
+discord-api-types@0.38.1:
+  version "0.38.1"
+  resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.38.1.tgz#2148f42141871945495efdb39303715e3dc19cc0"
+  integrity sha512-vsjsqjAuxsPhiwbPjTBeGQaDPlizFmSkU0mTzFGMgRxqCDIRBR7iTY74HacpzrDV0QtERHRKQEk1tq7drZUtHg==
 
 discord-api-types@^0.36.3:
   version "0.36.3"
