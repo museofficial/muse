@@ -89,7 +89,7 @@
     "@discordjs/opus": "^0.10.0",
     "@discordjs/rest": "1.0.1",
     "@discordjs/voice": "0.18.0",
-    "@distube/ytdl-core": "^4.16.8",
+    "@distube/ytdl-core": "^4.16.10",
     "@distube/ytsr": "^2.0.4",
     "@prisma/client": "4.16.0",
     "@types/libsodium-wrappers": "^0.7.9",
