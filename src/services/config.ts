@@ -39,6 +39,8 @@ export default class Config {
   readonly YOUTUBE_API_KEY!: string;
   readonly SPOTIFY_CLIENT_ID!: string;
   readonly SPOTIFY_CLIENT_SECRET!: string;
+  readonly SOUNDCLOUD_CLIENT_ID!: string;
+  readonly SOUNDCLOUD_OAUTH_TOKEN!: string;
   readonly REGISTER_COMMANDS_ON_BOT!: boolean;
   readonly DATA_DIR!: string;
   readonly CACHE_DIR!: string;

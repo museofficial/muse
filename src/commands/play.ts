@@ -6,7 +6,7 @@ import Spotify from 'spotify-web-api-node';
 import Command from './index.js';
 import {TYPES} from '../types.js';
 import ThirdParty from '../services/third-party.js';
-import getYouTubeAndSpotifySuggestionsFor from '../utils/get-youtube-and-spotify-suggestions-for.js';
+import getSearchSuggestions from '../utils/get-youtube-and-spotify-suggestions-for.js';
 import KeyValueCacheProvider from '../services/key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
 import AddQueryToQueue from '../services/add-query-to-queue.js';
@@ -28,7 +28,7 @@ export default class implements Command {
 
     const queryDescription = thirdParty === undefined
       ? 'YouTube URL or search query'
-      : 'YouTube URL, Spotify URL, or search query';
+      : 'YouTube URL, Spotify URL, SoundCloud URL, or search query';
 
     this.slashCommand = new SlashCommandBuilder()
       .setName('play')
@@ -82,7 +82,7 @@ export default class implements Command {
     } catch {}
 
     const suggestions = await this.cache.wrap(
-      getYouTubeAndSpotifySuggestionsFor,
+      getSearchSuggestions,
       query,
       this.spotify,
       10,

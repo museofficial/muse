@@ -19,6 +19,11 @@ const getSongTitle = ({title, url, offset, source}: QueuedSong, shouldTruncate =
   const cleanSongTitle = title.replace(/\[.*\]/, '').trim();
 
   const songTitle = shouldTruncate ? truncate(cleanSongTitle, getMaxSongTitleLength(cleanSongTitle)) : cleanSongTitle;
+
+  if (source === MediaSource.SoundCloud) {
+    return `[${songTitle}](${url})`;
+  }
+
   const youtubeId = url.length === 11 ? url : getYouTubeID(url) ?? '';
 
   return `[${songTitle}](https://www.youtube.com/watch?v=${youtubeId}${offset === 0 ? '' : '&t=' + String(offset)})`;

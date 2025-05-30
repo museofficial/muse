@@ -14,7 +14,8 @@ const filterDuplicates = <T extends {name: string}>(items: T[]) => {
   return results;
 };
 
-const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: SpotifyWebApi, limit = 10): Promise<APIApplicationCommandOptionChoice[]> => {
+// TODO: add support for SoundCloud
+const getSearchSuggestions = async (query: string, spotify?: SpotifyWebApi, limit = 10): Promise<APIApplicationCommandOptionChoice[]> => {
   // Only search Spotify if enabled
   const spotifySuggestionPromise = spotify === undefined
     ? undefined
@@ -74,4 +75,4 @@ const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: Spoti
   return suggestions;
 };
 
-export default getYouTubeAndSpotifySuggestionsFor;
+export default getSearchSuggestions;

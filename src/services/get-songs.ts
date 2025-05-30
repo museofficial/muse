@@ -4,16 +4,19 @@ import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import ffmpeg from 'fluent-ffmpeg';
 import YoutubeAPI from './youtube-api.js';
+import SoundCloudAPI from './soundcloud-api.js';
 import SpotifyAPI, {SpotifyTrack} from './spotify-api.js';
 import {URL} from 'node:url';
 
 @injectable()
 export default class {
   private readonly youtubeAPI: YoutubeAPI;
+  private readonly soundcloudApi: SoundCloudAPI;
   private readonly spotifyAPI?: SpotifyAPI;
 
-  constructor(@inject(TYPES.Services.YoutubeAPI) youtubeAPI: YoutubeAPI, @inject(TYPES.Services.SpotifyAPI) @optional() spotifyAPI?: SpotifyAPI) {
+  constructor(@inject(TYPES.Services.YoutubeAPI) youtubeAPI: YoutubeAPI, @inject(TYPES.Services.SoundCloudAPI) @optional() soundcloudApi: SoundCloudAPI, @inject(TYPES.Services.SpotifyAPI) @optional() spotifyAPI?: SpotifyAPI) {
     this.youtubeAPI = youtubeAPI;
+    this.soundcloudApi = soundcloudApi;
     this.spotifyAPI = spotifyAPI;
   }
 
@@ -46,6 +49,14 @@ export default class {
           } else {
             throw new Error('that doesn\'t exist');
           }
+        }
+      } else if (url.host === 'soundcloud.com') {
+        if (url.pathname.includes("/sets/")) {
+          const songs = await this.soundcloudPlaylist(url.href);
+          newSongs.push(...songs)
+        } else {
+          const songs = await this.soundcloudUrl(url.href);
+          newSongs.push(...songs)
         }
       } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
         if (this.spotifyAPI === undefined) {
@@ -108,6 +119,18 @@ export default class {
 
   private async youtubePlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
     return this.youtubeAPI.getPlaylist(listId, shouldSplitChapters);
+  }
+
+  private async soundcloudSearch(query: string): Promise<SongMetadata[]> {
+    return this.soundcloudApi.search(query);
+  }
+
+  private async soundcloudUrl(url: string): Promise<SongMetadata[]> {
+    return this.soundcloudApi.get(url);
+  }
+
+  private async soundcloudPlaylist(url: string): Promise<SongMetadata[]> {
+    return this.soundcloudApi.getPlaylist(url);
   }
 
   private async spotifySource(url: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], number, number]> {
