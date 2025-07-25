@@ -115,7 +115,7 @@ export default class FileCacheProvider {
     let totalSizeBytes = await this.getDiskUsageInBytes();
     let numOfEvictedFiles = 0;
     // Continue to evict until we're under the limit
-    /* eslint-disable no-await-in-loop */
+     
     while (totalSizeBytes > this.config.CACHE_LIMIT_IN_BYTES) {
       const oldest = await prisma.fileCache.findFirst({
         orderBy: {
@@ -137,7 +137,7 @@ export default class FileCacheProvider {
 
       totalSizeBytes = await this.getDiskUsageInBytes();
     }
-    /* eslint-enable no-await-in-loop */
+     
 
     if (numOfEvictedFiles > 0) {
       debug(`${numOfEvictedFiles} files have been evicted`);

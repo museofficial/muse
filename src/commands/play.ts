@@ -75,11 +75,13 @@ export default class implements Command {
 
     try {
       // Don't return suggestions for URLs
-      // eslint-disable-next-line no-new
+       
       new URL(query);
       await interaction.respond([]);
       return;
-    } catch {}
+    } catch {
+      // Ignore errors when getting suggestions
+    }
 
     const suggestions = await this.cache.wrap(
       getYouTubeAndSpotifySuggestionsFor,

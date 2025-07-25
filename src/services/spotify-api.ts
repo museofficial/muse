@@ -38,7 +38,7 @@ export default class {
     const playlist = {title: playlistResponse.name, source: playlistResponse.href};
 
     while (tracksResponse.next) {
-      // eslint-disable-next-line no-await-in-loop
+       
       ({body: tracksResponse} = await this.spotify.getPlaylistTracks(uri.id, {
         limit: parseInt(new URL(tracksResponse.next).searchParams.get('limit') ?? '50', 10),
         offset: parseInt(new URL(tracksResponse.next).searchParams.get('offset') ?? '0', 10),
