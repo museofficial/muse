@@ -6,7 +6,7 @@ on:
       - completed
 
 env:
-  REGISTRY_IMAGE: ghcr.io/museofficial/muse
+  REGISTRY_IMAGE: ghcr.io/fabaindaiz/muse
 
 jobs:
   release-and-comment:

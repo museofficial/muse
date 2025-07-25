@@ -3,7 +3,7 @@ name: Build snapshot of PR
 on: pull_request
 
 env:
-  REGISTRY_IMAGE: ghcr.io/museofficial/muse
+  REGISTRY_IMAGE: ghcr.io/fabaindaiz/muse
 
 jobs:
   build:
