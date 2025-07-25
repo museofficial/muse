@@ -32,7 +32,8 @@ export default class {
   async getPlaylist(url: string, playlistLimit: number): Promise<[SpotifyTrack[], QueuedPlaylist]> {
     const uri = spotifyURI.parse(url) as spotifyURI.Playlist;
 
-    let [{body: playlistResponse}, {body: tracksResponse}] = await Promise.all([this.spotify.getPlaylist(uri.id), this.spotify.getPlaylistTracks(uri.id, {limit: 50})]);
+    const [{body: playlistResponse}] = await Promise.all([this.spotify.getPlaylist(uri.id)]);
+    let {body: tracksResponse} = await this.spotify.getPlaylistTracks(uri.id, {limit: 50});
 
     const items = tracksResponse.items.map(playlistItem => playlistItem.track);
     const playlist = {title: playlistResponse.name, source: playlistResponse.href};
