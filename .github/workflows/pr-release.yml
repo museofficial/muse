@@ -19,17 +19,17 @@ jobs:
       id-token: write
     steps:
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@master
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@master
 
       - name: Download images
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@main
         with:
           path: /tmp/images
           pattern: image-linux-*
@@ -44,7 +44,7 @@ jobs:
           docker load -i /tmp/images/image-linux-arm64.tar
 
       - name: Download SHA
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@main
         with:
           path: /tmp/SHA
           pattern: sha
@@ -62,7 +62,7 @@ jobs:
           docker push ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-arm64
 
       - name: Download Docker metadata
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@main
         with:
           path: /tmp/metadata
           pattern: metadata
@@ -71,12 +71,12 @@ jobs:
 
       - name: Read the metadata.json file
         id: metadata_reader
-        uses: juliangruber/read-file-action@v1.0.0
+        uses: juliangruber/read-file-action@master
         with:
           path: /tmp/metadata/metadata/metadata.json
 
       - name: Download PR number
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@main
         with:
           path: /tmp/pull_request_number
           pattern: pull_request_number
@@ -93,7 +93,7 @@ jobs:
           docker buildx imagetools create $(cat /tmp/metadata/metadata/metadata.json | jq -cr '.tags | map("-t " + .) | join(" ")') ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-amd64 ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-arm64
 
       - name: Create comment
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@main
         with:
           header: "pr-release"
           number: ${{ env.PR_NUMBER }}

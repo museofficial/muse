@@ -26,28 +26,28 @@ jobs:
       id-token: write
     steps:
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@master
 
       - name: Login to DockerHub
-        uses: docker/login-action@v3
+        uses: docker/login-action@master
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@master
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get current time
-        uses: josStorer/get-current-time@v2
+        uses: josStorer/get-current-time@master
         id: current-time
 
       - name: Build and push
         id: docker_build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@master
         with:
           push: true
           tags: |
@@ -68,19 +68,19 @@ jobs:
       attestations: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@main
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@master
 
       - name: Login to DockerHub
-        uses: docker/login-action@v3
+        uses: docker/login-action@master
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@master
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -88,13 +88,13 @@ jobs:
 
       - name: Get tags (Docker Hub)
         id: get-tags-dockerhub
-        uses: Surgo/docker-smart-tag-action@v1
+        uses: Surgo/docker-smart-tag-action@main
         with:
           docker_image: codetheweb/muse
 
       - name: Get tags (ghcr.io)
         id: get-tags-ghcr
-        uses: Surgo/docker-smart-tag-action@v1
+        uses: Surgo/docker-smart-tag-action@main
         with:
           docker_image: ${{ env.REGISTRY_IMAGE }}
 
@@ -105,7 +105,7 @@ jobs:
         run: docker buildx imagetools create $(echo '${{ steps.get-tags-ghcr.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-arm64' '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-amd64'
 
       - name: Update Docker Hub description
-        uses: peter-evans/dockerhub-description@v2.4.3
+        uses: peter-evans/dockerhub-description@main
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: combine
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@main
 
       - name: Get version from tag
         id: tag_name
@@ -126,13 +126,13 @@ jobs:
 
       - name: Get Changelog Entry
         id: changelog_reader
-        uses: mindsers/changelog-reader-action@v2
+        uses: mindsers/changelog-reader-action@master
         with:
           version: ${{ steps.tag_name.outputs.current_version }}
           path: ./CHANGELOG.md
 
       - name: Create/update release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@main
         with:
           tag: v${{ steps.changelog_reader.outputs.version }}
           name: Release v${{ steps.changelog_reader.outputs.version }}
