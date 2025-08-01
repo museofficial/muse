@@ -6,7 +6,7 @@ on:
     - 'v*'
 
 env:
-  REGISTRY_IMAGE: ghcr.io/museofficial/muse
+  REGISTRY_IMAGE: ghcr.io/whytf/muse
 
 jobs:
   publish:
@@ -14,14 +14,10 @@ jobs:
       matrix:
         runner-platform:
           - ubuntu-latest
-          - namespace-profile-default-arm64
         include:
           - runner-platform: ubuntu-latest
             build-arch: linux/amd64
             tagged-platform: amd64
-          - runner-platform: namespace-profile-default-arm64
-            build-arch: linux/arm64
-            tagged-platform: arm64
     runs-on: ${{ matrix.runner-platform }}
     permissions:
       contents: read
@@ -33,7 +29,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -72,13 +68,13 @@ jobs:
       attestations: write
       id-token: write
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -113,14 +109,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-          repository: codetheweb/muse
+          repository: whytf/muse
 
   release:
     name: Create GitHub release
     runs-on: ubuntu-latest
     needs: combine
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Get version from tag
         id: tag_name

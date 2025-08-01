@@ -3,7 +3,7 @@ name: Build snapshot of PR
 on: pull_request
 
 env:
-  REGISTRY_IMAGE: ghcr.io/museofficial/muse
+  REGISTRY_IMAGE: ghcr.io/whytf/muse
 
 jobs:
   build:
@@ -12,12 +12,9 @@ jobs:
       matrix:
         runner-platform:
           - ubuntu-latest
-          - namespace-profile-default-arm64
         include:
           - runner-platform: ubuntu-latest
             build-arch: linux/amd64
-          - runner-platform: namespace-profile-default-arm64
-            build-arch: linux/arm64
     runs-on: ${{ matrix.runner-platform }}
     steps:
       - name: Prepare
