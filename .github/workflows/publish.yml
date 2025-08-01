@@ -28,12 +28,6 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@master
 
-      - name: Login to DockerHub
-        uses: docker/login-action@master
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@master
         with:
@@ -50,9 +44,7 @@ jobs:
         uses: docker/build-push-action@master
         with:
           push: true
-          tags: |
-            codetheweb/muse:${{ github.sha }}-${{ matrix.tagged-platform }}
-            ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-${{ matrix.tagged-platform }}
+          tags: ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-${{ matrix.tagged-platform }}
           platforms: ${{ matrix.build-arch }}
           build-args: |
             COMMIT_HASH=${{ github.sha }}
@@ -73,12 +65,6 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@master
 
-      - name: Login to DockerHub
-        uses: docker/login-action@master
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@master
         with:
@@ -86,30 +72,14 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get tags (Docker Hub)
-        id: get-tags-dockerhub
-        uses: Surgo/docker-smart-tag-action@main
-        with:
-          docker_image: codetheweb/muse
-
       - name: Get tags (ghcr.io)
         id: get-tags-ghcr
         uses: Surgo/docker-smart-tag-action@main
         with:
           docker_image: ${{ env.REGISTRY_IMAGE }}
 
-      - name: Combine tags (Docker Hub)
-        run: docker buildx imagetools create $(echo '${{ steps.get-tags-dockerhub.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') 'codetheweb/muse:${{ github.sha }}-arm64' 'codetheweb/muse:${{ github.sha }}-amd64'
-
       - name: Combine tags (GitHub Container Registry)
         run: docker buildx imagetools create $(echo '${{ steps.get-tags-ghcr.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-arm64' '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-amd64'
-
-      - name: Update Docker Hub description
-        uses: peter-evans/dockerhub-description@main
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-          repository: whytf/muse
 
   release:
     name: Create GitHub release

@@ -1,12 +1,6 @@
 <p align="center">
-  <img width="250" height="250" src="https://raw.githubusercontent.com/museofficial/muse/master/.github/logo.png">
+  <img width="250" height="250" src="https://raw.githubusercontent.com/whytf/muse/master/.github/logo.png">
 </p>
-
-> [!WARNING]
-> I ([@codetheweb](https://github.com/codetheweb)) am no longer the primary maintainer of Muse. **If you use the Docker image, update your image source to `ghcr.io/museofficial/muse`.** We are currently publishing new releases to both `ghcr.io/museofficial/muse` and `codetheweb/muse`, but this may change in the future.
-> Thank you to all the people who stepped up to help maintain Muse!
-
-------
 
 Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that doesn't suck**. It's made for small to medium-sized Discord servers/guilds (think about a group the size of you, your friends, and your friend's friends).
 
@@ -41,7 +35,7 @@ A 64-bit OS is required to run Muse.
 
 The `master` branch acts as the developing / bleeding edge branch and is not guaranteed to be stable.
 
-When running a production instance, I recommend that you use the [latest release](https://github.com/museofficial/muse/releases/).
+When running a production instance, I recommend that you use the [latest release](https://github.com/whytf/muse/releases/).
 
 
 ### 🐳 Docker
@@ -55,7 +49,7 @@ There are a variety of image tags available:
 (Replace empty config strings with correct values.)
 
 ```bash
-docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' ghcr.io/museofficial/muse:latest
+docker run -it -v "$(pwd)/data":/data -e DISCORD_TOKEN='' -e SPOTIFY_CLIENT_ID='' -e SPOTIFY_CLIENT_SECRET='' -e YOUTUBE_API_KEY='' ghcr.io/whytf/muse:latest
 ```
 
 This starts Muse and creates a data directory in your current directory.
@@ -67,7 +61,7 @@ You can also store your tokens in an environment file and make it available to y
 ```yaml
 services:
   muse:
-    image: ghcr.io/museofficial/muse:latest
+    image: ghcr.io/whytf/muse:latest
     restart: always
     volumes:
       - ./muse:/data
@@ -84,13 +78,13 @@ services:
 * Node.js (18.17.0 or latest 18.xx.xx is required and latest 18.x.x LTS is recommended) (Version 18 due to opus dependency)
 * ffmpeg (4.1 or later)
 
-1. `git clone https://github.com/museofficial/muse.git && cd muse`
+1. `git clone https://github.com/whytf/muse.git && cd muse`
 2. Copy `.env.example` to `.env` and populate with values
 3. I recommend checking out a tagged release with `git checkout v[latest release]`
 4. `yarn install` (or `npm i`)
 5. `yarn start` (or `npm run start`)
 
-**Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/museofficial/muse/issues/345) for details.
+**Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/whytf/muse/issues/345) for details.
 
 ## ⚙️ Additional configuration (advanced)
 
@@ -146,4 +140,3 @@ You can configure the bot to automatically turn down the volume when people are 
 - `/config set-reduce-vol-when-voice true` - Enable automatic volume reduction
 - `/config set-reduce-vol-when-voice false` - Disable automatic volume reduction
 - `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 70)
-
