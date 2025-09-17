@@ -4,6 +4,7 @@ import hasha from 'hasha';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import shuffle from 'array-shuffle';
+import {spawn} from 'child_process';
 import {
   AudioPlayer,
   AudioPlayerState,
@@ -16,7 +17,6 @@ import {
   VoiceConnectionStatus,
 } from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
-import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {Setting} from '@prisma/client';
@@ -58,7 +58,19 @@ export interface PlayerEvents {
   statusChange: (oldStatus: STATUS, newStatus: STATUS) => void;
 }
 
-type YTDLVideoFormat = videoFormat & {loudnessDb?: number};
+interface VideoFormat {
+  url: string;
+  itag: string | number;
+  codecs?: string;
+  container?: string;
+  audioSampleRate?: string;
+  averageBitrate?: number;
+  bitrate?: string | number;
+  isLive?: boolean;
+  loudnessDb?: number;
+}
+
+type YTDLVideoFormat = VideoFormat;
 
 export const DEFAULT_VOLUME = 100;
 
@@ -90,6 +102,82 @@ export default class {
     this.guildId = guildId;
   }
 
+  private async getYouTubeInfo(url: string): Promise<{formats: VideoFormat[]; isLive: boolean; lengthSeconds: string}> {
+    const videoId = this.extractVideoId(url);
+    
+    // Construct full YouTube URL if we only have a video ID
+    const fullUrl = url.includes('youtube.com') || url.includes('youtu.be')
+      ? url
+      : `https://www.youtube.com/watch?v=${videoId}`;
+    
+    try {
+      const info = await this.getVideoInfoWithYtDlp(fullUrl);
+
+      const formats: VideoFormat[] = info.formats?.map((format: any) => ({
+        url: format.url ?? '',
+        itag: format.format_id ?? '',
+        codecs: format.acodec && format.acodec !== 'none' ? format.acodec : format.vcodec,
+        container: format.ext ?? '',
+        audioSampleRate: format.asr?.toString(),
+        averageBitrate: format.abr,
+        bitrate: format.tbr,
+        isLive: info.is_live,
+      })) ?? [];
+      
+      return {
+        formats,
+        isLive: info.is_live ?? false,
+        lengthSeconds: info.duration?.toString() ?? '0',
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private async getVideoInfoWithYtDlp(url: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const ytDlp = spawn('yt-dlp', [
+        '--dump-json',
+        '--no-warnings',
+        url,
+      ]);
+
+      let stdout = '';
+      let stderr = '';
+
+      ytDlp.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+
+      ytDlp.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+
+      ytDlp.on('close', (code: number) => {
+        if (code === 0) {
+          try {
+            const info = JSON.parse(stdout);
+            resolve(info);
+          } catch (parseError) {
+            reject(new Error(`Failed to parse yt-dlp JSON output: ${parseError}`));
+          }
+        } else {
+          reject(new Error(`yt-dlp failed with code ${code}: ${stderr}`));
+        }
+      });
+
+      ytDlp.on('error', (error: Error) => {
+        reject(new Error(`Failed to spawn yt-dlp: ${error.message}`));
+      });
+    });
+  }
+
+  private extractVideoId(url: string): string {
+    const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
+    const match = regex.exec(url);
+    return match?.[1] ?? url;
+  }
+
   async connect(channel: VoiceChannel): Promise<void> {
     // Always get freshest default volume setting value
     const settings = await getGuildSettings(this.guildId);
@@ -99,7 +187,7 @@ export default class {
     this.voiceConnection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
-      selfDeaf: false,
+      selfDeaf: true,
       adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
 
@@ -259,7 +347,6 @@ export default class {
         const channelId = currentSong.addedInChannelId;
 
         if (channelId) {
-          debug(`${currentSong.title} is unavailable`);
           return;
         }
       }
@@ -515,23 +602,52 @@ export default class {
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await ytdl.getInfo(song.url);
+      const info = await this.getYouTubeInfo(song.url);
 
-      const formats = info.formats as YTDLVideoFormat[];
+      const {formats} = info;
 
-      const filter = (format: ytdl.videoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000;
+      // Primary filter: Look for the ideal format (opus codec, webm container, 48kHz)
+      const filter = (format: VideoFormat): boolean => {
+        const hasOpusCodec = format.codecs === 'opus' || format.codecs?.includes('opus');
+        const hasWebmContainer = format.container === 'webm';
+        const has48kSampleRate = format.audioSampleRate && parseInt(format.audioSampleRate, 10) === 48000;
+        const hasUrl = Boolean(format.url);
+        
+        return Boolean(hasOpusCodec && hasWebmContainer && has48kSampleRate && hasUrl);
+      };
 
-      format = formats.find(filter);
+      // Secondary filter: Look for any audio format with opus codec
+      const audioOpusFilter = (format: VideoFormat): boolean => {
+        const hasOpusCodec = format.codecs === 'opus' || format.codecs?.includes('opus');
+        const hasUrl = Boolean(format.url);
+        const isAudioOnly = format.container && ['webm', 'm4a', 'mp4'].includes(format.container);
+        
+        return Boolean(hasOpusCodec && hasUrl && isAudioOnly);
+      };
 
-      const nextBestFormat = (formats: ytdl.videoFormat[]): ytdl.videoFormat | undefined => {
+      // Tertiary filter: Look for any audio format
+      const audioFilter = (format: VideoFormat): boolean => {
+        const hasUrl = Boolean(format.url);
+        const isAudioOnly = format.container && ['webm', 'm4a', 'mp4', 'ogg'].includes(format.container);
+        const hasAudioCodec = format.codecs && ['opus', 'mp4a', 'aac'].some(codec =>
+          format.codecs === codec || format.codecs?.includes(codec),
+        );
+        
+        return Boolean(hasUrl && isAudioOnly && hasAudioCodec);
+      };
+
+      // Try filters in order of preference
+      format = formats.find(filter) || formats.find(audioOpusFilter) || formats.find(audioFilter);
+
+      const nextBestFormat = (formats: VideoFormat[]): VideoFormat | undefined => {
         if (formats.length < 1) {
           return undefined;
         }
 
         if (formats[0].isLive) {
-          formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate); // Bad typings
+          formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate);
 
-          return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10))); // Bad typings
+          return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10)));
         }
 
         formats = formats
@@ -551,19 +667,15 @@ export default class {
 
         if (!format) {
           // If still no format is found, throw
-          throw new Error('Can\'t find suitable format.');
+          throw new Error(`Can't find suitable format. Available formats: ${info.formats.length}, with URLs: ${info.formats.filter(f => f.url).length}`);
         }
       }
-
-      debug('Using format', format);
 
       ffmpegInput = format.url;
 
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-      shouldCacheVideo = !info.player_response.videoDetails.isLiveContent && parseInt(info.videoDetails.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
-
-      debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
+      shouldCacheVideo = !info.isLive && parseInt(info.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
 
       ffmpegInputOptions.push(...[
         '-reconnect',
@@ -687,9 +799,6 @@ export default class {
           if (!hasReturnedStreamClosed) {
             reject(error);
           }
-        })
-        .on('start', command => {
-          debug(`Spawned ffmpeg with ${command}`);
         });
 
       stream.pipe(capacitor);
