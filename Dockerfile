@@ -59,9 +59,8 @@ COPY --from=builder /usr/app/scripts ./scripts
 
 COPY . .
 
-# Make the startup script executable and fix line endings
-RUN chmod +x scripts/start-with-ytdlp-update.sh && \
-    sed -i 's/\r$//' scripts/start-with-ytdlp-update.sh
+# Make the startup script executable
+RUN chmod +x scripts/start-with-ytdlp-update.sh
 
 ARG COMMIT_HASH=unknown
 ARG BUILD_DATE=unknown
