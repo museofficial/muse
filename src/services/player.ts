@@ -669,7 +669,14 @@ export default class {
 
       debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
 
-      ffmpegInputOptions.push(...['-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5']);
+      ffmpegInputOptions.push(...[
+        '-reconnect',
+        '1',
+        '-reconnect_streamed',
+        '1',
+        '-reconnect_delay_max',
+        '5',
+      ]);
     }
 
     if (options.seek) {
