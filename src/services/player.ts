@@ -522,11 +522,7 @@ export default class {
 
   private async getVideoInfoWithYtDlp(url: string): Promise<YtDlpResponse> {
     return new Promise((resolve, reject) => {
-      const ytDlp = spawn('yt-dlp', [
-        '--dump-json',
-        '--no-warnings',
-        url,
-      ]);
+      const ytDlp = spawn('yt-dlp', ['--dump-json', '--no-warnings', url]);
 
       let stdout = '';
       let stderr = '';
@@ -626,39 +622,10 @@ export default class {
 
       const {formats} = info;
 
-      // Primary filter: Look for the ideal format (opus codec, webm container, 48kHz)
-      const filter = (format: VideoFormat): boolean => {
-        const hasOpusCodec = format.codecs === 'opus' || format.codecs?.includes('opus');
-        const hasWebmContainer = format.container === 'webm';
-        const has48kSampleRate = format.audioSampleRate && parseInt(format.audioSampleRate, 10) === 48000;
-        const hasUrl = Boolean(format.url);
+      // Look for the ideal format (opus codec, webm container, 48kHz)
+      const filter = (format: VideoFormat): boolean => format.codecs === 'opus' && format.container === 'webm' && format.audioSampleRate !== undefined && parseInt(format.audioSampleRate, 10) === 48000 && Boolean(format.url);
 
-        return Boolean(hasOpusCodec && hasWebmContainer && has48kSampleRate && hasUrl);
-      };
-
-      // Secondary filter: Look for any audio format with opus codec
-      const audioOpusFilter = (format: VideoFormat): boolean => {
-        const hasOpusCodec = format.codecs === 'opus' || format.codecs?.includes('opus');
-        const hasUrl = Boolean(format.url);
-        const isAudioOnly = format.container && ['webm', 'm4a', 'mp4'].includes(format.container);
-
-        return Boolean(hasOpusCodec && hasUrl && isAudioOnly);
-      };
-
-      // Tertiary filter: Look for any audio format
-      const audioFilter = (format: VideoFormat): boolean => {
-        const hasUrl = Boolean(format.url);
-        const isAudioOnly = format.container && ['webm', 'm4a', 'mp4', 'ogg'].includes(format.container);
-        const hasAudioCodec = format.codecs && ['opus', 'mp4a', 'aac'].some(codec => format.codecs === codec || format.codecs?.includes(codec));
-
-        return Boolean(hasUrl && isAudioOnly && hasAudioCodec);
-      };
-
-      // Try filters in order of preference
-      format
-                = formats.find(filter)
-                ?? formats.find(audioOpusFilter)
-                ?? formats.find(audioFilter);
+      format = formats.find(filter);
 
       const nextBestFormat = (formats: VideoFormat[]): VideoFormat | undefined => {
         if (formats.length < 1) {
@@ -688,9 +655,11 @@ export default class {
 
         if (!format) {
           // If still no format is found, throw
-          throw new Error(`Can't find suitable format. Available formats: ${info.formats.length}, with URLs: ${info.formats.filter(f => f.url).length}`);
+          throw new Error('Can\'t find suitable format.');
         }
       }
+
+      debug('Using format', format);
 
       ffmpegInput = format.url;
 
