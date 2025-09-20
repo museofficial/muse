@@ -110,3 +110,5 @@ dist
 
 docker-compose.yml
 /muse
+
+.vscode

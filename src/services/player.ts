@@ -70,6 +70,23 @@ interface VideoFormat {
   loudnessDb?: number;
 }
 
+interface YtDlpFormat {
+  url?: string;
+  format_id?: string;
+  acodec?: string;
+  vcodec?: string;
+  ext?: string;
+  asr?: number;
+  abr?: number;
+  tbr?: number;
+}
+
+interface YtDlpResponse {
+  formats?: YtDlpFormat[];
+  is_live?: boolean;
+  duration?: number;
+}
+
 type YTDLVideoFormat = VideoFormat;
 
 export const DEFAULT_VOLUME = 100;
@@ -95,87 +112,12 @@ export default class {
   private readonly fileCache: FileCacheProvider;
   private disconnectTimer: NodeJS.Timeout | null = null;
 
-  private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
+  private readonly channelToSpeakingUsers: Map<string, Set<string>> =
+  new Map();
 
   constructor(fileCache: FileCacheProvider, guildId: string) {
     this.fileCache = fileCache;
     this.guildId = guildId;
-  }
-
-  private async getYouTubeInfo(url: string): Promise<{formats: VideoFormat[]; isLive: boolean; lengthSeconds: string}> {
-    const videoId = this.extractVideoId(url);
-    
-    // Construct full YouTube URL if we only have a video ID
-    const fullUrl = url.includes('youtube.com') || url.includes('youtu.be')
-      ? url
-      : `https://www.youtube.com/watch?v=${videoId}`;
-    
-    try {
-      const info = await this.getVideoInfoWithYtDlp(fullUrl);
-
-      const formats: VideoFormat[] = info.formats?.map((format: any) => ({
-        url: format.url ?? '',
-        itag: format.format_id ?? '',
-        codecs: format.acodec && format.acodec !== 'none' ? format.acodec : format.vcodec,
-        container: format.ext ?? '',
-        audioSampleRate: format.asr?.toString(),
-        averageBitrate: format.abr,
-        bitrate: format.tbr,
-        isLive: info.is_live,
-      })) ?? [];
-      
-      return {
-        formats,
-        isLive: info.is_live ?? false,
-        lengthSeconds: info.duration?.toString() ?? '0',
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  private async getVideoInfoWithYtDlp(url: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const ytDlp = spawn('yt-dlp', [
-        '--dump-json',
-        '--no-warnings',
-        url,
-      ]);
-
-      let stdout = '';
-      let stderr = '';
-
-      ytDlp.stdout.on('data', (data: Buffer) => {
-        stdout += data.toString();
-      });
-
-      ytDlp.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString();
-      });
-
-      ytDlp.on('close', (code: number) => {
-        if (code === 0) {
-          try {
-            const info = JSON.parse(stdout);
-            resolve(info);
-          } catch (parseError) {
-            reject(new Error(`Failed to parse yt-dlp JSON output: ${parseError}`));
-          }
-        } else {
-          reject(new Error(`yt-dlp failed with code ${code}: ${stderr}`));
-        }
-      });
-
-      ytDlp.on('error', (error: Error) => {
-        reject(new Error(`Failed to spawn yt-dlp: ${error.message}`));
-      });
-    });
-  }
-
-  private extractVideoId(url: string): string {
-    const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
-    const match = regex.exec(url);
-    return match?.[1] ?? url;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -188,7 +130,8 @@ export default class {
       channelId: channel.id,
       guildId: channel.guild.id,
       selfDeaf: true,
-      adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
+      adapterCreator: channel.guild
+        .voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
 
     const guildSettings = await getGuildSettings(this.guildId);
@@ -199,7 +142,10 @@ export default class {
       const oldNetworking = Reflect.get(oldState, 'networking');
       const newNetworking = Reflect.get(newState, 'networking');
 
-      const networkStateChangeHandler = (_: any, newNetworkState: any) => {
+      const networkStateChangeHandler = (
+        _: any,
+        newNetworkState: any,
+      ) => {
         const newUdp = Reflect.get(newNetworkState, 'udp');
         clearInterval(newUdp?.keepAliveInterval);
       };
@@ -255,7 +201,10 @@ export default class {
       to = currentSong.length + currentSong.offset;
     }
 
-    const stream = await this.getStream(currentSong, {seek: realPositionSeconds, to});
+    const stream = await this.getStream(currentSong, {
+      seek: realPositionSeconds,
+      to,
+    });
     this.audioPlayer = createAudioPlayer({
       behaviors: {
         // Needs to be somewhat high for livestreams
@@ -296,7 +245,10 @@ export default class {
     }
 
     // Resume from paused state
-    if (this.status === STATUS.PAUSED && currentSong.url === this.nowPlaying?.url) {
+    if (
+      this.status === STATUS.PAUSED
+            && currentSong.url === this.nowPlaying?.url
+    ) {
       if (this.audioPlayer) {
         this.audioPlayer.unpause();
         this.status = STATUS.PLAYING;
@@ -318,7 +270,10 @@ export default class {
         to = currentSong.length + currentSong.offset;
       }
 
-      const stream = await this.getStream(currentSong, {seek: positionSeconds, to});
+      const stream = await this.getStream(currentSong, {
+        seek: positionSeconds,
+        to,
+      });
       this.audioPlayer = createAudioPlayer({
         behaviors: {
           // Needs to be somewhat high for livestreams
@@ -343,7 +298,10 @@ export default class {
     } catch (error: unknown) {
       await this.forward(1);
 
-      if ((error as {statusCode: number}).statusCode === 410 && currentSong) {
+      if (
+        (error as {statusCode: number}).statusCode === 410
+                && currentSong
+      ) {
         const channelId = currentSong.addedInChannelId;
 
         if (channelId) {
@@ -399,7 +357,10 @@ export default class {
   }
 
   registerVoiceActivityListener(guildSettings: Setting) {
-    const {turnDownVolumeWhenPeopleSpeak, turnDownVolumeWhenPeopleSpeakTarget} = guildSettings;
+    const {
+      turnDownVolumeWhenPeopleSpeak,
+      turnDownVolumeWhenPeopleSpeakTarget,
+    } = guildSettings;
     if (!turnDownVolumeWhenPeopleSpeak || !this.voiceConnection) {
       return;
     }
@@ -420,7 +381,9 @@ export default class {
         this.channelToSpeakingUsers.get(channelId)?.add(member.id);
       }
 
-      this.suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget);
+      this.suppressVoiceWhenPeopleAreSpeaking(
+        turnDownVolumeWhenPeopleSpeakTarget,
+      );
     });
 
     this.voiceConnection.receiver.speaking.on('end', (userId: string) => {
@@ -438,16 +401,22 @@ export default class {
         this.channelToSpeakingUsers.get(channelId)?.delete(member.id);
       }
 
-      this.suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget);
+      this.suppressVoiceWhenPeopleAreSpeaking(
+        turnDownVolumeWhenPeopleSpeakTarget,
+      );
     });
   }
 
-  suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget: number): void {
+  suppressVoiceWhenPeopleAreSpeaking(
+    turnDownVolumeWhenPeopleSpeakTarget: number,
+  ): void {
     if (!this.currentChannel) {
       return;
     }
 
-    const speakingUsers = this.channelToSpeakingUsers.get(this.currentChannel.id);
+    const speakingUsers = this.channelToSpeakingUsers.get(
+      this.currentChannel.id,
+    );
     if (speakingUsers && speakingUsers.size > 0) {
       this.setVolume(turnDownVolumeWhenPeopleSpeakTarget);
     } else {
@@ -456,7 +425,7 @@ export default class {
   }
 
   canGoForward(skip: number) {
-    return (this.queuePosition + skip - 1) < this.queue.length;
+    return this.queuePosition + skip - 1 < this.queue.length;
   }
 
   manualForward(skip: number): void {
@@ -496,9 +465,9 @@ export default class {
   }
 
   /**
-   * Returns queue, not including the current song.
-   * @returns {QueuedSong[]}
-   */
+     * Returns queue, not including the current song.
+     * @returns {QueuedSong[]}
+     */
   getQueue(): QueuedSong[] {
     return this.queue.slice(this.queuePosition + 1);
   }
@@ -510,14 +479,21 @@ export default class {
     } else {
       // Add as the next song to be played
       const insertAt = this.queuePosition + 1;
-      this.queue = [...this.queue.slice(0, insertAt), song, ...this.queue.slice(insertAt)];
+      this.queue = [
+        ...this.queue.slice(0, insertAt),
+        song,
+        ...this.queue.slice(insertAt),
+      ];
     }
   }
 
   shuffle(): void {
     const shuffledSongs = shuffle(this.queue.slice(this.queuePosition + 1));
 
-    this.queue = [...this.queue.slice(0, this.queuePosition + 1), ...shuffledSongs];
+    this.queue = [
+      ...this.queue.slice(0, this.queuePosition + 1),
+      ...shuffledSongs,
+    ];
   }
 
   clear(): void {
@@ -539,7 +515,10 @@ export default class {
   }
 
   removeCurrent(): void {
-    this.queue = [...this.queue.slice(0, this.queuePosition), ...this.queue.slice(this.queuePosition + 1)];
+    this.queue = [
+      ...this.queue.slice(0, this.queuePosition),
+      ...this.queue.slice(this.queuePosition + 1),
+    ];
   }
 
   queueSize(): number {
@@ -561,7 +540,11 @@ export default class {
       throw new Error('Move index is outside the range of the queue.');
     }
 
-    this.queue.splice(this.queuePosition + to, 0, this.queue.splice(this.queuePosition + from, 1)[0]);
+    this.queue.splice(
+      this.queuePosition + to,
+      0,
+      this.queue.splice(this.queuePosition + from, 1)[0],
+    );
 
     return this.queue[this.queuePosition + to];
   }
@@ -577,11 +560,105 @@ export default class {
     return this.volume ?? this.defaultVolume;
   }
 
+  private async getVideoInfoWithYtDlp(url: string): Promise<YtDlpResponse> {
+    return new Promise((resolve, reject) => {
+      const ytDlp = spawn('yt-dlp', [
+        '--dump-json',
+        '--no-warnings',
+        url,
+      ]);
+
+      let stdout = '';
+      let stderr = '';
+
+      ytDlp.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+
+      ytDlp.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+
+      ytDlp.on('close', (code: number) => {
+        if (code === 0) {
+          try {
+            const info = JSON.parse(stdout) as YtDlpResponse;
+            resolve(info);
+          } catch (parseError: unknown) {
+            reject(
+              new Error(
+                `Failed to parse yt-dlp JSON output: ${String(
+                  parseError,
+                )}`,
+              ),
+            );
+          }
+        } else {
+          reject(
+            new Error(`yt-dlp failed with code ${code}: ${stderr}`),
+          );
+        }
+      });
+
+      ytDlp.on('error', (error: Error) => {
+        reject(new Error(`Failed to spawn yt-dlp: ${error.message}`));
+      });
+    });
+  }
+
+  private extractVideoId(url: string): string {
+    const regex
+            = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
+    const match = regex.exec(url);
+    return match?.[1] ?? url;
+  }
+
+  private async getYouTubeInfo(url: string): Promise<{
+    formats: VideoFormat[];
+    isLive: boolean;
+    lengthSeconds: string;
+  }> {
+    const videoId = this.extractVideoId(url);
+
+    // Construct full YouTube URL if we only have a video ID
+    const fullUrl
+            = url.includes('youtube.com') || url.includes('youtu.be')
+              ? url
+              : `https://www.youtube.com/watch?v=${videoId}`;
+
+    const info = await this.getVideoInfoWithYtDlp(fullUrl);
+
+    const formats: VideoFormat[] = (info.formats ?? []).map(
+      (format: YtDlpFormat) => ({
+        url: format.url ?? '',
+        itag: format.format_id ?? '',
+        codecs:
+                    format.acodec && format.acodec !== 'none'
+                      ? format.acodec
+                      : format.vcodec ?? '',
+        container: format.ext ?? '',
+        audioSampleRate: format.asr?.toString(),
+        averageBitrate: format.abr,
+        bitrate: format.tbr,
+        isLive: info.is_live ?? false,
+      }),
+    );
+
+    return {
+      formats,
+      isLive: info.is_live ?? false,
+      lengthSeconds: info.duration?.toString() ?? '0',
+    };
+  }
+
   private getHashForCache(url: string): string {
     return hasha(url);
   }
 
-  private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
+  private async getStream(
+    song: QueuedSong,
+    options: {seek?: number; to?: number} = {},
+  ): Promise<Readable> {
     if (this.status === STATUS.PLAYING) {
       this.audioPlayer?.stop();
     } else if (this.status === STATUS.PAUSED) {
@@ -598,7 +675,9 @@ export default class {
 
     let format: YTDLVideoFormat | undefined;
 
-    ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
+    ffmpegInput = await this.fileCache.getPathFor(
+      this.getHashForCache(song.url),
+    );
 
     if (!ffmpegInput) {
       // Not yet cached, must download
@@ -608,46 +687,78 @@ export default class {
 
       // Primary filter: Look for the ideal format (opus codec, webm container, 48kHz)
       const filter = (format: VideoFormat): boolean => {
-        const hasOpusCodec = format.codecs === 'opus' || format.codecs?.includes('opus');
+        const hasOpusCodec
+                    = format.codecs === 'opus' || format.codecs?.includes('opus');
         const hasWebmContainer = format.container === 'webm';
-        const has48kSampleRate = format.audioSampleRate && parseInt(format.audioSampleRate, 10) === 48000;
+        const has48kSampleRate
+                    = format.audioSampleRate
+                    && parseInt(format.audioSampleRate, 10) === 48000;
         const hasUrl = Boolean(format.url);
-        
-        return Boolean(hasOpusCodec && hasWebmContainer && has48kSampleRate && hasUrl);
+
+        return Boolean(
+          hasOpusCodec
+                        && hasWebmContainer
+                        && has48kSampleRate
+                        && hasUrl,
+        );
       };
 
       // Secondary filter: Look for any audio format with opus codec
       const audioOpusFilter = (format: VideoFormat): boolean => {
-        const hasOpusCodec = format.codecs === 'opus' || format.codecs?.includes('opus');
+        const hasOpusCodec
+                    = format.codecs === 'opus' || format.codecs?.includes('opus');
         const hasUrl = Boolean(format.url);
-        const isAudioOnly = format.container && ['webm', 'm4a', 'mp4'].includes(format.container);
-        
+        const isAudioOnly
+                    = format.container
+                    && ['webm', 'm4a', 'mp4'].includes(format.container);
+
         return Boolean(hasOpusCodec && hasUrl && isAudioOnly);
       };
 
       // Tertiary filter: Look for any audio format
       const audioFilter = (format: VideoFormat): boolean => {
         const hasUrl = Boolean(format.url);
-        const isAudioOnly = format.container && ['webm', 'm4a', 'mp4', 'ogg'].includes(format.container);
-        const hasAudioCodec = format.codecs && ['opus', 'mp4a', 'aac'].some(codec =>
-          format.codecs === codec || format.codecs?.includes(codec),
-        );
-        
+        const isAudioOnly
+                    = format.container
+                    && ['webm', 'm4a', 'mp4', 'ogg'].includes(format.container);
+        const hasAudioCodec
+                    = format.codecs
+                    && ['opus', 'mp4a', 'aac'].some(
+                      codec =>
+                        format.codecs === codec
+                            || format.codecs?.includes(codec),
+                    );
+
         return Boolean(hasUrl && isAudioOnly && hasAudioCodec);
       };
 
       // Try filters in order of preference
-      format = formats.find(filter) || formats.find(audioOpusFilter) || formats.find(audioFilter);
+      format
+                = formats.find(filter)
+                ?? formats.find(audioOpusFilter)
+                ?? formats.find(audioFilter);
 
-      const nextBestFormat = (formats: VideoFormat[]): VideoFormat | undefined => {
+      const nextBestFormat = (
+        formats: VideoFormat[],
+      ): VideoFormat | undefined => {
         if (formats.length < 1) {
           return undefined;
         }
 
         if (formats[0].isLive) {
-          formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate);
+          formats = formats.sort(
+            (a, b) =>
+              (b as unknown as {audioBitrate: number})
+                .audioBitrate
+                            - (a as unknown as {audioBitrate: number})
+                              .audioBitrate,
+          );
 
-          return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10)));
+          return formats.find(format =>
+            [128, 127, 120, 96, 95, 94, 93].includes(
+              parseInt(format.itag as unknown as string, 10),
+            ),
+          );
         }
 
         formats = formats
@@ -667,7 +778,13 @@ export default class {
 
         if (!format) {
           // If still no format is found, throw
-          throw new Error(`Can't find suitable format. Available formats: ${info.formats.length}, with URLs: ${info.formats.filter(f => f.url).length}`);
+          throw new Error(
+            `Can't find suitable format. Available formats: ${
+              info.formats.length
+            }, with URLs: ${
+              info.formats.filter(f => f.url).length
+            }`,
+          );
         }
       }
 
@@ -675,16 +792,21 @@ export default class {
 
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-      shouldCacheVideo = !info.isLive && parseInt(info.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
+      shouldCacheVideo
+                = !info.isLive
+                && parseInt(info.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS
+                && !options.seek;
 
-      ffmpegInputOptions.push(...[
-        '-reconnect',
-        '1',
-        '-reconnect_streamed',
-        '1',
-        '-reconnect_delay_max',
-        '5',
-      ]);
+      ffmpegInputOptions.push(
+        ...[
+          '-reconnect',
+          '1',
+          '-reconnect_streamed',
+          '1',
+          '-reconnect_delay_max',
+          '5',
+        ],
+      );
     }
 
     if (options.seek) {
@@ -700,7 +822,9 @@ export default class {
       cacheKey: song.url,
       ffmpegInputOptions,
       cache: shouldCacheVideo,
-      volumeAdjustment: format?.loudnessDb ? `${-format.loudnessDb}dB` : undefined,
+      volumeAdjustment: format?.loudnessDb
+        ? `${-format.loudnessDb}dB`
+        : undefined,
     });
   }
 
@@ -729,8 +853,14 @@ export default class {
       return;
     }
 
-    if (this.voiceConnection.listeners(VoiceConnectionStatus.Disconnected).length === 0) {
-      this.voiceConnection.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
+    if (
+      this.voiceConnection.listeners(VoiceConnectionStatus.Disconnected)
+        .length === 0
+    ) {
+      this.voiceConnection.on(
+        VoiceConnectionStatus.Disconnected,
+        this.onVoiceConnectionDisconnect.bind(this),
+      );
     }
 
     if (!this.audioPlayer) {
@@ -738,7 +868,10 @@ export default class {
     }
 
     if (this.audioPlayer.listeners('stateChange').length === 0) {
-      this.audioPlayer.on(AudioPlayerStatus.Idle, this.onAudioPlayerIdle.bind(this));
+      this.audioPlayer.on(
+        AudioPlayerStatus.Idle,
+        this.onAudioPlayerIdle.bind(this),
+      );
     }
   }
 
@@ -746,15 +879,26 @@ export default class {
     this.disconnect();
   }
 
-  private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
+  private async onAudioPlayerIdle(
+    _oldState: AudioPlayerState,
+    newState: AudioPlayerState,
+  ): Promise<void> {
     // Automatically advance queued song at end
-    if (this.loopCurrentSong && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
+    if (
+      this.loopCurrentSong
+            && newState.status === AudioPlayerStatus.Idle
+            && this.status === STATUS.PLAYING
+    ) {
       await this.seek(0);
       return;
     }
 
     // Automatically re-add current song to queue
-    if (this.loopCurrentQueue && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
+    if (
+      this.loopCurrentQueue
+            && newState.status === AudioPlayerStatus.Idle
+            && this.status === STATUS.PLAYING
+    ) {
       const currentSong = this.getCurrent();
 
       if (currentSong) {
@@ -764,25 +908,38 @@ export default class {
       }
     }
 
-    if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
+    if (
+      newState.status === AudioPlayerStatus.Idle
+            && this.status === STATUS.PLAYING
+    ) {
       await this.forward(1);
       // Auto announce the next song if configured to
       const settings = await getGuildSettings(this.guildId);
       const {autoAnnounceNextSong} = settings;
       if (autoAnnounceNextSong && this.currentChannel) {
         await this.currentChannel.send({
-          embeds: this.getCurrent() ? [buildPlayingMessageEmbed(this)] : [],
+          embeds: this.getCurrent()
+            ? [buildPlayingMessageEmbed(this)]
+            : [],
         });
       }
     }
   }
 
-  private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
+  private async createReadStream(options: {
+    url: string;
+    cacheKey: string;
+    ffmpegInputOptions?: string[];
+    cache?: boolean;
+    volumeAdjustment?: string;
+  }): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
 
       if (options?.cache) {
-        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(options.cacheKey));
+        const cacheStream = this.fileCache.createWriteStream(
+          this.getHashForCache(options.cacheKey),
+        );
         capacitor.createReadStream().pipe(cacheStream);
       }
 
@@ -794,7 +951,10 @@ export default class {
         .noVideo()
         .audioCodec('libopus')
         .outputFormat('webm')
-        .addOutputOption(['-filter:a', `volume=${options?.volumeAdjustment ?? '1'}`])
+        .addOutputOption([
+          '-filter:a',
+          `volume=${options?.volumeAdjustment ?? '1'}`,
+        ])
         .on('error', error => {
           if (!hasReturnedStreamClosed) {
             reject(error);
@@ -832,6 +992,8 @@ export default class {
 
   private setAudioPlayerVolume(level?: number) {
     // Audio resource expects a float between 0 and 1 to represent level percentage
-    this.audioResource?.volume?.setVolume((level ?? this.getVolume()) / 100);
+    this.audioResource?.volume?.setVolume(
+      (level ?? this.getVolume()) / 100,
+    );
   }
 }

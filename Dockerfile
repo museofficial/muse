@@ -32,20 +32,20 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json .
-COPY package-lock.json .
+COPY yarn.lock .
 
-RUN npm ci --only=production
+RUN yarn install --prod
 RUN cp -R node_modules /usr/app/prod_node_modules
 
-RUN npm ci
+RUN yarn install
 
 FROM dependencies AS builder
 
 COPY . .
 
 # Run tsc build
-RUN npm run prisma:generate
-RUN npx tsc --skipLibCheck --transpileOnly || npx tsc --skipLibCheck --noEmitOnError false || true && ls -la dist/
+RUN yarn prisma generate
+RUN yarn build
 
 # Only keep what's necessary to run
 FROM base AS runner
@@ -55,11 +55,13 @@ WORKDIR /usr/app
 COPY --from=builder /usr/app/dist ./dist
 COPY --from=dependencies /usr/app/prod_node_modules node_modules
 COPY --from=builder /usr/app/node_modules/.prisma/client ./node_modules/.prisma/client
+COPY --from=builder /usr/app/scripts ./scripts
 
 COPY . .
 
-# Make the startup script executable
-RUN chmod +x scripts/start-with-ytdlp-update.sh
+# Make the startup script executable and fix line endings
+RUN chmod +x scripts/start-with-ytdlp-update.sh && \
+    sed -i 's/\r$//' scripts/start-with-ytdlp-update.sh
 
 ARG COMMIT_HASH=unknown
 ARG BUILD_DATE=unknown

@@ -147,5 +147,16 @@ You can configure the bot to automatically turn down the volume when people are 
 - `/config set-reduce-vol-when-voice false` - Disable automatic volume reduction
 - `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 70)
 
-### Command to run:
-`docker-compose up --build`
+### Building from Source
+
+To build and run Muse locally using Docker Compose:
+
+1. Copy the example configuration: `cp docker-compose.example.yml docker-compose.yml`
+2. Edit `docker-compose.yml` and populate the environment variables with your API keys and tokens
+3. Build and start the container:
+
+```bash
+docker-compose up --build
+```
+
+This will build the latest version from source and start Muse with your local changes.
