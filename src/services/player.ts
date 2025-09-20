@@ -17,6 +17,7 @@ import {
   VoiceConnectionStatus,
 } from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
+import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {Setting} from '@prisma/client';
@@ -112,8 +113,7 @@ export default class {
   private readonly fileCache: FileCacheProvider;
   private disconnectTimer: NodeJS.Timeout | null = null;
 
-  private readonly channelToSpeakingUsers: Map<string, Set<string>> =
-  new Map();
+  private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
 
   constructor(fileCache: FileCacheProvider, guildId: string) {
     this.fileCache = fileCache;
@@ -130,8 +130,7 @@ export default class {
       channelId: channel.id,
       guildId: channel.guild.id,
       selfDeaf: true,
-      adapterCreator: channel.guild
-        .voiceAdapterCreator as DiscordGatewayAdapterCreator,
+      adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
 
     const guildSettings = await getGuildSettings(this.guildId);
@@ -142,10 +141,7 @@ export default class {
       const oldNetworking = Reflect.get(oldState, 'networking');
       const newNetworking = Reflect.get(newState, 'networking');
 
-      const networkStateChangeHandler = (
-        _: any,
-        newNetworkState: any,
-      ) => {
+      const networkStateChangeHandler = (_: any, newNetworkState: any) => {
         const newUdp = Reflect.get(newNetworkState, 'udp');
         clearInterval(newUdp?.keepAliveInterval);
       };
@@ -201,10 +197,7 @@ export default class {
       to = currentSong.length + currentSong.offset;
     }
 
-    const stream = await this.getStream(currentSong, {
-      seek: realPositionSeconds,
-      to,
-    });
+    const stream = await this.getStream(currentSong, {seek: realPositionSeconds, to});
     this.audioPlayer = createAudioPlayer({
       behaviors: {
         // Needs to be somewhat high for livestreams
@@ -245,10 +238,7 @@ export default class {
     }
 
     // Resume from paused state
-    if (
-      this.status === STATUS.PAUSED
-            && currentSong.url === this.nowPlaying?.url
-    ) {
+    if (this.status === STATUS.PAUSED && currentSong.url === this.nowPlaying?.url) {
       if (this.audioPlayer) {
         this.audioPlayer.unpause();
         this.status = STATUS.PLAYING;
@@ -270,10 +260,7 @@ export default class {
         to = currentSong.length + currentSong.offset;
       }
 
-      const stream = await this.getStream(currentSong, {
-        seek: positionSeconds,
-        to,
-      });
+      const stream = await this.getStream(currentSong, {seek: positionSeconds, to});
       this.audioPlayer = createAudioPlayer({
         behaviors: {
           // Needs to be somewhat high for livestreams
@@ -298,13 +285,11 @@ export default class {
     } catch (error: unknown) {
       await this.forward(1);
 
-      if (
-        (error as {statusCode: number}).statusCode === 410
-                && currentSong
-      ) {
+      if ((error as {statusCode: number}).statusCode === 410 && currentSong) {
         const channelId = currentSong.addedInChannelId;
 
         if (channelId) {
+          debug(`${currentSong.title} is unavailable`);
           return;
         }
       }
@@ -357,10 +342,7 @@ export default class {
   }
 
   registerVoiceActivityListener(guildSettings: Setting) {
-    const {
-      turnDownVolumeWhenPeopleSpeak,
-      turnDownVolumeWhenPeopleSpeakTarget,
-    } = guildSettings;
+    const {turnDownVolumeWhenPeopleSpeak, turnDownVolumeWhenPeopleSpeakTarget} = guildSettings;
     if (!turnDownVolumeWhenPeopleSpeak || !this.voiceConnection) {
       return;
     }
@@ -381,9 +363,7 @@ export default class {
         this.channelToSpeakingUsers.get(channelId)?.add(member.id);
       }
 
-      this.suppressVoiceWhenPeopleAreSpeaking(
-        turnDownVolumeWhenPeopleSpeakTarget,
-      );
+      this.suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget);
     });
 
     this.voiceConnection.receiver.speaking.on('end', (userId: string) => {
@@ -407,16 +387,12 @@ export default class {
     });
   }
 
-  suppressVoiceWhenPeopleAreSpeaking(
-    turnDownVolumeWhenPeopleSpeakTarget: number,
-  ): void {
+  suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget: number): void {
     if (!this.currentChannel) {
       return;
     }
 
-    const speakingUsers = this.channelToSpeakingUsers.get(
-      this.currentChannel.id,
-    );
+    const speakingUsers = this.channelToSpeakingUsers.get(this.currentChannel.id);
     if (speakingUsers && speakingUsers.size > 0) {
       this.setVolume(turnDownVolumeWhenPeopleSpeakTarget);
     } else {
@@ -425,7 +401,7 @@ export default class {
   }
 
   canGoForward(skip: number) {
-    return this.queuePosition + skip - 1 < this.queue.length;
+    return (this.queuePosition + skip - 1) < this.queue.length;
   }
 
   manualForward(skip: number): void {
@@ -465,9 +441,9 @@ export default class {
   }
 
   /**
-     * Returns queue, not including the current song.
-     * @returns {QueuedSong[]}
-     */
+   * Returns queue, not including the current song.
+   * @returns {QueuedSong[]}
+   */
   getQueue(): QueuedSong[] {
     return this.queue.slice(this.queuePosition + 1);
   }
@@ -479,21 +455,14 @@ export default class {
     } else {
       // Add as the next song to be played
       const insertAt = this.queuePosition + 1;
-      this.queue = [
-        ...this.queue.slice(0, insertAt),
-        song,
-        ...this.queue.slice(insertAt),
-      ];
+      this.queue = [...this.queue.slice(0, insertAt), song, ...this.queue.slice(insertAt)];
     }
   }
 
   shuffle(): void {
     const shuffledSongs = shuffle(this.queue.slice(this.queuePosition + 1));
 
-    this.queue = [
-      ...this.queue.slice(0, this.queuePosition + 1),
-      ...shuffledSongs,
-    ];
+    this.queue = [...this.queue.slice(0, this.queuePosition + 1), ...shuffledSongs];
   }
 
   clear(): void {
@@ -540,11 +509,7 @@ export default class {
       throw new Error('Move index is outside the range of the queue.');
     }
 
-    this.queue.splice(
-      this.queuePosition + to,
-      0,
-      this.queue.splice(this.queuePosition + from, 1)[0],
-    );
+    this.queue.splice(this.queuePosition + to, 0, this.queue.splice(this.queuePosition + from, 1)[0]);
 
     return this.queue[this.queuePosition + to];
   }
@@ -655,10 +620,7 @@ export default class {
     return hasha(url);
   }
 
-  private async getStream(
-    song: QueuedSong,
-    options: {seek?: number; to?: number} = {},
-  ): Promise<Readable> {
+  private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
     if (this.status === STATUS.PLAYING) {
       this.audioPlayer?.stop();
     } else if (this.status === STATUS.PAUSED) {
@@ -675,9 +637,7 @@ export default class {
 
     let format: YTDLVideoFormat | undefined;
 
-    ffmpegInput = await this.fileCache.getPathFor(
-      this.getHashForCache(song.url),
-    );
+    ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
 
     if (!ffmpegInput) {
       // Not yet cached, must download
@@ -757,8 +717,7 @@ export default class {
           return formats.find(format =>
             [128, 127, 120, 96, 95, 94, 93].includes(
               parseInt(format.itag as unknown as string, 10),
-            ),
-          );
+            ));
         }
 
         formats = formats
@@ -792,21 +751,18 @@ export default class {
 
       // Don't cache livestreams or long videos
       const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-      shouldCacheVideo
-                = !info.isLive
-                && parseInt(info.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS
-                && !options.seek;
+      shouldCacheVideo = !info.isLive && parseInt(info.lengthSeconds, 10) < MAX_CACHE_LENGTH_SECONDS && !options.seek;
 
-      ffmpegInputOptions.push(
-        ...[
-          '-reconnect',
-          '1',
-          '-reconnect_streamed',
-          '1',
-          '-reconnect_delay_max',
-          '5',
-        ],
-      );
+      debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
+
+      ffmpegInputOptions.push(...[
+        '-reconnect',
+        '1',
+        '-reconnect_streamed',
+        '1',
+        '-reconnect_delay_max',
+        '5',
+      ]);
     }
 
     if (options.seek) {
@@ -822,9 +778,7 @@ export default class {
       cacheKey: song.url,
       ffmpegInputOptions,
       cache: shouldCacheVideo,
-      volumeAdjustment: format?.loudnessDb
-        ? `${-format.loudnessDb}dB`
-        : undefined,
+      volumeAdjustment: format?.loudnessDb ? `${-format.loudnessDb}dB` : undefined,
     });
   }
 
@@ -853,14 +807,8 @@ export default class {
       return;
     }
 
-    if (
-      this.voiceConnection.listeners(VoiceConnectionStatus.Disconnected)
-        .length === 0
-    ) {
-      this.voiceConnection.on(
-        VoiceConnectionStatus.Disconnected,
-        this.onVoiceConnectionDisconnect.bind(this),
-      );
+    if (this.voiceConnection.listeners(VoiceConnectionStatus.Disconnected).length === 0) {
+      this.voiceConnection.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
     }
 
     if (!this.audioPlayer) {
@@ -868,10 +816,7 @@ export default class {
     }
 
     if (this.audioPlayer.listeners('stateChange').length === 0) {
-      this.audioPlayer.on(
-        AudioPlayerStatus.Idle,
-        this.onAudioPlayerIdle.bind(this),
-      );
+      this.audioPlayer.on(AudioPlayerStatus.Idle, this.onAudioPlayerIdle.bind(this));
     }
   }
 
@@ -879,26 +824,15 @@ export default class {
     this.disconnect();
   }
 
-  private async onAudioPlayerIdle(
-    _oldState: AudioPlayerState,
-    newState: AudioPlayerState,
-  ): Promise<void> {
+  private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
     // Automatically advance queued song at end
-    if (
-      this.loopCurrentSong
-            && newState.status === AudioPlayerStatus.Idle
-            && this.status === STATUS.PLAYING
-    ) {
+    if (this.loopCurrentSong && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.seek(0);
       return;
     }
 
     // Automatically re-add current song to queue
-    if (
-      this.loopCurrentQueue
-            && newState.status === AudioPlayerStatus.Idle
-            && this.status === STATUS.PLAYING
-    ) {
+    if (this.loopCurrentQueue && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       const currentSong = this.getCurrent();
 
       if (currentSong) {
@@ -908,38 +842,25 @@ export default class {
       }
     }
 
-    if (
-      newState.status === AudioPlayerStatus.Idle
-            && this.status === STATUS.PLAYING
-    ) {
+    if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
       // Auto announce the next song if configured to
       const settings = await getGuildSettings(this.guildId);
       const {autoAnnounceNextSong} = settings;
       if (autoAnnounceNextSong && this.currentChannel) {
         await this.currentChannel.send({
-          embeds: this.getCurrent()
-            ? [buildPlayingMessageEmbed(this)]
-            : [],
+          embeds: this.getCurrent() ? [buildPlayingMessageEmbed(this)] : [],
         });
       }
     }
   }
 
-  private async createReadStream(options: {
-    url: string;
-    cacheKey: string;
-    ffmpegInputOptions?: string[];
-    cache?: boolean;
-    volumeAdjustment?: string;
-  }): Promise<Readable> {
+  private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
 
       if (options?.cache) {
-        const cacheStream = this.fileCache.createWriteStream(
-          this.getHashForCache(options.cacheKey),
-        );
+        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(options.cacheKey));
         capacitor.createReadStream().pipe(cacheStream);
       }
 
@@ -951,14 +872,14 @@ export default class {
         .noVideo()
         .audioCodec('libopus')
         .outputFormat('webm')
-        .addOutputOption([
-          '-filter:a',
-          `volume=${options?.volumeAdjustment ?? '1'}`,
-        ])
+        .addOutputOption(['-filter:a', `volume=${options?.volumeAdjustment ?? '1'}`])
         .on('error', error => {
           if (!hasReturnedStreamClosed) {
             reject(error);
           }
+        })
+        .on('start', command => {
+          debug(`Spawned ffmpeg with ${command}`);
         });
 
       stream.pipe(capacitor);
@@ -992,8 +913,6 @@ export default class {
 
   private setAudioPlayerVolume(level?: number) {
     // Audio resource expects a float between 0 and 1 to represent level percentage
-    this.audioResource?.volume?.setVolume(
-      (level ?? this.getVolume()) / 100,
-    );
+    this.audioResource?.volume?.setVolume((level ?? this.getVolume()) / 100);
   }
 }
