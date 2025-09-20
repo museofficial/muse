@@ -381,9 +381,7 @@ export default class {
         this.channelToSpeakingUsers.get(channelId)?.delete(member.id);
       }
 
-      this.suppressVoiceWhenPeopleAreSpeaking(
-        turnDownVolumeWhenPeopleSpeakTarget,
-      );
+      this.suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget);
     });
   }
 
@@ -484,10 +482,7 @@ export default class {
   }
 
   removeCurrent(): void {
-    this.queue = [
-      ...this.queue.slice(0, this.queuePosition),
-      ...this.queue.slice(this.queuePosition + 1),
-    ];
+    this.queue = [...this.queue.slice(0, this.queuePosition), ...this.queue.slice(this.queuePosition + 1)];
   }
 
   queueSize(): number {
@@ -550,18 +545,10 @@ export default class {
             const info = JSON.parse(stdout) as YtDlpResponse;
             resolve(info);
           } catch (parseError: unknown) {
-            reject(
-              new Error(
-                `Failed to parse yt-dlp JSON output: ${String(
-                  parseError,
-                )}`,
-              ),
-            );
+            reject(new Error(`Failed to parse yt-dlp JSON output: ${String(parseError)}`));
           }
         } else {
-          reject(
-            new Error(`yt-dlp failed with code ${code}: ${stderr}`),
-          );
+          reject(new Error(`yt-dlp failed with code ${code}: ${stderr}`));
         }
       });
 
@@ -572,8 +559,7 @@ export default class {
   }
 
   private extractVideoId(url: string): string {
-    const regex
-            = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
+    const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
     const match = regex.exec(url);
     return match?.[1] ?? url;
   }
@@ -586,28 +572,23 @@ export default class {
     const videoId = this.extractVideoId(url);
 
     // Construct full YouTube URL if we only have a video ID
-    const fullUrl
-            = url.includes('youtube.com') || url.includes('youtu.be')
-              ? url
-              : `https://www.youtube.com/watch?v=${videoId}`;
+    const fullUrl = url.includes('youtube.com') || url.includes('youtu.be') ? url : `https://www.youtube.com/watch?v=${videoId}`;
 
     const info = await this.getVideoInfoWithYtDlp(fullUrl);
 
-    const formats: VideoFormat[] = (info.formats ?? []).map(
-      (format: YtDlpFormat) => ({
-        url: format.url ?? '',
-        itag: format.format_id ?? '',
-        codecs:
+    const formats: VideoFormat[] = (info.formats ?? []).map((format: YtDlpFormat) => ({
+      url: format.url ?? '',
+      itag: format.format_id ?? '',
+      codecs:
                     format.acodec && format.acodec !== 'none'
                       ? format.acodec
                       : format.vcodec ?? '',
-        container: format.ext ?? '',
-        audioSampleRate: format.asr?.toString(),
-        averageBitrate: format.abr,
-        bitrate: format.tbr,
-        isLive: info.is_live ?? false,
-      }),
-    );
+      container: format.ext ?? '',
+      audioSampleRate: format.asr?.toString(),
+      averageBitrate: format.abr,
+      bitrate: format.tbr,
+      isLive: info.is_live ?? false,
+    }));
 
     return {
       formats,
@@ -647,30 +628,19 @@ export default class {
 
       // Primary filter: Look for the ideal format (opus codec, webm container, 48kHz)
       const filter = (format: VideoFormat): boolean => {
-        const hasOpusCodec
-                    = format.codecs === 'opus' || format.codecs?.includes('opus');
+        const hasOpusCodec = format.codecs === 'opus' || format.codecs?.includes('opus');
         const hasWebmContainer = format.container === 'webm';
-        const has48kSampleRate
-                    = format.audioSampleRate
-                    && parseInt(format.audioSampleRate, 10) === 48000;
+        const has48kSampleRate = format.audioSampleRate && parseInt(format.audioSampleRate, 10) === 48000;
         const hasUrl = Boolean(format.url);
 
-        return Boolean(
-          hasOpusCodec
-                        && hasWebmContainer
-                        && has48kSampleRate
-                        && hasUrl,
-        );
+        return Boolean(hasOpusCodec && hasWebmContainer && has48kSampleRate && hasUrl);
       };
 
       // Secondary filter: Look for any audio format with opus codec
       const audioOpusFilter = (format: VideoFormat): boolean => {
-        const hasOpusCodec
-                    = format.codecs === 'opus' || format.codecs?.includes('opus');
+        const hasOpusCodec = format.codecs === 'opus' || format.codecs?.includes('opus');
         const hasUrl = Boolean(format.url);
-        const isAudioOnly
-                    = format.container
-                    && ['webm', 'm4a', 'mp4'].includes(format.container);
+        const isAudioOnly = format.container && ['webm', 'm4a', 'mp4'].includes(format.container);
 
         return Boolean(hasOpusCodec && hasUrl && isAudioOnly);
       };
@@ -678,16 +648,8 @@ export default class {
       // Tertiary filter: Look for any audio format
       const audioFilter = (format: VideoFormat): boolean => {
         const hasUrl = Boolean(format.url);
-        const isAudioOnly
-                    = format.container
-                    && ['webm', 'm4a', 'mp4', 'ogg'].includes(format.container);
-        const hasAudioCodec
-                    = format.codecs
-                    && ['opus', 'mp4a', 'aac'].some(
-                      codec =>
-                        format.codecs === codec
-                            || format.codecs?.includes(codec),
-                    );
+        const isAudioOnly = format.container && ['webm', 'm4a', 'mp4', 'ogg'].includes(format.container);
+        const hasAudioCodec = format.codecs && ['opus', 'mp4a', 'aac'].some(codec => format.codecs === codec || format.codecs?.includes(codec));
 
         return Boolean(hasUrl && isAudioOnly && hasAudioCodec);
       };
@@ -698,26 +660,15 @@ export default class {
                 ?? formats.find(audioOpusFilter)
                 ?? formats.find(audioFilter);
 
-      const nextBestFormat = (
-        formats: VideoFormat[],
-      ): VideoFormat | undefined => {
+      const nextBestFormat = (formats: VideoFormat[]): VideoFormat | undefined => {
         if (formats.length < 1) {
           return undefined;
         }
 
         if (formats[0].isLive) {
-          formats = formats.sort(
-            (a, b) =>
-              (b as unknown as {audioBitrate: number})
-                .audioBitrate
-                            - (a as unknown as {audioBitrate: number})
-                              .audioBitrate,
-          );
+          formats = formats.sort((a, b) => (b as unknown as {audioBitrate: number}).audioBitrate - (a as unknown as {audioBitrate: number}).audioBitrate);
 
-          return formats.find(format =>
-            [128, 127, 120, 96, 95, 94, 93].includes(
-              parseInt(format.itag as unknown as string, 10),
-            ));
+          return formats.find(format => [128, 127, 120, 96, 95, 94, 93].includes(parseInt(format.itag as unknown as string, 10)));
         }
 
         formats = formats
@@ -737,13 +688,7 @@ export default class {
 
         if (!format) {
           // If still no format is found, throw
-          throw new Error(
-            `Can't find suitable format. Available formats: ${
-              info.formats.length
-            }, with URLs: ${
-              info.formats.filter(f => f.url).length
-            }`,
-          );
+          throw new Error(`Can't find suitable format. Available formats: ${info.formats.length}, with URLs: ${info.formats.filter(f => f.url).length}`);
         }
       }
 
@@ -755,14 +700,7 @@ export default class {
 
       debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
 
-      ffmpegInputOptions.push(...[
-        '-reconnect',
-        '1',
-        '-reconnect_streamed',
-        '1',
-        '-reconnect_delay_max',
-        '5',
-      ]);
+      ffmpegInputOptions.push(...['-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5']);
     }
 
     if (options.seek) {
