@@ -1,6 +1,6 @@
 import {VoiceChannel, Snowflake} from 'discord.js';
 import {Readable} from 'stream';
-import hasha from 'hasha';
+import {hash} from 'hasha';
 import ytdl, {videoFormat} from '@distube/ytdl-core';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
@@ -107,7 +107,7 @@ export default class {
 
     // Workaround to disable keepAlive
     this.voiceConnection.on('stateChange', (oldState, newState) => {
-      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+       
       const oldNetworking = Reflect.get(oldState, 'networking');
       const newNetworking = Reflect.get(newState, 'networking');
 
@@ -118,7 +118,7 @@ export default class {
 
       oldNetworking?.off('stateChange', networkStateChangeHandler);
       newNetworking?.on('stateChange', networkStateChangeHandler);
-      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+       
 
       this.currentChannel = channel;
       if (newState.status === VoiceConnectionStatus.Ready) {
@@ -490,8 +490,8 @@ export default class {
     return this.volume ?? this.defaultVolume;
   }
 
-  private getHashForCache(url: string): string {
-    return hasha(url);
+  private async getHashForCache(url: string): Promise<string> {
+    return hash(url);
   }
 
   private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
@@ -511,7 +511,7 @@ export default class {
 
     let format: YTDLVideoFormat | undefined;
 
-    ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
+    ffmpegInput = await this.fileCache.getPathFor(await this.getHashForCache(song.url));
 
     if (!ffmpegInput) {
       // Not yet cached, must download
@@ -666,11 +666,12 @@ export default class {
   }
 
   private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean; volumeAdjustment?: string}): Promise<Readable> {
+    const cacheKey = options?.cache ? await this.getHashForCache(options.cacheKey) : null;
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
 
-      if (options?.cache) {
-        const cacheStream = this.fileCache.createWriteStream(this.getHashForCache(options.cacheKey));
+      if (options?.cache && cacheKey) {
+        const cacheStream = this.fileCache.createWriteStream(cacheKey);
         capacitor.createReadStream().pipe(cacheStream);
       }
 

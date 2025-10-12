@@ -1,6 +1,6 @@
 import {AutocompleteInteraction, ChatInputCommandInteraction} from 'discord.js';
 import {URL} from 'url';
-import {SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder} from '@discordjs/builders';
+import {SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder, SlashCommandOptionsOnlyBuilder} from '@discordjs/builders';
 import {inject, injectable, optional} from 'inversify';
 import Spotify from 'spotify-web-api-node';
 import Command from './index.js';
@@ -13,7 +13,7 @@ import AddQueryToQueue from '../services/add-query-to-queue.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand: Partial<SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder> & Pick<SlashCommandBuilder, 'toJSON'>;
+  public readonly slashCommand: Partial<SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder | SlashCommandOptionsOnlyBuilder> & Pick<SlashCommandBuilder, 'toJSON'>;
 
   public requiresVC = true;
 
@@ -75,11 +75,13 @@ export default class implements Command {
 
     try {
       // Don't return suggestions for URLs
-      // eslint-disable-next-line no-new
+       
       new URL(query);
       await interaction.respond([]);
       return;
-    } catch {}
+    } catch {
+      // Ignore errors when getting suggestions
+    }
 
     const suggestions = await this.cache.wrap(
       getYouTubeAndSpotifySuggestionsFor,
