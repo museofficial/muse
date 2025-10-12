@@ -29,7 +29,8 @@
     "env:set-database-url": "tsx src/scripts/run-with-database-url.ts",
     "release": "release-it",
     "build": "tsc",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@release-it/keep-a-changelog": "^7.0.0",
@@ -77,11 +78,6 @@
         "error",
         "ignorePackages"
       ]
-    }
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm test"
     }
   },
   "dependencies": {
