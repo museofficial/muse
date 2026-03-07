@@ -4,7 +4,7 @@ export const isUserInVoice = (guild: Guild, user: User): boolean => {
   let inVoice = false;
 
   guild.channels.cache.filter(channel => channel.type === ChannelType.GuildVoice).forEach(channel => {
-    if ((channel as VoiceChannel).members.find(member => member.id === user.id)) {
+    if (channel.members.find(member => member.id === user.id)) {
       inVoice = true;
     }
   });

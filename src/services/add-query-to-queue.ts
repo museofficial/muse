@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import shuffle from 'array-shuffle';
