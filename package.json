@@ -9,7 +9,7 @@
   "types": "dts/types",
   "type": "module",
   "engines": {
-    "node": ">=18.17.0"
+    "node": ">=22.12.0"
   },
   "files": [
     "src"
@@ -88,8 +88,8 @@
     "@discordjs/builders": "1.1.0",
     "@discordjs/opus": "^0.10.0",
     "@discordjs/rest": "1.0.1",
-    "@discordjs/voice": "0.18.0",
-    "@distube/ytdl-core": "^4.16.10",
+    "@discordjs/voice": "0.19.0",
+    "@distube/ytdl-core": "https://codeload.github.com/ToddyTheNoobDud/ytdl-core-stuff/tar.gz/refs/heads/master",
     "@distube/ytsr": "^2.0.4",
     "@prisma/client": "4.16.0",
     "@types/libsodium-wrappers": "^0.7.9",
@@ -122,6 +122,7 @@
     "postinstall-postinstall": "^2.1.0",
     "read-pkg": "7.1.0",
     "reflect-metadata": "^0.2.2",
+    "@snazzah/davey": "^0.1.10",
     "sponsorblock-api": "^0.2.4",
     "spotify-uri": "^3.0.2",
     "spotify-web-api-node": "^5.0.2",
