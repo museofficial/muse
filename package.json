@@ -42,7 +42,7 @@
     "@types/node-emoji": "^1.8.1",
     "@types/spotify-web-api-node": "^5.0.2",
     "@types/validator": "^13.12.2",
-    "@types/ws": "8.5.4",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
     "eslint": "^7.32.0",
@@ -88,14 +88,14 @@
     "@discordjs/builders": "1.1.0",
     "@discordjs/opus": "^0.10.0",
     "@discordjs/rest": "1.0.1",
-    "@discordjs/voice": "0.18.0",
+    "@discordjs/voice": "0.19.1",
     "@distube/ytsr": "^2.0.4",
     "@prisma/client": "4.16.0",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
     "debug": "^4.3.3",
     "delay": "^5.0.0",
-    "discord-api-types": "0.32.1",
+    "discord-api-types": "0.38.41",
     "discord.js": "14.11.0",
     "dotenv": "^16.4.5",
     "execa": "^6.1.0",
@@ -130,7 +130,7 @@
     "ytsr": "^3.8.4"
   },
   "resolutions": {
-    "@types/ws": "8.5.4"
+    "@types/ws": "8.18.1"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

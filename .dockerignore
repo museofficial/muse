@@ -1,6 +1,11 @@
 node_modules
 data
+muse
 dist
 dts
 .env
 Dockerfile
+.git
+.gitignore
+*.md
+/*.sh
