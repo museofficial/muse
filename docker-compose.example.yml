@@ -1,0 +1,11 @@
+services:
+  muse:
+    image: muse-local:latest
+    restart: always
+    volumes:
+      - ./muse:/data
+    environment:
+      - DISCORD_TOKEN=
+      - YOUTUBE_API_KEY=
+      - SPOTIFY_CLIENT_ID=
+      - SPOTIFY_CLIENT_SECRET=

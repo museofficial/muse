@@ -30,7 +30,7 @@ Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that
 Muse is written in TypeScript. You can either run Muse with Docker (recommended) or directly with Node.js. Both methods require API keys passed in as environment variables:
 
 - `DISCORD_TOKEN` can be acquired [here](https://discordapp.com/developers/applications) by creating a 'New Application', then going to 'Bot'.
-- `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` can be acquired [here](https://developer.spotify.com/dashboard/applications) with 'Create a Client ID' (Optional).
+- `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` can be acquired [here](https://developer.spotify.com/dashboard/applications) with 'Create a Client ID' (Optional). **Requires Spotify Premium** — omit these variables if you don't have a Premium account.
 - `YOUTUBE_API_KEY` can be acquired by [creating a new project](https://console.developers.google.com) in Google's Developer Console, enabling the YouTube API, and creating an API key under credentials.
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
@@ -147,3 +147,16 @@ You can configure the bot to automatically turn down the volume when people are 
 - `/config set-reduce-vol-when-voice false` - Disable automatic volume reduction
 - `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 70)
 
+### Building from Source
+
+To build and run Muse locally using Docker Compose:
+
+1. Copy the example configuration: `cp docker-compose.example.yml docker-compose.yml`
+2. Edit `docker-compose.yml` and populate the environment variables with your API keys and tokens
+3. Build and start the container:
+
+```bash
+docker-compose up --build
+```
+
+This will build the latest version from source and start Muse with your local changes.
