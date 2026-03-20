@@ -168,6 +168,12 @@ export default class {
     }
 
     const stream = await this.getStream(currentSong, {seek: realPositionSeconds, to});
+    // 古いAudioPlayerのリソースを解放してメモリリークを防止
+    if (this.audioPlayer) {
+      this.audioPlayer.stop(true);
+      this.audioPlayer.removeAllListeners();
+    }
+
     this.audioPlayer = createAudioPlayer({
       behaviors: {
         // Needs to be somewhat high for livestreams
@@ -231,6 +237,12 @@ export default class {
       }
 
       const stream = await this.getStream(currentSong, {seek: positionSeconds, to});
+      // 古いAudioPlayerのリソースを解放してメモリリークを防止
+      if (this.audioPlayer) {
+        this.audioPlayer.stop(true);
+        this.audioPlayer.removeAllListeners();
+      }
+
       this.audioPlayer = createAudioPlayer({
         behaviors: {
           // Needs to be somewhat high for livestreams
