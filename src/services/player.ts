@@ -168,7 +168,7 @@ export default class {
     }
 
     const stream = await this.getStream(currentSong, {seek: realPositionSeconds, to});
-    // 古いAudioPlayerのリソースを解放してメモリリークを防止
+    // Clean up old AudioPlayer resources to prevent memory leaks
     if (this.audioPlayer) {
       this.audioPlayer.stop(true);
       this.audioPlayer.removeAllListeners();
@@ -237,7 +237,7 @@ export default class {
       }
 
       const stream = await this.getStream(currentSong, {seek: positionSeconds, to});
-      // 古いAudioPlayerのリソースを解放してメモリリークを防止
+      // Clean up old AudioPlayer resources to prevent memory leaks
       if (this.audioPlayer) {
         this.audioPlayer.stop(true);
         this.audioPlayer.removeAllListeners();
