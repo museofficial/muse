@@ -21,7 +21,6 @@ import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {Setting} from '@prisma/client';
-import ytdl, {videoFormat} from '@distube/ytdl-core';
 
 export enum MediaSource {
   Youtube,
@@ -135,21 +134,7 @@ export default class {
 
     const guildSettings = await getGuildSettings(this.guildId);
 
-    // Workaround to disable keepAlive
-    this.voiceConnection.on('stateChange', (oldState, newState) => {
-      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
-      const oldNetworking = Reflect.get(oldState, 'networking');
-      const newNetworking = Reflect.get(newState, 'networking');
-
-      const networkStateChangeHandler = (_: any, newNetworkState: any) => {
-        const newUdp = Reflect.get(newNetworkState, 'udp');
-        clearInterval(newUdp?.keepAliveInterval);
-      };
-
-      oldNetworking?.off('stateChange', networkStateChangeHandler);
-      newNetworking?.on('stateChange', networkStateChangeHandler);
-      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
-
+    this.voiceConnection.on('stateChange', (_oldState, newState) => {
       this.currentChannel = channel;
       if (newState.status === VoiceConnectionStatus.Ready) {
         this.registerVoiceActivityListener(guildSettings);
@@ -243,6 +228,9 @@ export default class {
         this.audioPlayer.unpause();
         this.status = STATUS.PLAYING;
         this.startTrackingPosition();
+
+        // Log when a song resumes from pause
+        console.log(`▶️ Resumed: "${currentSong.title}" by ${currentSong.artist} in guild ${this.guildId}`);
         return;
       }
 
@@ -274,6 +262,9 @@ export default class {
 
       this.status = STATUS.PLAYING;
       this.nowPlaying = currentSong;
+
+      // Log when a song starts playing
+      console.log(`🎵 Now playing: "${currentSong.title}" by ${currentSong.artist} [${currentSong.source === MediaSource.Youtube ? 'YouTube' : 'HLS'}] - Requested by ${currentSong.requestedBy} in guild ${this.guildId}`);
 
       if (currentSong.url === this.lastSongURL) {
         this.startTrackingPosition();
@@ -794,6 +785,9 @@ export default class {
         })
         .on('start', command => {
           debug(`Spawned ffmpeg with ${command}`);
+        })
+        .on('stderr', line => {
+          debug(`ffmpeg: ${line}`);
         });
 
       stream.pipe(capacitor);
