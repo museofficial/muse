@@ -1,4 +1,4 @@
-# Releasing
+# Releasing a
 
 1. Confirm that CHANGELOG.md is updated (any new changes should go under "Unreleased" at the top).
 2. On the master branch, run `yarn release` and follow the prompts.
