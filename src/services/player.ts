@@ -22,6 +22,10 @@ import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {Setting} from '@prisma/client';
 
+if (!process.env.YTDL_NO_UPDATE) {
+  process.env.YTDL_NO_UPDATE = '1';
+}
+
 export enum MediaSource {
   Youtube,
   HLS,
@@ -515,7 +519,8 @@ export default class {
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const info = await ytdl.getInfo(song.url);
+      const videoIdentifier = song.url.length === 11 ? `https://www.youtube.com/watch?v=${song.url}` : song.url;
+      const info = await ytdl.getInfo(videoIdentifier);
 
       const formats = info.formats as YTDLVideoFormat[];
 
