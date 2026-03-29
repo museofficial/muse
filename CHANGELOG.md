@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [2.11.2] - 2026-03-29
+
+## [2.11.2] - 2026-03-29
 - Improve YouTube playback reliability by updating ytdl-core and normalizing getInfo input
 
 ## [2.11.1] - 2025-04-07
@@ -370,7 +372,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/museofficial/muse/compare/v2.11.1...HEAD
+[unreleased]: https://github.com/shiftybitshiftr/muse/compare/v2.11.2...HEAD
+[2.11.2]: https://github.com/shiftybitshiftr/muse/compare/v2.11.1...v2.11.2
 [2.11.1]: https://github.com/museofficial/muse/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/museofficial/muse/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/museofficial/muse/compare/v2.10.0...v2.10.1
