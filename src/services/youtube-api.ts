@@ -1,7 +1,7 @@
 import {inject, injectable} from 'inversify';
 import {toSeconds, parse} from 'iso8601-duration';
 import got, {Got} from 'got';
-import ytsr, {Video} from '@distube/ytsr';
+import ytsr, {Video} from 'ytsr';
 import PQueue from 'p-queue';
 import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
@@ -52,6 +52,10 @@ interface PlaylistItem {
   };
 }
 
+interface SearchResult {
+  items: Array<Video | {type: string}>;
+}
+
 @injectable()
 export default class {
   private readonly youtubeKey: string;
@@ -74,7 +78,7 @@ export default class {
   }
 
   async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
-    const result = await this.ytsrQueue.add<ytsr.VideoResult>(async () => this.cache.wrap(
+    const result = await this.ytsrQueue.add<SearchResult>(async () => this.cache.wrap(
       ytsr,
       query,
       {
@@ -83,7 +87,7 @@ export default class {
       {
         expiresIn: ONE_HOUR_IN_SECONDS,
       },
-    ));
+    ) as Promise<SearchResult>);
 
     if (result === undefined) {
       return [];
@@ -92,7 +96,7 @@ export default class {
     let firstVideo: Video | undefined;
 
     for (const item of result.items) {
-      if (item.type === 'video') {
+      if (item.type === 'video' && 'url' in item) {
         firstVideo = item;
         break;
       }
