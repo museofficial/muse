@@ -519,8 +519,17 @@ export default class {
 
     if (!ffmpegInput) {
       // Not yet cached, must download
-      const videoIdentifier = song.url.length === 11 ? `https://www.youtube.com/watch?v=${song.url}` : song.url;
-      const info = await ytdl.getInfo(videoIdentifier);
+      const infoIdentifiers = song.url.length === 11
+        ? [`https://www.youtube.com/watch?v=${song.url}`, song.url]
+        : [song.url];
+      const info = await Promise.any(infoIdentifiers.map(async infoIdentifier => ytdl.getInfo(infoIdentifier)))
+        .catch((error: unknown) => {
+          if (error instanceof AggregateError && error.errors.length > 0) {
+            throw error.errors[0];
+          }
+
+          throw error;
+        });
 
       const formats = info.formats as YTDLVideoFormat[];
 
