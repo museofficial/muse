@@ -90,7 +90,6 @@
     "@discordjs/rest": "1.0.1",
     "@discordjs/voice": "0.18.0",
     "@distube/ytdl-core": "^4.16.12",
-    "@distube/ytsr": "^2.0.4",
     "@prisma/client": "4.16.0",
     "@types/libsodium-wrappers": "^0.7.9",
     "array-shuffle": "^3.0.0",
