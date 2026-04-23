@@ -104,32 +104,21 @@ export default class {
     this.currentChannel = channel;
 
     const guildSettings = await getGuildSettings(this.guildId);
-
-    // Workaround to disable keepAlive
     this.voiceConnection.on('stateChange', (oldState, newState) => {
-      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
-      const oldNetworking = Reflect.get(oldState, 'networking');
-      const newNetworking = Reflect.get(newState, 'networking');
+      debug(`Voice connection state changed: ${oldState.status} -> ${newState.status}`);
 
-      const networkStateChangeHandler = (_: any, newNetworkState: any) => {
-        const newUdp = Reflect.get(newNetworkState, 'udp');
-        clearInterval(newUdp?.keepAliveInterval);
-      };
-
-      oldNetworking?.off('stateChange', networkStateChangeHandler);
-      newNetworking?.on('stateChange', networkStateChangeHandler);
-      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
       if (newState.status === VoiceConnectionStatus.Ready) {
         this.registerVoiceActivityListener(guildSettings);
       }
     });
 
     try {
-      await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 20_000);
+      await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 60_000);
     } catch {
+      const {status} = this.voiceConnection.state;
       this.voiceConnection.destroy();
       this.voiceConnection = null;
-      throw new Error('Failed to connect to the voice channel.');
+      throw new Error(`Failed to connect to the voice channel (last state: ${status}).`);
     }
   }
 
@@ -599,7 +588,7 @@ export default class {
       throw new Error('Not connected to a voice channel.');
     }
 
-    await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 20_000);
+    await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 60_000);
 
     return this.voiceConnection;
   }
