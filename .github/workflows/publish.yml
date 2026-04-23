@@ -7,6 +7,7 @@ on:
 
 env:
   REGISTRY_IMAGE: ghcr.io/museofficial/muse
+  DOCKERHUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/muse
 
 jobs:
   publish:
@@ -55,7 +56,7 @@ jobs:
         with:
           push: true
           tags: |
-            codetheweb/muse:${{ github.sha }}-${{ matrix.tagged-platform }}
+            ${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}-${{ matrix.tagged-platform }}
             ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-${{ matrix.tagged-platform }}
           platforms: ${{ matrix.build-arch }}
           build-args: |
@@ -94,7 +95,7 @@ jobs:
         id: get-tags-dockerhub
         uses: Surgo/docker-smart-tag-action@v1
         with:
-          docker_image: codetheweb/muse
+          docker_image: ${{ env.DOCKERHUB_IMAGE }}
 
       - name: Get tags (ghcr.io)
         id: get-tags-ghcr
@@ -103,7 +104,7 @@ jobs:
           docker_image: ${{ env.REGISTRY_IMAGE }}
 
       - name: Combine tags (Docker Hub)
-        run: docker buildx imagetools create $(echo '${{ steps.get-tags-dockerhub.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') 'codetheweb/muse:${{ github.sha }}-arm64' 'codetheweb/muse:${{ github.sha }}-amd64'
+        run: docker buildx imagetools create $(echo '${{ steps.get-tags-dockerhub.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') '${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}-arm64' '${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}-amd64'
 
       - name: Combine tags (GitHub Container Registry)
         run: docker buildx imagetools create $(echo '${{ steps.get-tags-ghcr.outputs.tag }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-arm64' '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-amd64'
@@ -113,7 +114,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-          repository: codetheweb/muse
+          repository: ${{ env.DOCKERHUB_IMAGE }}
 
   release:
     name: Create GitHub release

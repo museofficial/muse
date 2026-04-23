@@ -1,8 +1,5 @@
 // This script applies Prisma migrations
 // and then starts Muse.
-import dotenv from 'dotenv';
-dotenv.config();
-
 import {execa, ExecaError} from 'execa';
 import {promises as fs} from 'fs';
 import Prisma from '@prisma/client';
@@ -11,8 +8,6 @@ import {startBot} from '../index.js';
 import logBanner from '../utils/log-banner.js';
 import createDatabaseUrl, {createDatabasePath} from '../utils/create-database-url.js';
 import {DATA_DIR} from '../services/config.js';
-
-const client = new Prisma.PrismaClient();
 
 process.env.DATABASE_URL = process.env.DATABASE_URL ?? createDatabaseUrl(DATA_DIR);
 
@@ -31,17 +26,22 @@ const doesUserHaveExistingDatabase = async () => {
 };
 
 const hasDatabaseBeenMigratedToPrisma = async () => {
+  const client = new Prisma.PrismaClient();
+
   try {
     await client.$queryRaw`SELECT COUNT(id) FROM _prisma_migrations`;
   } catch (error: unknown) {
     if (error instanceof Prisma.Prisma.PrismaClientKnownRequestError && error.code === 'P2010') {
       // Table doesn't exist
+      await client.$disconnect();
       return false;
     }
 
+    await client.$disconnect();
     throw error;
   }
 
+  await client.$disconnect();
   return true;
 };
 

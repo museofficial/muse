@@ -23,7 +23,8 @@ const CONFIG_MAP = {
   BOT_ACTIVITY_URL: process.env.BOT_ACTIVITY_URL ?? '',
   BOT_ACTIVITY: process.env.BOT_ACTIVITY ?? 'music',
   ENABLE_SPONSORBLOCK: process.env.ENABLE_SPONSORBLOCK === 'true',
-  SPONSORBLOCK_TIMEOUT: process.env.ENABLE_SPONSORBLOCK ?? 5,
+  SPONSORBLOCK_TIMEOUT: parseInt(process.env.SPONSORBLOCK_TIMEOUT ?? '5', 10),
+  YT_DLP_PATH: process.env.YT_DLP_PATH ?? 'yt-dlp',
 } as const;
 
 const BOT_ACTIVITY_TYPE_MAP = {
@@ -49,6 +50,7 @@ export default class Config {
   readonly BOT_ACTIVITY!: string;
   readonly ENABLE_SPONSORBLOCK!: boolean;
   readonly SPONSORBLOCK_TIMEOUT!: number;
+  readonly YT_DLP_PATH!: string;
 
   constructor() {
     for (const [key, value] of Object.entries(CONFIG_MAP)) {
@@ -63,6 +65,10 @@ export default class Config {
       }
 
       if (typeof value === 'number') {
+        if (!Number.isFinite(value)) {
+          throw new Error(`Invalid numeric value for ${key}`);
+        }
+
         this[key as ConditionalKeys<typeof CONFIG_MAP, number>] = value;
       } else if (typeof value === 'string') {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access

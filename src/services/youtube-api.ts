@@ -1,8 +1,6 @@
 import {inject, injectable} from 'inversify';
 import {toSeconds, parse} from 'iso8601-duration';
 import got, {Got} from 'got';
-import ytsr, {Video} from '@distube/ytsr';
-import PQueue from 'p-queue';
 import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
@@ -52,17 +50,25 @@ interface PlaylistItem {
   };
 }
 
+interface SearchResponse {
+  items: SearchItem[];
+}
+
+interface SearchItem {
+  id: {
+    videoId: string;
+  };
+}
+
 @injectable()
 export default class {
   private readonly youtubeKey: string;
   private readonly cache: KeyValueCacheProvider;
-  private readonly ytsrQueue: PQueue;
   private readonly got: Got;
 
   constructor(@inject(TYPES.Config) config: Config, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
     this.youtubeKey = config.YOUTUBE_API_KEY;
     this.cache = cache;
-    this.ytsrQueue = new PQueue({concurrency: 4});
 
     this.got = got.extend({
       prefixUrl: 'https://www.googleapis.com/youtube/v3/',
@@ -74,39 +80,49 @@ export default class {
   }
 
   async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
-    const result = await this.ytsrQueue.add<ytsr.VideoResult>(async () => this.cache.wrap(
-      ytsr,
-      query,
-      {
-        limit: 10,
+    const params = {
+      searchParams: {
+        part: 'snippet',
+        q: query,
+        type: 'video',
+        maxResults: '10',
       },
+    };
+
+    const {items} = await this.cache.wrap(
+      async () => this.got('search', params).json() as Promise<SearchResponse>,
+      params,
       {
         expiresIn: ONE_HOUR_IN_SECONDS,
       },
-    ));
+    );
 
-    if (result === undefined) {
+    const ids = items
+      .map(item => item.id.videoId)
+      .filter(Boolean);
+
+    if (ids.length === 0) {
       return [];
     }
 
-    let firstVideo: Video | undefined;
+    const videos = await this.getVideosByID(ids);
+    const firstVideo = ids
+      .map(id => videos.find(video => video.id === id))
+      .find(Boolean);
 
-    for (const item of result.items) {
-      if (item.type === 'video') {
-        firstVideo = item;
-        break;
-      }
-    }
-
-    if (!firstVideo) {
-      return [];
-    }
-
-    return this.getVideo(firstVideo.url, shouldSplitChapters);
+    return firstVideo
+      ? this.getMetadataFromVideo({video: firstVideo, shouldSplitChapters})
+      : [];
   }
 
   async getVideo(url: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
-    const result = await this.getVideosByID([String(getYouTubeID(url))]);
+    const videoId = url.length === 11 ? url : getYouTubeID(url);
+
+    if (!videoId) {
+      throw new Error('Video could not be found.');
+    }
+
+    const result = await this.getVideosByID([videoId]);
     const video = result.at(0);
 
     if (!video) {
