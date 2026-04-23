@@ -1,6 +1,6 @@
 {
   "name": "muse",
-  "version": "2.11.1",
+  "version": "2.11.6",
   "description": "🎧 a self-hosted Discord music bot that doesn't suck ",
   "repository": "git@github.com:museofficial/muse.git",
   "author": "Max Isom <hi@maxisom.me>",
@@ -9,7 +9,7 @@
   "types": "dts/types",
   "type": "module",
   "engines": {
-    "node": ">=18.17.0"
+    "node": ">=22.12.0"
   },
   "files": [
     "src"
@@ -42,7 +42,7 @@
     "@types/node-emoji": "^1.8.1",
     "@types/spotify-web-api-node": "^5.0.2",
     "@types/validator": "^13.12.2",
-    "@types/ws": "8.5.4",
+    "@types/ws": "8.18.1",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
     "eslint": "^7.32.0",
@@ -88,7 +88,7 @@
     "@discordjs/builders": "1.1.0",
     "@discordjs/opus": "^0.10.0",
     "@discordjs/rest": "1.0.1",
-    "@discordjs/voice": "0.18.0",
+    "@discordjs/voice": "0.19.2",
     "@distube/ytdl-core": "^4.16.12",
     "@distube/ytsr": "^2.0.4",
     "@prisma/client": "4.16.0",
@@ -131,7 +131,7 @@
     "ytsr": "^3.8.4"
   },
   "resolutions": {
-    "@types/ws": "8.5.4"
+    "@types/ws": "8.18.1"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

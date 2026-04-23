@@ -1,5 +1,6 @@
 import {VoiceChannel, Snowflake} from 'discord.js';
 import {Readable} from 'stream';
+import {setTimeout as sleep} from 'timers/promises';
 import hasha from 'hasha';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
@@ -14,6 +15,7 @@ import {
   joinVoiceChannel,
   StreamType,
   VoiceConnection,
+  VoiceConnectionDisconnectReason,
   VoiceConnectionStatus,
 } from '@discordjs/voice';
 import FileCacheProvider from './file-cache.js';
@@ -83,6 +85,7 @@ export default class {
   private disconnectTimer: NodeJS.Timeout | null = null;
 
   private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
+  private hasRegisteredVoiceActivityListener = false;
 
   constructor(fileCache: FileCacheProvider, guildId: string) {
     this.fileCache = fileCache;
@@ -90,35 +93,51 @@ export default class {
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
+    if (this.voiceConnection) {
+      this.disconnect();
+    }
+
     // Always get freshest default volume setting value
     const settings = await getGuildSettings(this.guildId);
     const {defaultVolume = DEFAULT_VOLUME} = settings;
     this.defaultVolume = defaultVolume;
 
-    this.voiceConnection = joinVoiceChannel({
+    const voiceConnection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
       selfDeaf: false,
       adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
+
+    this.voiceConnection = voiceConnection;
     this.currentChannel = channel;
+    this.hasRegisteredVoiceActivityListener = false;
 
     const guildSettings = await getGuildSettings(this.guildId);
-    this.voiceConnection.on('stateChange', (oldState, newState) => {
+    const stateTransitions = [voiceConnection.state.status];
+    voiceConnection.on('stateChange', (oldState, newState) => {
+      stateTransitions.push(newState.status);
+      if (stateTransitions.length > 10) {
+        stateTransitions.shift();
+      }
+
       debug(`Voice connection state changed: ${oldState.status} -> ${newState.status}`);
 
-      if (newState.status === VoiceConnectionStatus.Ready) {
+      if (newState.status === VoiceConnectionStatus.Ready && !this.hasRegisteredVoiceActivityListener) {
         this.registerVoiceActivityListener(guildSettings);
+        this.hasRegisteredVoiceActivityListener = true;
       }
     });
 
+    voiceConnection.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
+
     try {
-      await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 60_000);
+      await this.waitForVoiceConnectionReady(voiceConnection);
     } catch {
-      const {status} = this.voiceConnection.state;
-      this.voiceConnection.destroy();
+      const {status} = voiceConnection.state;
+      voiceConnection.destroy();
       this.voiceConnection = null;
-      throw new Error(`Failed to connect to the voice channel (last state: ${status}).`);
+      throw new Error(`Failed to connect to the voice channel (last state: ${status}, rejoin attempts: ${voiceConnection.rejoinAttempts}, recent states: ${stateTransitions.join(' -> ')}).`);
     }
   }
 
@@ -135,6 +154,9 @@ export default class {
       this.voiceConnection = null;
       this.audioPlayer = null;
       this.audioResource = null;
+      this.currentChannel = undefined;
+      this.channelToSpeakingUsers.clear();
+      this.hasRegisteredVoiceActivityListener = false;
     }
   }
 
@@ -566,10 +588,6 @@ export default class {
       return;
     }
 
-    if (this.voiceConnection.listeners(VoiceConnectionStatus.Disconnected).length === 0) {
-      this.voiceConnection.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
-    }
-
     if (!this.audioPlayer) {
       return;
     }
@@ -579,7 +597,35 @@ export default class {
     }
   }
 
-  private onVoiceConnectionDisconnect(): void {
+  private async onVoiceConnectionDisconnect(): Promise<void> {
+    if (!this.voiceConnection || this.voiceConnection.state.status !== VoiceConnectionStatus.Disconnected) {
+      return;
+    }
+
+    const disconnectedState = this.voiceConnection.state;
+    if (disconnectedState.reason === VoiceConnectionDisconnectReason.WebSocketClose && disconnectedState.closeCode === 4014) {
+      try {
+        await Promise.race([
+          entersState(this.voiceConnection, VoiceConnectionStatus.Connecting, 5_000),
+          entersState(this.voiceConnection, VoiceConnectionStatus.Signalling, 5_000),
+        ]);
+        return;
+      } catch {
+        this.disconnect();
+        return;
+      }
+    }
+
+    if (this.voiceConnection.rejoinAttempts < 5) {
+      await sleep((this.voiceConnection.rejoinAttempts + 1) * 5_000);
+
+      if (this.voiceConnection && this.voiceConnection.state.status === VoiceConnectionStatus.Disconnected) {
+        if (this.voiceConnection.rejoin()) {
+          return;
+        }
+      }
+    }
+
     this.disconnect();
   }
 
@@ -588,9 +634,13 @@ export default class {
       throw new Error('Not connected to a voice channel.');
     }
 
-    await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 60_000);
+    await this.waitForVoiceConnectionReady(this.voiceConnection);
 
     return this.voiceConnection;
+  }
+
+  private async waitForVoiceConnectionReady(voiceConnection: VoiceConnection): Promise<void> {
+    await entersState(voiceConnection, VoiceConnectionStatus.Ready, 60_000);
   }
 
   private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
