@@ -10,6 +10,7 @@ import {
   AudioPlayerStatus, AudioResource,
   createAudioPlayer,
   createAudioResource, DiscordGatewayAdapterCreator,
+  entersState,
   joinVoiceChannel,
   StreamType,
   VoiceConnection,
@@ -100,6 +101,7 @@ export default class {
       selfDeaf: false,
       adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
+    this.currentChannel = channel;
 
     const guildSettings = await getGuildSettings(this.guildId);
 
@@ -117,12 +119,18 @@ export default class {
       oldNetworking?.off('stateChange', networkStateChangeHandler);
       newNetworking?.on('stateChange', networkStateChangeHandler);
       /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
-
-      this.currentChannel = channel;
       if (newState.status === VoiceConnectionStatus.Ready) {
         this.registerVoiceActivityListener(guildSettings);
       }
     });
+
+    try {
+      await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 20_000);
+    } catch {
+      this.voiceConnection.destroy();
+      this.voiceConnection = null;
+      throw new Error('Failed to connect to the voice channel.');
+    }
   }
 
   disconnect(): void {
@@ -144,9 +152,7 @@ export default class {
   async seek(positionSeconds: number): Promise<void> {
     this.status = STATUS.PAUSED;
 
-    if (this.voiceConnection === null) {
-      throw new Error('Not connected to a voice channel.');
-    }
+    const voiceConnection = await this.ensureVoiceConnectionReady();
 
     const currentSong = this.getCurrent();
 
@@ -172,7 +178,7 @@ export default class {
         maxMissedFrames: 50,
       },
     });
-    this.voiceConnection.subscribe(this.audioPlayer);
+    voiceConnection.subscribe(this.audioPlayer);
     this.playAudioPlayerResource(this.createAudioStream(stream));
     this.attachListeners();
     this.startTrackingPosition(positionSeconds);
@@ -189,9 +195,7 @@ export default class {
   }
 
   async play(): Promise<void> {
-    if (this.voiceConnection === null) {
-      throw new Error('Not connected to a voice channel.');
-    }
+    const voiceConnection = await this.ensureVoiceConnectionReady();
 
     const currentSong = this.getCurrent();
 
@@ -235,7 +239,7 @@ export default class {
           maxMissedFrames: 50,
         },
       });
-      this.voiceConnection.subscribe(this.audioPlayer);
+      voiceConnection.subscribe(this.audioPlayer);
       this.playAudioPlayerResource(this.createAudioStream(stream));
 
       this.attachListeners();
@@ -588,6 +592,16 @@ export default class {
 
   private onVoiceConnectionDisconnect(): void {
     this.disconnect();
+  }
+
+  private async ensureVoiceConnectionReady(): Promise<VoiceConnection> {
+    if (this.voiceConnection === null) {
+      throw new Error('Not connected to a voice channel.');
+    }
+
+    await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 20_000);
+
+    return this.voiceConnection;
   }
 
   private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
