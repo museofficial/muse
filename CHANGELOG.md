@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.11.3] - 2026-04-24
 - Improve YouTube format fetching fallback by retrying with both watch URL and video ID inputs.
 - Improve YouTube playback reliability by resolving playable media URLs with `yt-dlp`.
 - Include `yt-dlp` in the Docker image and document `YT_DLP_PATH` for direct Node.js installs.
@@ -376,7 +378,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/museofficial/muse/compare/v2.11.1...HEAD
+[unreleased]: https://github.com/museofficial/muse/compare/v2.11.3...HEAD
 [2.11.1]: https://github.com/museofficial/muse/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/museofficial/muse/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/museofficial/muse/compare/v2.10.0...v2.10.1
@@ -450,3 +452,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.2.0]: https://github.com/codetheweb/muse/releases/tag/v0.2.0
 [0.1.1]: https://github.com/codetheweb/muse/releases/tag/v0.1.1
 [0.1.0]: https://github.com/codetheweb/muse/releases/tag/v0.1.0
+
+[2.11.3]: https://github.com/museofficial/muse/compare/v2.11.1...v2.11.3
