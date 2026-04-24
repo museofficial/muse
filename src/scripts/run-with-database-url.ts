@@ -9,7 +9,7 @@ import {execa} from 'execa';
     stdout: process.stdout,
     stdin: process.stdin,
     env: {
-      DATABASE_URL: createDatabaseUrl(DATA_DIR),
+      DATABASE_URL: process.env.DATABASE_URL ?? createDatabaseUrl(DATA_DIR),
     },
   });
 })();

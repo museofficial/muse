@@ -78,11 +78,14 @@ services:
       - SPOTIFY_CLIENT_SECRET=
 ```
 
+If you keep the same `DISCORD_TOKEN`, reuse the same `/data` volume, and point your Compose service at a newer image tag, Muse will come back up with the same bot identity and persisted database/cache.
+
 ### Node.js
 
 **Prerequisites**:
 * Node.js (18.17.0 or latest 18.xx.xx is required and latest 18.x.x LTS is recommended) (Version 18 due to opus dependency)
 * ffmpeg (4.1 or later)
+* `yt-dlp` on your `PATH` (or set `YT_DLP_PATH` to its full path)
 
 1. `git clone https://github.com/museofficial/muse.git && cd muse`
 2. Copy `.env.example` to `.env` and populate with values
@@ -97,6 +100,10 @@ services:
 ### Cache
 
 By default, Muse limits the total cache size to around 2 GB. If you want to change this, set the environment variable `CACHE_LIMIT`. For example, `CACHE_LIMIT=512MB` or `CACHE_LIMIT=10GB`.
+
+### yt-dlp
+
+Muse now uses `yt-dlp` to resolve playable YouTube media URLs. In Docker, the image already includes it. For direct Node.js installs, either put `yt-dlp` on your `PATH` or set `YT_DLP_PATH` in your environment file.
 
 ### SponsorBlock
 
@@ -146,4 +153,3 @@ You can configure the bot to automatically turn down the volume when people are 
 - `/config set-reduce-vol-when-voice true` - Enable automatic volume reduction
 - `/config set-reduce-vol-when-voice false` - Disable automatic volume reduction
 - `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 70)
-
