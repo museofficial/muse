@@ -120,6 +120,8 @@ jobs:
     name: Create GitHub release
     runs-on: ubuntu-latest
     needs: combine
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v2
 
@@ -145,4 +147,4 @@ jobs:
           prerelease: ${{ steps.changelog_reader.outputs.status == 'prereleased' }}
           draft: ${{ steps.changelog_reader.outputs.status == 'unreleased' }}
           allowUpdates: true
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
