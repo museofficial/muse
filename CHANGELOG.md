@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - Improve YouTube format fetching fallback by retrying with both watch URL and video ID inputs.
+- Improve YouTube playback reliability by resolving playable media URLs with `yt-dlp`.
+- Include `yt-dlp` in the Docker image and document `YT_DLP_PATH` for direct Node.js installs.
+- Improve Discord voice connection reliability by waiting for the voice connection to become ready before playback.
+- Upgrade `@discordjs/voice` to pick up current Discord voice transport support.
+- Avoid disconnecting during voice connection handshakes when guild voice state updates arrive.
 
 ## [2.11.2] - 2026-03-29
 - Improve YouTube playback reliability by updating ytdl-core and normalizing getInfo input
