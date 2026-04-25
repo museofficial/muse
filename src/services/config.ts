@@ -9,6 +9,10 @@ dotenv.config({path: process.env.ENV_FILE ?? path.resolve(process.cwd(), '.env')
 
 export const DATA_DIR = path.resolve(process.env.DATA_DIR ? process.env.DATA_DIR : './data');
 
+const firstNonEmpty = (...values: Array<string | undefined>) => values
+  .map(value => value?.trim())
+  .find((value): value is string => Boolean(value));
+
 const CONFIG_MAP = {
   DISCORD_TOKEN: process.env.DISCORD_TOKEN,
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
@@ -24,7 +28,8 @@ const CONFIG_MAP = {
   BOT_ACTIVITY: process.env.BOT_ACTIVITY ?? 'music',
   ENABLE_SPONSORBLOCK: process.env.ENABLE_SPONSORBLOCK === 'true',
   SPONSORBLOCK_TIMEOUT: parseInt(process.env.SPONSORBLOCK_TIMEOUT ?? '5', 10),
-  YT_DLP_PATH: process.env.YT_DLP_PATH ?? 'yt-dlp',
+  YT_DLP_PATH: firstNonEmpty(process.env.YT_DLP_PATH, process.env.MUSE_BUNDLED_YT_DLP_PATH) ?? 'yt-dlp',
+  YT_DLP_AUTO_UPDATE: process.env.YT_DLP_AUTO_UPDATE === 'true',
 } as const;
 
 const BOT_ACTIVITY_TYPE_MAP = {
@@ -51,6 +56,7 @@ export default class Config {
   readonly ENABLE_SPONSORBLOCK!: boolean;
   readonly SPONSORBLOCK_TIMEOUT!: number;
   readonly YT_DLP_PATH!: string;
+  readonly YT_DLP_AUTO_UPDATE!: boolean;
 
   constructor() {
     for (const [key, value] of Object.entries(CONFIG_MAP)) {
