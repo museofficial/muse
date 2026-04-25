@@ -13,8 +13,10 @@ jobs:
     name: Release snapshot and comment in PR
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       packages: write
+      pull-requests: write
       attestations: write
       id-token: write
     steps:
@@ -35,7 +37,7 @@ jobs:
           pattern: image-linux-*
           merge-multiple: true
           run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GH_PAT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load image
         shell: bash
@@ -49,7 +51,7 @@ jobs:
           path: /tmp/SHA
           pattern: sha
           run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GH_PAT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read SHA
         shell: bash
@@ -67,7 +69,7 @@ jobs:
           path: /tmp/metadata
           pattern: metadata
           run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GH_PAT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read the metadata.json file
         id: metadata_reader
@@ -81,7 +83,7 @@ jobs:
           path: /tmp/pull_request_number
           pattern: pull_request_number
           run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GH_PAT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read PR number
         shell: bash
@@ -97,7 +99,7 @@ jobs:
         with:
           header: "pr-release"
           number: ${{ env.PR_NUMBER }}
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |
             #### :package: :robot: A new release has been made for this pull request.
 
