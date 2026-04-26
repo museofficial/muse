@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.4] - 2026-04-26
+- Add optional `YT_DLP_AUTO_UPDATE` startup refresh support and startup `YT_DLP_VERSION` logging.
+- Add scheduled, manual, and release-triggered GHCR image refreshes for the latest `yt-dlp`.
+- Improve Docker `yt-dlp` path handling so bundled installs remain overrideable and updateable.
+- Restore PR snapshot image comments and artifact paths.
+- Refresh GitHub Actions runtimes.
+
 ## [2.11.3] - 2026-04-24
 - Improve YouTube format fetching fallback by retrying with both watch URL and video ID inputs.
 - Improve YouTube playback reliability by resolving playable media URLs with `yt-dlp`.
@@ -378,7 +385,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/museofficial/muse/compare/v2.11.3...HEAD
+[unreleased]: https://github.com/museofficial/muse/compare/v2.11.4...HEAD
+[2.11.4]: https://github.com/museofficial/muse/compare/v2.11.3...v2.11.4
 [2.11.1]: https://github.com/museofficial/muse/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/museofficial/muse/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/museofficial/muse/compare/v2.10.0...v2.10.1
