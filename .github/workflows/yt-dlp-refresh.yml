@@ -1,0 +1,126 @@
+name: Refresh yt-dlp image
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to rebuild. Defaults to the latest GitHub release.'
+        required: false
+        type: string
+
+concurrency:
+  group: yt-dlp-refresh-${{ github.event.inputs.release_tag || github.event.release.tag_name || 'latest' }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY_IMAGE: ghcr.io/museofficial/muse
+
+jobs:
+  refresh:
+    name: Build image with latest yt-dlp
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+      - name: Resolve versions
+        id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          validate_tag_component() {
+            local name="$1"
+            local value="$2"
+
+            if [[ ! "${value}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+              echo "Invalid ${name} for Docker tag: ${value}" >&2
+              exit 1
+            fi
+          }
+
+          release_tag=""
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            release_tag="$(jq -r '.inputs.release_tag // ""' "${GITHUB_EVENT_PATH}")"
+          elif [ "${GITHUB_EVENT_NAME}" = "release" ]; then
+            release_tag="$(jq -r '.release.tag_name // ""' "${GITHUB_EVENT_PATH}")"
+          fi
+
+          if [ -z "${release_tag}" ]; then
+            release_tag="$(gh release view --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName)"
+          fi
+
+          if [ -z "${release_tag}" ]; then
+            echo "Could not resolve a Muse release tag" >&2
+            exit 1
+          fi
+
+          app_version="${release_tag#v}"
+          yt_dlp_version="$(curl -fsSL https://pypi.org/pypi/yt-dlp/json | jq -r '.info.version')"
+          if [ -z "${yt_dlp_version}" ] || [ "${yt_dlp_version}" = "null" ]; then
+            echo "Could not resolve latest yt-dlp version from PyPI" >&2
+            exit 1
+          fi
+
+          validate_tag_component "release tag" "${release_tag}"
+          validate_tag_component "app version" "${app_version}"
+          validate_tag_component "yt-dlp version" "${yt_dlp_version}"
+
+          {
+            echo "release_tag=${release_tag}"
+            echo "app_version=${app_version}"
+            echo "yt_dlp_version=${yt_dlp_version}"
+          } >> "${GITHUB_OUTPUT}"
+
+          echo "Rebuilding Muse ${release_tag} with yt-dlp ${yt_dlp_version}"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.versions.outputs.release_tag }}
+
+      - name: Build metadata
+        id: build-metadata
+        run: |
+          echo "source_sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.REGISTRY_IMAGE }}:yt-dlp-latest
+            ${{ env.REGISTRY_IMAGE }}:yt-dlp-${{ steps.versions.outputs.yt_dlp_version }}
+            ${{ env.REGISTRY_IMAGE }}:${{ steps.versions.outputs.app_version }}-yt-dlp
+            ${{ env.REGISTRY_IMAGE }}:${{ steps.versions.outputs.app_version }}-yt-dlp-${{ steps.versions.outputs.yt_dlp_version }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.build-metadata.outputs.source_sha }}
+            org.opencontainers.image.created=${{ steps.build-metadata.outputs.build_date }}
+            org.opencontainers.image.version=${{ steps.versions.outputs.app_version }}
+            org.opencontainers.image.description=Muse ${{ steps.versions.outputs.app_version }} rebuilt with yt-dlp ${{ steps.versions.outputs.yt_dlp_version }}
+          build-args: |
+            YT_DLP_VERSION=${{ steps.versions.outputs.yt_dlp_version }}
+            COMMIT_HASH=${{ steps.build-metadata.outputs.source_sha }}
+            BUILD_DATE=${{ steps.build-metadata.outputs.build_date }}

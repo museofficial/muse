@@ -1,6 +1,7 @@
 FROM node:22-bookworm-slim AS base
 
-ARG YT_DLP_VERSION=2025.10.14
+ARG YT_DLP_VERSION=
+ENV MUSE_BUNDLED_YT_DLP_PATH=/opt/yt-dlp/bin/yt-dlp
 
 # openssl will be a required package if base is updated to 18.16+ due to node:*-slim base distro change
 # https://github.com/prisma/prisma/issues/19729#issuecomment-1591270599
@@ -14,7 +15,11 @@ RUN apt-get update \
     python3 \
     python3-venv \
     && python3 -m venv /opt/yt-dlp \
-    && /opt/yt-dlp/bin/pip install --no-cache-dir "yt-dlp==${YT_DLP_VERSION}" \
+    && if [ -n "${YT_DLP_VERSION}" ]; then \
+        /opt/yt-dlp/bin/pip install --no-cache-dir "yt-dlp==${YT_DLP_VERSION}"; \
+    else \
+        /opt/yt-dlp/bin/pip install --no-cache-dir yt-dlp; \
+    fi \
     && ln -s /opt/yt-dlp/bin/yt-dlp /usr/local/bin/yt-dlp \
     && apt-get autoclean \
     && apt-get autoremove \

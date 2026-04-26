@@ -51,6 +51,7 @@ There are a variety of image tags available:
 - `:2.1`: versions >= 2.1.0 and < 2.2.0
 - `:2.1.1`: an exact version specifier
 - `:latest`: whatever the latest version is
+- `:yt-dlp-latest`: the latest release rebuilt with the newest available `yt-dlp`
 
 (Replace empty config strings with correct values.)
 
@@ -104,6 +105,10 @@ By default, Muse limits the total cache size to around 2 GB. If you want to chan
 ### yt-dlp
 
 Muse now uses `yt-dlp` to resolve playable YouTube media URLs. In Docker, the image already includes it. For direct Node.js installs, either put `yt-dlp` on your `PATH` or set `YT_DLP_PATH` in your environment file.
+
+Muse logs `YT_DLP_VERSION` on startup. Set `YT_DLP_AUTO_UPDATE=true` to make Muse try to update the configured `yt-dlp` installation before connecting to Discord. This works best with the Docker image's bundled virtualenv, or when `YT_DLP_PATH` points at a virtualenv or standalone `yt-dlp` executable that Muse can update.
+
+The `ghcr.io/museofficial/muse:yt-dlp-latest` image is rebuilt on a schedule from the latest Muse release with the newest `yt-dlp` published to PyPI. Versioned refresh tags are also published as `:<muse-version>-yt-dlp-<yt-dlp-version>`.
 
 ### SponsorBlock
 

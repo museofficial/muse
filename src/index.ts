@@ -5,6 +5,7 @@ import {TYPES} from './types.js';
 import Bot from './bot.js';
 import Config from './services/config.js';
 import FileCacheProvider from './services/file-cache.js';
+import prepareYtDlp from './utils/prepare-yt-dlp.js';
 
 const bot = container.get<Bot>(TYPES.Bot);
 
@@ -17,6 +18,7 @@ const startBot = async () => {
   await makeDir(path.join(config.CACHE_DIR, 'tmp'));
 
   await container.get<FileCacheProvider>(TYPES.FileCache).cleanup();
+  await prepareYtDlp(config);
 
   await bot.register();
 };
