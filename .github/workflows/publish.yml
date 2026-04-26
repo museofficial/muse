@@ -146,10 +146,53 @@ jobs:
 
       - name: Get Changelog Entry
         id: changelog_reader
-        uses: mindsers/changelog-reader-action@v2
-        with:
-          version: ${{ steps.tag_name.outputs.current_version }}
-          path: ./CHANGELOG.md
+        shell: bash
+        run: |
+          version="${{ steps.tag_name.outputs.current_version }}"
+          changelog_path="./CHANGELOG.md"
+          changes_file="$(mktemp)"
+
+          awk -v version="$version" '
+            BEGIN {
+              heading = "## [" version "]"
+            }
+            $0 == heading || index($0, heading " ") == 1 {
+              in_section = 1
+              next
+            }
+            in_section && /^## / {
+              exit
+            }
+            in_section {
+              lines[++line_count] = $0
+            }
+            END {
+              first = 1
+              while (first <= line_count && lines[first] ~ /^[[:space:]]*$/) {
+                first++
+              }
+              while (line_count >= first && lines[line_count] ~ /^[[:space:]]*$/) {
+                line_count--
+              }
+              for (i = first; i <= line_count; i++) {
+                print lines[i]
+              }
+            }
+          ' "$changelog_path" > "$changes_file"
+
+          if ! grep -q '[^[:space:]]' "$changes_file"; then
+            echo "No changelog entry found for $version in $changelog_path" >&2
+            exit 1
+          fi
+
+          delimiter="CHANGELOG_$(date +%s%N)"
+          {
+            echo "version=$version"
+            echo "status=released"
+            echo "changes<<$delimiter"
+            cat "$changes_file"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create/update release
         uses: ncipollo/release-action@v1
