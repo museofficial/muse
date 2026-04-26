@@ -49,14 +49,15 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: /tmp/SHA
-          pattern: sha
+          name: sha
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read SHA
         shell: bash
         run: |
-          echo "SHA=$(cat /tmp/SHA/sha/sha.txt | tr -d '\n')" >> $GITHUB_ENV
+          sha="$(tr -d '\n' < /tmp/SHA/sha.txt)"
+          echo "SHA=${sha}" >> "$GITHUB_ENV"
 
       - name: Push images
         run: |
@@ -67,7 +68,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: /tmp/metadata
-          pattern: metadata
+          name: metadata
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -75,24 +76,26 @@ jobs:
         id: metadata_reader
         uses: juliangruber/read-file-action@v1.1.8
         with:
-          path: /tmp/metadata/metadata/metadata.json
+          path: /tmp/metadata/metadata.json
 
       - name: Download PR number
         uses: actions/download-artifact@v8
         with:
           path: /tmp/pull_request_number
-          pattern: pull_request_number
+          name: pull_request_number
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read PR number
         shell: bash
         run: |
-          echo "PR_NUMBER=$(cat /tmp/pull_request_number/pull_request_number/pull_request_number.txt | tr -d '\n')" >> $GITHUB_ENV
+          pr_number="$(tr -d '\n' < /tmp/pull_request_number/pull_request_number.txt)"
+          echo "PR_NUMBER=${pr_number}" >> "$GITHUB_ENV"
 
       - name: Create manifest list and push
         run: |
-          docker buildx imagetools create $(cat /tmp/metadata/metadata/metadata.json | jq -cr '.tags | map("-t " + .) | join(" ")') ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-amd64 ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-arm64
+          tags="$(jq -cr '.tags | map("-t " + .) | join(" ")' /tmp/metadata/metadata.json)"
+          docker buildx imagetools create ${tags} ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-amd64 ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-arm64
 
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v3.0.4
