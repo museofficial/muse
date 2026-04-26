@@ -27,28 +27,29 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY_IMAGE }}
           tags: type=ref,event=pr
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get current time
-        uses: josStorer/get-current-time@v2
         id: current-time
+        shell: bash
+        run: echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Build
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           outputs: type=docker,dest=/tmp/image-${{ env.PLATFORM_PAIR }}.tar
           platforms: ${{ matrix.build-arch }}
@@ -63,7 +64,7 @@ jobs:
         run: echo $DOCKER_METADATA_OUTPUT_JSON > /tmp/metadata.json
 
       - name: Upload metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: metadata
           path: /tmp/metadata.json
@@ -74,14 +75,14 @@ jobs:
           echo "${{ github.sha }}" > /tmp/sha.txt
 
       - name: Upload SHA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sha
           path: /tmp/sha.txt
           overwrite: true
 
       - name: Upload image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: image-${{ env.PLATFORM_PAIR }}
           path: /tmp/image-${{ env.PLATFORM_PAIR }}.tar
@@ -94,7 +95,7 @@ jobs:
           PR_NUMBER: ${{ github.event.number }}
         run: echo $PR_NUMBER > /tmp/pull_request_number.txt
       - name: Upload PR number
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pull_request_number
           path: /tmp/pull_request_number.txt
