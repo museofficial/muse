@@ -117,10 +117,38 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Combine tags (Docker Hub)
-        run: docker buildx imagetools create $(echo '${{ steps.image-tags.outputs.dockerhub }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') '${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}-arm64' '${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}-amd64'
+        env:
+          RELEASE_TAGS: ${{ steps.image-tags.outputs.dockerhub }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=',' read -r -a release_tags <<< "${RELEASE_TAGS}"
+          tag_args=()
+          for tag in "${release_tags[@]}"; do
+            tag_args+=(-t "${tag}")
+          done
+
+          docker buildx imagetools create \
+            "${tag_args[@]}" \
+            "${DOCKERHUB_IMAGE}:${GITHUB_SHA}-arm64" \
+            "${DOCKERHUB_IMAGE}:${GITHUB_SHA}-amd64"
 
       - name: Combine tags (GitHub Container Registry)
-        run: docker buildx imagetools create $(echo '${{ steps.image-tags.outputs.ghcr }}' | tr "," "\0" | xargs -0 printf -- '-t %s ') '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-arm64' '${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-amd64'
+        env:
+          RELEASE_TAGS: ${{ steps.image-tags.outputs.ghcr }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=',' read -r -a release_tags <<< "${RELEASE_TAGS}"
+          tag_args=()
+          for tag in "${release_tags[@]}"; do
+            tag_args+=(-t "${tag}")
+          done
+
+          docker buildx imagetools create \
+            "${tag_args[@]}" \
+            "${REGISTRY_IMAGE}:${GITHUB_SHA}-arm64" \
+            "${REGISTRY_IMAGE}:${GITHUB_SHA}-amd64"
 
       - name: Update Docker Hub description
         uses: peter-evans/dockerhub-description@v5
