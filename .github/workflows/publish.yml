@@ -163,6 +163,8 @@ jobs:
     needs: combine
     permissions:
       contents: write
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v6
 
@@ -232,3 +234,13 @@ jobs:
           draft: ${{ steps.changelog_reader.outputs.status == 'unreleased' }}
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on released issues and pull requests
+        if: steps.changelog_reader.outputs.status == 'released'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ steps.changelog_reader.outputs.version }}
+          RELEASE_NAME: Release v${{ steps.changelog_reader.outputs.version }}
+          RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.changelog_reader.outputs.version }}
+        shell: bash
+        run: bash .github/scripts/comment-release-targets.sh
