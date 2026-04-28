@@ -1,13 +1,25 @@
+name: Comment on released issues and PRs
+
 on:
   release:
     types: [published]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: apexskier/github-release-commenter@v1
-        with:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-          comment-template: |
-            🚀 Released in {release_link}.
+      - uses: actions/checkout@v6
+
+      - name: Comment on released issues and pull requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        shell: bash
+        run: bash .github/scripts/comment-release-targets.sh
