@@ -3,8 +3,6 @@ name: Refresh yt-dlp image
 on:
   schedule:
     - cron: '17 9 * * *'
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -13,7 +11,7 @@ on:
         type: string
 
 concurrency:
-  group: yt-dlp-refresh-${{ github.event.inputs.release_tag || github.event.release.tag_name || 'latest' }}
+  group: yt-dlp-refresh-${{ github.event.inputs.release_tag || 'latest' }}
   cancel-in-progress: true
 
 env:
@@ -49,8 +47,6 @@ jobs:
           release_tag=""
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
             release_tag="$(jq -r '.inputs.release_tag // ""' "${GITHUB_EVENT_PATH}")"
-          elif [ "${GITHUB_EVENT_NAME}" = "release" ]; then
-            release_tag="$(jq -r '.release.tag_name // ""' "${GITHUB_EVENT_PATH}")"
           fi
 
           if [ -z "${release_tag}" ]; then
