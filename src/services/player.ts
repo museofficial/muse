@@ -663,12 +663,17 @@ export default class {
 
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.forward(1);
+      const currentSong = this.getCurrent();
+      if (!currentSong) {
+        return;
+      }
+
       // Auto announce the next song if configured to
       const settings = await getGuildSettings(this.guildId);
       const {autoAnnounceNextSong} = settings;
       if (autoAnnounceNextSong && this.currentChannel) {
         await this.currentChannel.send({
-          embeds: this.getCurrent() ? [buildPlayingMessageEmbed(this)] : [],
+          embeds: [buildPlayingMessageEmbed(this)],
         });
       }
     }
