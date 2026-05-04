@@ -2,9 +2,8 @@
   <img width="250" height="250" src="https://raw.githubusercontent.com/museofficial/muse/master/.github/logo.png">
 </p>
 
-> [!WARNING]
-> I ([@codetheweb](https://github.com/codetheweb)) am no longer the primary maintainer of Muse. **If you use the Docker image, update your image source to `ghcr.io/museofficial/muse`.** We are currently publishing new releases to both `ghcr.io/museofficial/muse` and `codetheweb/muse`, but this may change in the future.
-> Thank you to all the people who stepped up to help maintain Muse!
+> [!IMPORTANT]
+> Muse is now community-maintained under the [`museofficial`](https://github.com/museofficial) organization. For Docker, use `ghcr.io/museofficial/muse` as the canonical image source. Docker Hub tags may be published as compatibility mirrors, but GHCR is the supported target for new deployments.
 
 ------
 
@@ -19,18 +18,18 @@ Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that
 - 💾 Local caching for better performance
 - 📋 No vote-to-skip - this is anarchy, not a democracy
 - ↔️ Autoconverts playlists / artists / albums / songs from Spotify
-- ↗️ Users can add custom shortcuts (aliases)
+- ⭐ Users can save favorite queries for reuse
 - 1️⃣ Muse instance supports multiple guilds
-- 🔊 Normalizes volume across tracks
+- 🔊 Configurable volume controls, including optional ducking when people speak
 - ✍️ Written in TypeScript, easily extendable
 - ❤️ Loyal Packers fan
 
 ## Running
 
-Muse is written in TypeScript. You can either run Muse with Docker (recommended) or directly with Node.js. Both methods require API keys passed in as environment variables:
+Muse is written in TypeScript. You can either run Muse with Docker (recommended) or directly with Node.js. Both methods require the Discord and YouTube API keys below. Spotify keys are optional and enable Spotify URL conversion:
 
 - `DISCORD_TOKEN` can be acquired [here](https://discordapp.com/developers/applications) by creating a 'New Application', then going to 'Bot'.
-- `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` can be acquired [here](https://developer.spotify.com/dashboard/applications) with 'Create a Client ID' (Optional).
+- `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` can be acquired [here](https://developer.spotify.com/dashboard/applications) with 'Create a Client ID'.
 - `YOUTUBE_API_KEY` can be acquired by [creating a new project](https://console.developers.google.com) in Google's Developer Console, enabling the YouTube API, and creating an API key under credentials.
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
@@ -84,7 +83,7 @@ If you keep the same `DISCORD_TOKEN`, reuse the same `/data` volume, and point y
 ### Node.js
 
 **Prerequisites**:
-* Node.js (18.17.0 or latest 18.xx.xx is required and latest 18.x.x LTS is recommended) (Version 18 due to opus dependency)
+* Node.js 22.12.0 or newer
 * ffmpeg (4.1 or later)
 * `yt-dlp` on your `PATH` (or set `YT_DLP_PATH` to its full path)
 
