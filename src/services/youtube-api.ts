@@ -1,17 +1,17 @@
-import { inject, injectable } from "inversify";
-import { toSeconds, parse } from "iso8601-duration";
-import got, { Got } from "got";
-import pLimit from "p-limit";
-import { SongMetadata, QueuedPlaylist, MediaSource } from "./player.js";
-import { TYPES } from "../types.js";
-import Config from "./config.js";
-import KeyValueCacheProvider from "./key-value-cache.js";
+import {inject, injectable} from 'inversify';
+import {toSeconds, parse} from 'iso8601-duration';
+import got, {Got, type RetryObject} from 'got';
+import pLimit from 'p-limit';
+import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
+import {TYPES} from '../types.js';
+import Config from './config.js';
+import KeyValueCacheProvider from './key-value-cache.js';
 import {
   ONE_HOUR_IN_SECONDS,
   ONE_MINUTE_IN_SECONDS,
-} from "../utils/constants.js";
-import { parseTime } from "../utils/time.js";
-import getYouTubeID from "get-youtube-id";
+} from '../utils/constants.js';
+import {parseTime} from '../utils/time.js';
+import getYouTubeID from 'get-youtube-id';
 
 interface VideoDetailsResponse {
   id: string;
@@ -78,21 +78,20 @@ export default class {
     this.cache = cache;
 
     this.got = got.extend({
-      prefixUrl: "https://www.googleapis.com/youtube/v3/",
+      prefixUrl: 'https://www.googleapis.com/youtube/v3/',
       searchParams: {
         key: this.youtubeKey,
-        responseType: "json",
+        responseType: 'json',
       },
       retry: {
         limit: 3,
         statusCodes: [429, 500, 502, 503],
-        calculateDelay: ({ retryCount, response }: { retryCount: number; response?: { headers: Record<string, string | string[] | undefined> } }) => {
-          const retryAfter = response?.headers["retry-after"];
+        calculateDelay: ({attemptCount, retryAfter}: RetryObject) => {
           if (retryAfter) {
-            return Number(retryAfter) * 1000;
+            return retryAfter * 1000;
           }
 
-          return Math.pow(2, retryCount) * 1000;
+          return (2 ** attemptCount) * 1000;
         },
       },
     });
@@ -104,22 +103,22 @@ export default class {
   ): Promise<SongMetadata[]> {
     const params = {
       searchParams: {
-        part: "snippet",
+        part: 'snippet',
         q: query,
-        type: "video",
-        maxResults: "10",
+        type: 'video',
+        maxResults: '10',
       },
     };
 
-    const { items } = await this.cache.wrap(
-      async () => this.got("search", params).json() as Promise<SearchResponse>,
+    const {items} = await this.cache.wrap(
+      async () => this.got('search', params).json() as Promise<SearchResponse>,
       params,
       {
         expiresIn: ONE_HOUR_IN_SECONDS,
       },
     );
 
-    const ids = items.map((item) => item.id.videoId).filter(Boolean);
+    const ids = items.map(item => item.id.videoId).filter(Boolean);
 
     if (ids.length === 0) {
       return [];
@@ -127,11 +126,11 @@ export default class {
 
     const videos = await this.getVideosByID(ids);
     const firstVideo = ids
-      .map((id) => videos.find((video) => video.id === id))
+      .map(id => videos.find(video => video.id === id))
       .find(Boolean);
 
     return firstVideo
-      ? this.getMetadataFromVideo({ video: firstVideo, shouldSplitChapters })
+      ? this.getMetadataFromVideo({video: firstVideo, shouldSplitChapters})
       : [];
   }
 
@@ -142,17 +141,17 @@ export default class {
     const videoId = url.length === 11 ? url : getYouTubeID(url);
 
     if (!videoId) {
-      throw new Error("Video could not be found.");
+      throw new Error('Video could not be found.');
     }
 
     const result = await this.getVideosByID([videoId]);
     const video = result.at(0);
 
     if (!video) {
-      throw new Error("Video could not be found.");
+      throw new Error('Video could not be found.');
     }
 
-    return this.getMetadataFromVideo({ video, shouldSplitChapters });
+    return this.getMetadataFromVideo({video, shouldSplitChapters});
   }
 
   async getPlaylist(
@@ -161,13 +160,13 @@ export default class {
   ): Promise<SongMetadata[]> {
     const playlistParams = {
       searchParams: {
-        part: "id, snippet, contentDetails",
+        part: 'id, snippet, contentDetails',
         id: listId,
       },
     };
-    const { items: playlists } = await this.cache.wrap(
+    const {items: playlists} = await this.cache.wrap(
       async () =>
-        this.got("playlists", playlistParams).json() as Promise<{
+        this.got('playlists', playlistParams).json() as Promise<{
           items: PlaylistResponse[];
         }>,
       playlistParams,
@@ -179,7 +178,7 @@ export default class {
     const playlist = playlists.at(0)!;
 
     if (!playlist) {
-      throw new Error("Playlist could not be found.");
+      throw new Error('Playlist could not be found.');
     }
 
     const playlistVideos: PlaylistItem[] = [];
@@ -192,18 +191,18 @@ export default class {
     while (playlistVideos.length < playlist.contentDetails.itemCount) {
       const playlistItemsParams = {
         searchParams: {
-          part: "id, contentDetails",
+          part: 'id, contentDetails',
           playlistId: listId,
-          maxResults: "50",
+          maxResults: '50',
           pageToken: nextToken,
         },
       };
 
       // eslint-disable-next-line no-await-in-loop
-      const { items, nextPageToken } = await this.cache.wrap(
+      const {items, nextPageToken} = await this.cache.wrap(
         async () =>
           this.got(
-            "playlistItems",
+            'playlistItems',
             playlistItemsParams,
           ).json() as Promise<PlaylistItemsResponse>,
         playlistItemsParams,
@@ -220,7 +219,7 @@ export default class {
       videoDetailsPromises.push(
         detailsLimit(async () => {
           const videoDetailItems = await this.getVideosByID(
-            items.map((item) => item.contentDetails.videoId),
+            items.map(item => item.contentDetails.videoId),
           );
           videoDetails.push(...videoDetailItems);
         }),
@@ -241,7 +240,7 @@ export default class {
         songsToReturn.push(
           ...this.getMetadataFromVideo({
             video: videoDetails.find(
-              (i: { id: string }) => i.id === video.contentDetails.videoId,
+              (i: {id: string}) => i.id === video.contentDetails.videoId,
             )!,
             queuedPlaylist,
             shouldSplitChapters,
@@ -273,7 +272,7 @@ export default class {
       offset: 0,
       url: video.id,
       playlist: queuedPlaylist ?? null,
-      isLive: video.snippet.liveBroadcastContent === "live",
+      isLive: video.snippet.liveBroadcastContent === 'live',
       thumbnailUrl: video.snippet.thumbnails.medium.url,
     };
 
@@ -292,7 +291,7 @@ export default class {
 
     const tracks: SongMetadata[] = [];
 
-    for (const [label, { offset, length }] of chapters) {
+    for (const [label, {offset, length}] of chapters) {
       tracks.push({
         ...base,
         offset,
@@ -308,11 +307,11 @@ export default class {
     description: string,
     videoDurationSeconds: number,
   ) {
-    const map = new Map<string, { offset: number; length: number }>();
+    const map = new Map<string, {offset: number; length: number}>();
     let foundFirstTimestamp = false;
 
-    const foundTimestamps: Array<{ name: string; offset: number }> = [];
-    for (const line of description.split("\n")) {
+    const foundTimestamps: Array<{name: string; offset: number}> = [];
+    for (const line of description.split('\n')) {
       const timestamps = Array.from(line.matchAll(/(?:\d+:)+\d+/g));
       if (timestamps?.length !== 1) {
         continue;
@@ -330,10 +329,10 @@ export default class {
       const seconds = parseTime(timestamp);
       const chapterName = line.split(timestamp)[1].trim();
 
-      foundTimestamps.push({ name: chapterName, offset: seconds });
+      foundTimestamps.push({name: chapterName, offset: seconds});
     }
 
-    for (const [i, { name, offset }] of foundTimestamps.entries()) {
+    for (const [i, {name, offset}] of foundTimestamps.entries()) {
       map.set(name, {
         offset,
         length:
@@ -355,14 +354,14 @@ export default class {
   ): Promise<VideoDetailsResponse[]> {
     const p = {
       searchParams: {
-        part: "id, snippet, contentDetails",
-        id: videoIDs.join(","),
+        part: 'id, snippet, contentDetails',
+        id: videoIDs.join(','),
       },
     };
 
-    const { items: videos } = await this.cache.wrap(
+    const {items: videos} = await this.cache.wrap(
       async () =>
-        this.got("videos", p).json() as Promise<{
+        this.got('videos', p).json() as Promise<{
           items: VideoDetailsResponse[];
         }>,
       p,
