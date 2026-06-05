@@ -1,6 +1,7 @@
 import { inject, injectable } from "inversify";
 import { toSeconds, parse } from "iso8601-duration";
 import got, { Got } from "got";
+import pLimit from "p-limit";
 import { SongMetadata, QueuedPlaylist, MediaSource } from "./player.js";
 import { TYPES } from "../types.js";
 import Config from "./config.js";
@@ -81,6 +82,18 @@ export default class {
       searchParams: {
         key: this.youtubeKey,
         responseType: "json",
+      },
+      retry: {
+        limit: 3,
+        statusCodes: [429, 500, 502, 503],
+        calculateDelay: ({ retryCount, response }: { retryCount: number; response?: { headers: Record<string, string | string[] | undefined> } }) => {
+          const retryAfter = response?.headers["retry-after"];
+          if (retryAfter) {
+            return Number(retryAfter) * 1000;
+          }
+
+          return Math.pow(2, retryCount) * 1000;
+        },
       },
     });
   }
@@ -172,6 +185,7 @@ export default class {
     const playlistVideos: PlaylistItem[] = [];
     const videoDetailsPromises: Array<Promise<void>> = [];
     const videoDetails: VideoDetailsResponse[] = [];
+    const detailsLimit = pLimit(3);
 
     let nextToken: string | undefined;
 
@@ -204,12 +218,12 @@ export default class {
       // Start fetching extra details about videos
       // PlaylistItem misses some details, eg. if the video is a livestream
       videoDetailsPromises.push(
-        (async () => {
+        detailsLimit(async () => {
           const videoDetailItems = await this.getVideosByID(
             items.map((item) => item.contentDetails.videoId),
           );
           videoDetails.push(...videoDetailItems);
-        })(),
+        }),
       );
     }
 
