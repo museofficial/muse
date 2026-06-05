@@ -1,6 +1,14 @@
 import {APIApplicationCommandOptionChoice} from 'discord-api-types/v10';
 import SpotifyWebApi from 'spotify-web-api-node';
+import debug from './debug.js';
 import getYouTubeSuggestionsFor from './get-youtube-suggestions-for.js';
+
+export class SpotifySuggestionsUnavailableError extends Error {
+  constructor(public readonly suggestions: APIApplicationCommandOptionChoice[], public readonly originalError: unknown) {
+    super('Spotify autocomplete suggestions failed');
+    this.name = 'SpotifySuggestionsUnavailableError';
+  }
+}
 
 const filterDuplicates = <T extends {name: string}>(items: T[]) => {
   const results: T[] = [];
@@ -18,7 +26,9 @@ const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: Spoti
   // Only search Spotify if enabled
   const spotifySuggestionPromise = spotify === undefined
     ? undefined
-    : spotify.search(query, ['album', 'track'], {limit});
+    : spotify.search(query, ['album', 'track'], {limit})
+      .then(response => ({response}))
+      .catch((error: unknown) => ({error}));
 
   const youtubeSuggestions = await getYouTubeSuggestionsFor(query);
 
@@ -37,7 +47,14 @@ const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: Spoti
       ));
 
   if (spotify !== undefined && spotifySuggestionPromise !== undefined) {
-    const spotifyResponse = (await spotifySuggestionPromise).body;
+    const spotifyResult = await spotifySuggestionPromise;
+
+    if ('error' in spotifyResult) {
+      debug('Spotify autocomplete suggestions failed: %O', spotifyResult.error);
+      throw new SpotifySuggestionsUnavailableError(suggestions, spotifyResult.error);
+    }
+
+    const spotifyResponse = spotifyResult.response.body;
     const spotifyAlbums = filterDuplicates(spotifyResponse.albums?.items ?? []);
     const spotifyTracks = filterDuplicates(spotifyResponse.tracks?.items ?? []);
 
