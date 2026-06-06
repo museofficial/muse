@@ -86,9 +86,13 @@ export default class {
       retry: {
         limit: 3,
         statusCodes: [429, 500, 502, 503],
-        calculateDelay: ({attemptCount, retryAfter}: RetryObject) => {
+        calculateDelay: ({attemptCount, retryAfter, computedValue}: RetryObject) => {
+          if (computedValue === 0) {
+            return 0;
+          }
+
           if (retryAfter) {
-            return retryAfter * 1000;
+            return retryAfter;
           }
 
           return (2 ** attemptCount) * 1000;
