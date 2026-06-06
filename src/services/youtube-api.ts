@@ -1,11 +1,15 @@
 import {inject, injectable} from 'inversify';
 import {toSeconds, parse} from 'iso8601-duration';
-import got, {Got} from 'got';
+import got, {Got, type RetryObject} from 'got';
+import pLimit from 'p-limit';
 import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
-import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
+import {
+  ONE_HOUR_IN_SECONDS,
+  ONE_MINUTE_IN_SECONDS,
+} from '../utils/constants.js';
 import {parseTime} from '../utils/time.js';
 import getYouTubeID from 'get-youtube-id';
 
@@ -66,7 +70,10 @@ export default class {
   private readonly cache: KeyValueCacheProvider;
   private readonly got: Got;
 
-  constructor(@inject(TYPES.Config) config: Config, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
+  constructor(
+    @inject(TYPES.Config) config: Config,
+    @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider,
+  ) {
     this.youtubeKey = config.YOUTUBE_API_KEY;
     this.cache = cache;
 
@@ -76,10 +83,28 @@ export default class {
         key: this.youtubeKey,
         responseType: 'json',
       },
+      retry: {
+        limit: 3,
+        statusCodes: [429, 500, 502, 503],
+        calculateDelay: ({attemptCount, retryAfter, computedValue}: RetryObject) => {
+          if (computedValue === 0) {
+            return 0;
+          }
+
+          if (retryAfter) {
+            return retryAfter;
+          }
+
+          return (2 ** attemptCount) * 1000;
+        },
+      },
     });
   }
 
-  async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  async search(
+    query: string,
+    shouldSplitChapters: boolean,
+  ): Promise<SongMetadata[]> {
     const params = {
       searchParams: {
         part: 'snippet',
@@ -97,9 +122,7 @@ export default class {
       },
     );
 
-    const ids = items
-      .map(item => item.id.videoId)
-      .filter(Boolean);
+    const ids = items.map(item => item.id.videoId).filter(Boolean);
 
     if (ids.length === 0) {
       return [];
@@ -115,7 +138,10 @@ export default class {
       : [];
   }
 
-  async getVideo(url: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  async getVideo(
+    url: string,
+    shouldSplitChapters: boolean,
+  ): Promise<SongMetadata[]> {
     const videoId = url.length === 11 ? url : getYouTubeID(url);
 
     if (!videoId) {
@@ -132,7 +158,10 @@ export default class {
     return this.getMetadataFromVideo({video, shouldSplitChapters});
   }
 
-  async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  async getPlaylist(
+    listId: string,
+    shouldSplitChapters: boolean,
+  ): Promise<SongMetadata[]> {
     const playlistParams = {
       searchParams: {
         part: 'id, snippet, contentDetails',
@@ -140,7 +169,10 @@ export default class {
       },
     };
     const {items: playlists} = await this.cache.wrap(
-      async () => this.got('playlists', playlistParams).json() as Promise<{items: PlaylistResponse[]}>,
+      async () =>
+        this.got('playlists', playlistParams).json() as Promise<{
+          items: PlaylistResponse[];
+        }>,
       playlistParams,
       {
         expiresIn: ONE_MINUTE_IN_SECONDS,
@@ -156,6 +188,7 @@ export default class {
     const playlistVideos: PlaylistItem[] = [];
     const videoDetailsPromises: Array<Promise<void>> = [];
     const videoDetails: VideoDetailsResponse[] = [];
+    const detailsLimit = pLimit(3);
 
     let nextToken: string | undefined;
 
@@ -171,7 +204,11 @@ export default class {
 
       // eslint-disable-next-line no-await-in-loop
       const {items, nextPageToken} = await this.cache.wrap(
-        async () => this.got('playlistItems', playlistItemsParams).json() as Promise<PlaylistItemsResponse>,
+        async () =>
+          this.got(
+            'playlistItems',
+            playlistItemsParams,
+          ).json() as Promise<PlaylistItemsResponse>,
         playlistItemsParams,
         {
           expiresIn: ONE_MINUTE_IN_SECONDS,
@@ -183,25 +220,36 @@ export default class {
 
       // Start fetching extra details about videos
       // PlaylistItem misses some details, eg. if the video is a livestream
-      videoDetailsPromises.push((async () => {
-        const videoDetailItems = await this.getVideosByID(items.map(item => item.contentDetails.videoId));
-        videoDetails.push(...videoDetailItems);
-      })());
+      videoDetailsPromises.push(
+        detailsLimit(async () => {
+          const videoDetailItems = await this.getVideosByID(
+            items.map(item => item.contentDetails.videoId),
+          );
+          videoDetails.push(...videoDetailItems);
+        }),
+      );
     }
 
     await Promise.all(videoDetailsPromises);
 
-    const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
+    const queuedPlaylist = {
+      title: playlist.snippet.title,
+      source: playlist.id,
+    };
 
     const songsToReturn: SongMetadata[] = [];
 
     for (const video of playlistVideos) {
       try {
-        songsToReturn.push(...this.getMetadataFromVideo({
-          video: videoDetails.find((i: {id: string}) => i.id === video.contentDetails.videoId)!,
-          queuedPlaylist,
-          shouldSplitChapters,
-        }));
+        songsToReturn.push(
+          ...this.getMetadataFromVideo({
+            video: videoDetails.find(
+              (i: {id: string}) => i.id === video.contentDetails.videoId,
+            )!,
+            queuedPlaylist,
+            shouldSplitChapters,
+          }),
+        );
       } catch (_: unknown) {
         // Private and deleted videos are sometimes in playlists, duration of these
         // is not returned and they should not be added to the queue.
@@ -236,7 +284,10 @@ export default class {
       return [base];
     }
 
-    const chapters = this.parseChaptersFromDescription(video.snippet.description, base.length);
+    const chapters = this.parseChaptersFromDescription(
+      video.snippet.description,
+      base.length,
+    );
 
     if (!chapters) {
       return [base];
@@ -256,7 +307,10 @@ export default class {
     return tracks;
   }
 
-  private parseChaptersFromDescription(description: string, videoDurationSeconds: number) {
+  private parseChaptersFromDescription(
+    description: string,
+    videoDurationSeconds: number,
+  ) {
     const map = new Map<string, {offset: number; length: number}>();
     let foundFirstTimestamp = false;
 
@@ -285,9 +339,10 @@ export default class {
     for (const [i, {name, offset}] of foundTimestamps.entries()) {
       map.set(name, {
         offset,
-        length: i === foundTimestamps.length - 1
-          ? videoDurationSeconds - offset
-          : foundTimestamps[i + 1].offset - offset,
+        length:
+          i === foundTimestamps.length - 1
+            ? videoDurationSeconds - offset
+            : foundTimestamps[i + 1].offset - offset,
       });
     }
 
@@ -298,7 +353,9 @@ export default class {
     return map;
   }
 
-  private async getVideosByID(videoIDs: string[]): Promise<VideoDetailsResponse[]> {
+  private async getVideosByID(
+    videoIDs: string[],
+  ): Promise<VideoDetailsResponse[]> {
     const p = {
       searchParams: {
         part: 'id, snippet, contentDetails',
@@ -307,7 +364,10 @@ export default class {
     };
 
     const {items: videos} = await this.cache.wrap(
-      async () => this.got('videos', p).json() as Promise<{items: VideoDetailsResponse[]}>,
+      async () =>
+        this.got('videos', p).json() as Promise<{
+          items: VideoDetailsResponse[];
+        }>,
       p,
       {
         expiresIn: ONE_HOUR_IN_SECONDS,
