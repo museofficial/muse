@@ -42,6 +42,6 @@ export default class implements Command {
       pageSize,
     );
 
-    await interaction.reply({embeds: [embed], components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS});
+    await interaction.reply({embeds: [embed], components: (player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS) as any});
   }
 }

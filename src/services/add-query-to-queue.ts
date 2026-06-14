@@ -96,7 +96,7 @@ export default class AddQueryToQueue {
 
       await interaction.editReply({
         embeds: [buildPlayingMessageEmbed(player)],
-        components: buildPlayerControlRows(player),
+        components: buildPlayerControlRows(player) as any,
       });
     } else if (player.status === STATUS.IDLE) {
       // Player is idle, start playback instead
@@ -128,13 +128,13 @@ export default class AddQueryToQueue {
       await interaction.editReply({
         content: `u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`,
         embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
-        components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS,
+        components: (player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS) as any,
       });
     } else {
       await interaction.editReply({
         content: `u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`,
         embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
-        components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS,
+        components: (player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS) as any,
       });
     }
   }

@@ -27,7 +27,7 @@ export default class implements Command {
 
     await interaction.reply({
       embeds: [buildPlayingMessageEmbed(player)],
-      components: buildPlayerControlRows(player),
+      components: buildPlayerControlRows(player) as any,
     });
   }
 }

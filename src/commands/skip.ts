@@ -38,7 +38,7 @@ export default class implements Command {
       await interaction.reply({
       content: 'keep \'er movin\'',
       embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
-      components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS,
+      components: (player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS) as any,
     });
     } catch (_: unknown) {
       throw new Error('no song to skip to');

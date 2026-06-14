@@ -665,7 +665,7 @@ export default class {
       if (autoAnnounceNextSong && this.currentChannel) {
         await this.currentChannel.send({
           embeds: [buildPlayingMessageEmbed(this)],
-          components: buildPlayerControlRows(this),
+          components: buildPlayerControlRows(this) as any,
         });
       }
     }

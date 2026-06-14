@@ -40,7 +40,7 @@ export default class implements Command {
     await interaction.reply({
       content: 'the stop-and-go light is now green',
       embeds: [buildPlayingMessageEmbed(player)],
-      components: buildPlayerControlRows(player),
+      components: buildPlayerControlRows(player) as any,
     });
   }
 }
