@@ -1,6 +1,8 @@
-import {EmbedBuilder, GuildMember, TextChannel} from 'discord.js';
+import {EmbedBuilder, GuildMember, PartialGuildMember, TextChannel} from 'discord.js';
 
-export function formatMemberMessage(template: string, member: GuildMember): string {
+type KnownMember = GuildMember | PartialGuildMember;
+
+export function formatMemberMessage(template: string, member: KnownMember): string {
   return template
     .replaceAll('{user}', `<@${member.id}>`)
     .replaceAll('{username}', member.user.username)
@@ -34,7 +36,7 @@ export function buildWelcomeEmbed(member: GuildMember, message: string): EmbedBu
   return embed;
 }
 
-export async function sendMemberMessage(channelId: string | null, member: GuildMember, payload: {content?: string; embeds?: EmbedBuilder[]}): Promise<void> {
+export async function sendMemberMessage(channelId: string | null, member: KnownMember, payload: {content?: string; embeds?: EmbedBuilder[]}): Promise<void> {
   if (!channelId) {
     return;
   }
