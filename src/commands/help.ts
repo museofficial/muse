@@ -17,7 +17,7 @@ export default class implements Command {
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const commandList = this.commands
-      .map(c => `**/${c.slashCommand.name}** — ${c.slashCommand.description}`)
+      .map(c => `**/${c.slashCommand.name ?? ''}** — ${c.slashCommand.description ?? ''}`)
       .join('\n');
 
     await interaction.reply({content: commandList, ephemeral: true});
