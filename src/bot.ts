@@ -1,4 +1,4 @@
-import {Client, Collection, User} from 'discord.js';
+import {Client, Collection, User, GuildMember, PartialGuildMember} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import ora from 'ora';
 import {TYPES} from './types.js';
@@ -6,6 +6,8 @@ import container from './inversify.config.js';
 import Command from './commands/index.js';
 import debug from './utils/debug.js';
 import handleGuildCreate from './events/guild-create.js';
+import handleGuildMemberAdd from './events/guild-member-add.js';
+import handleGuildMemberRemove from './events/guild-member-remove.js';
 import handleVoiceStateUpdate from './events/voice-state-update.js';
 import errorMsg from './utils/error-msg.js';
 import {isUserInVoice} from './utils/channels.js';
@@ -162,6 +164,8 @@ export default class {
     this.client.on('debug', debug);
 
     this.client.on('guildCreate', handleGuildCreate);
+    this.client.on('guildMemberAdd', handleGuildMemberAdd);
+    this.client.on('guildMemberRemove', (member: GuildMember | PartialGuildMember) => handleGuildMemberRemove(member));
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
     await this.client.login();
   }
