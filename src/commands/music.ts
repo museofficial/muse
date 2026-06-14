@@ -10,7 +10,7 @@ import PlayerManager from '../managers/player.js';
 import ThirdParty from '../services/third-party.js';
 import KeyValueCacheProvider from '../services/key-value-cache.js';
 import {STATUS} from '../services/player.js';
-import {buildPlayerControlRows, buildPlayingMessageEmbed, buildQueueEmbed, MUSIC_BUTTON_IDS} from '../utils/build-embed.js';
+import {buildPlayerControlRows, buildPlayingMessageEmbed, buildQueueEmbed, EMPTY_PLAYER_CONTROL_ROWS, MUSIC_BUTTON_IDS} from '../utils/build-embed.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import getYouTubeAndSpotifySuggestionsFor, {SpotifySuggestionsUnavailableError} from '../utils/get-youtube-and-spotify-suggestions-for.js';
 import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
@@ -141,7 +141,7 @@ export default class implements Command {
         await interaction.reply({
           content: 'Skipped.',
           embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
-          components: player.getCurrent() ? buildPlayerControlRows(player) : [],
+          components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS,
         });
         break;
       }
@@ -214,7 +214,7 @@ export default class implements Command {
 
       case 'queue': {
         const pageSize = (await getGuildSettings(interaction.guild!.id)).defaultQueuePageSize;
-        await interaction.reply({embeds: [buildQueueEmbed(player, interaction.options.getInteger('page') ?? 1, pageSize)], components: player.getCurrent() ? buildPlayerControlRows(player) : []});
+        await interaction.reply({embeds: [buildQueueEmbed(player, interaction.options.getInteger('page') ?? 1, pageSize)], components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS});
         break;
       }
 
@@ -242,7 +242,7 @@ export default class implements Command {
 
       case 'repeat': {
         await this.setRepeatMode(interaction.options.getString('mode', true), interaction.guild!.id);
-        await interaction.reply({content: `Repeat mode set to **${interaction.options.getString('mode', true)}**.`, components: player.getCurrent() ? buildPlayerControlRows(player) : []});
+        await interaction.reply({content: `Repeat mode set to **${interaction.options.getString('mode', true)}**.`, components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS});
         break;
       }
 
@@ -303,25 +303,25 @@ export default class implements Command {
 
       case MUSIC_BUTTON_IDS.skip: {
         await player.forward(1);
-        await interaction.update({content: 'Skipped.', embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [], components: player.getCurrent() ? buildPlayerControlRows(player) : []});
+        await interaction.update({content: 'Skipped.', embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [], components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS});
         break;
       }
 
       case MUSIC_BUTTON_IDS.stop: {
         player.stop();
-        await interaction.update({content: 'Stopped and cleared the queue.', embeds: [], components: []});
+        await interaction.update({content: 'Stopped and cleared the queue.', embeds: [], components: EMPTY_PLAYER_CONTROL_ROWS});
         break;
       }
 
       case MUSIC_BUTTON_IDS.loopSong: {
         await this.setRepeatMode(player.loopCurrentSong ? 'off' : 'song', interaction.guild.id);
-        await interaction.update({embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [], components: player.getCurrent() ? buildPlayerControlRows(player) : []});
+        await interaction.update({embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [], components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS});
         break;
       }
 
       case MUSIC_BUTTON_IDS.loopQueue: {
         await this.setRepeatMode(player.loopCurrentQueue ? 'off' : 'queue', interaction.guild.id);
-        await interaction.update({embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [], components: player.getCurrent() ? buildPlayerControlRows(player) : []});
+        await interaction.update({embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [], components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS});
         break;
       }
 

@@ -4,7 +4,7 @@ import {inject, injectable} from 'inversify';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
-import {buildPlayerControlRows, buildQueueEmbed} from '../utils/build-embed.js';
+import {buildPlayerControlRows, buildQueueEmbed, EMPTY_PLAYER_CONTROL_ROWS} from '../utils/build-embed.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 
 @injectable()
@@ -42,6 +42,6 @@ export default class implements Command {
       pageSize,
     );
 
-    await interaction.reply({embeds: [embed], components: player.getCurrent() ? buildPlayerControlRows(player) : []});
+    await interaction.reply({embeds: [embed], components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS});
   }
 }

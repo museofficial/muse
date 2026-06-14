@@ -4,7 +4,7 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {buildPlayerControlRows, buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {buildPlayerControlRows, buildPlayingMessageEmbed, EMPTY_PLAYER_CONTROL_ROWS} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -38,7 +38,7 @@ export default class implements Command {
       await interaction.reply({
       content: 'keep \'er movin\'',
       embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
-      components: player.getCurrent() ? buildPlayerControlRows(player) : [],
+      components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS,
     });
     } catch (_: unknown) {
       throw new Error('no song to skip to');

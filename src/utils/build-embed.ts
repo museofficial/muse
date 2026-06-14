@@ -16,6 +16,9 @@ export const MUSIC_BUTTON_IDS = {
   queue: 'music:queue',
 } as const;
 
+export type PlayerControlRows = Array<ActionRowData<MessageActionRowComponentData>>;
+export const EMPTY_PLAYER_CONTROL_ROWS: PlayerControlRows = [];
+
 const getMaxSongTitleLength = (title: string) => {
   // eslint-disable-next-line no-control-regex
   const nonASCII = /[^\x00-\x7F]+/;
@@ -98,7 +101,7 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   return message;
 };
 
-export const buildPlayerControlRows = (player: Player): Array<ActionRowData<MessageActionRowComponentData>> => [
+export const buildPlayerControlRows = (player: Player): PlayerControlRows => [
   {
     type: ComponentType.ActionRow,
     components: [

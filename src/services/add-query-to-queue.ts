@@ -5,7 +5,7 @@ import {TYPES} from '../types.js';
 import GetSongs from '../services/get-songs.js';
 import {MediaSource, SongMetadata, STATUS} from './player.js';
 import PlayerManager from '../managers/player.js';
-import {buildPlayerControlRows, buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {buildPlayerControlRows, buildPlayingMessageEmbed, EMPTY_PLAYER_CONTROL_ROWS} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {SponsorBlock} from 'sponsorblock-api';
@@ -128,13 +128,13 @@ export default class AddQueryToQueue {
       await interaction.editReply({
         content: `u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`,
         embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
-        components: player.getCurrent() ? buildPlayerControlRows(player) : [],
+        components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS,
       });
     } else {
       await interaction.editReply({
         content: `u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`,
         embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
-        components: player.getCurrent() ? buildPlayerControlRows(player) : [],
+        components: player.getCurrent() ? buildPlayerControlRows(player) : EMPTY_PLAYER_CONTROL_ROWS,
       });
     }
   }
