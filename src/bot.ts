@@ -9,6 +9,7 @@ import handleGuildCreate from './events/guild-create.js';
 import handleGuildMemberAdd from './events/guild-member-add.js';
 import handleGuildMemberRemove from './events/guild-member-remove.js';
 import handleVoiceStateUpdate from './events/voice-state-update.js';
+import handleAuditLogEntryCreate from './events/audit-log.js';
 import {handleMessageDelete, handleMessageUpdate} from './events/message-log.js';
 import errorMsg from './utils/error-msg.js';
 import {isUserInVoice} from './utils/channels.js';
@@ -167,6 +168,7 @@ export default class {
     this.client.on('guildCreate', handleGuildCreate);
     this.client.on('guildMemberAdd', handleGuildMemberAdd);
     this.client.on('guildMemberRemove', handleGuildMemberRemove);
+    this.client.on('guildAuditLogEntryCreate', handleAuditLogEntryCreate);
     this.client.on('messageDelete', handleMessageDelete);
     this.client.on('messageUpdate', handleMessageUpdate);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);

@@ -1,4 +1,4 @@
-import {EmbedBuilder, Message, PartialMessage, TextChannel, User} from 'discord.js';
+import {EmbedBuilder, Guild, Message, PartialMessage, TextChannel, User} from 'discord.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 
 export interface DeletedMessageSnipe {
@@ -23,17 +23,13 @@ const getAttachmentUrls = (message: Message | PartialMessage) => message.attachm
 
 const getAuthor = (message: Message | PartialMessage): User | null => message.author ?? null;
 
-const sendToLogChannel = async (message: Message | PartialMessage, embed: EmbedBuilder) => {
-  if (!message.guild) {
-    return;
-  }
-
-  const settings = await getGuildSettings(message.guild.id);
+export const sendToLogChannel = async (guild: Guild, embed: EmbedBuilder) => {
+  const settings = await getGuildSettings(guild.id);
   if (!settings.messageLogChannelId) {
     return;
   }
 
-  const channel = message.guild.channels.cache.get(settings.messageLogChannelId) ?? await message.guild.channels.fetch(settings.messageLogChannelId).catch(() => null);
+  const channel = guild.channels.cache.get(settings.messageLogChannelId) ?? await guild.channels.fetch(settings.messageLogChannelId).catch(() => null);
   if (!channel || !channel.isTextBased()) {
     return;
   }
@@ -88,7 +84,7 @@ export async function handleMessageDelete(message: Message | PartialMessage): Pr
     embed.addFields({name: 'Attachments', value: snipe.attachmentUrls.join('\n').slice(0, 1024)});
   }
 
-  await sendToLogChannel(message, embed);
+  await sendToLogChannel(message.guild, embed);
 }
 
 export async function handleMessageUpdate(oldMessage: Message | PartialMessage, newMessage: Message | PartialMessage): Promise<void> {
@@ -117,5 +113,5 @@ export async function handleMessageUpdate(oldMessage: Message | PartialMessage, 
     ])
     .setTimestamp();
 
-  await sendToLogChannel(oldMessage, embed);
+  await sendToLogChannel(oldMessage.guild, embed);
 }

@@ -51,6 +51,7 @@ const container = new Container();
 const intents: GatewayIntentBits[] = [];
 intents.push(GatewayIntentBits.Guilds); // To listen for guildCreate event
 intents.push(GatewayIntentBits.GuildMembers); // To listen for guildMemberAdd and guildMemberRemove events
+intents.push(GatewayIntentBits.GuildModeration); // To listen for ban and audit-log moderation events
 intents.push(GatewayIntentBits.GuildMessages); // To listen for message delete and edit events
 intents.push(GatewayIntentBits.GuildMessageReactions); // To listen for message reactions (messageReactionAdd event)
 intents.push(GatewayIntentBits.MessageContent); // To read deleted/edited message content for logging and snipe
