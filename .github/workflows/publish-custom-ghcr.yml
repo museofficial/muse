@@ -38,6 +38,16 @@ jobs:
         shell: bash
         run: echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
+      - name: Build Docker tags
+        id: docker-tags
+        shell: bash
+        run: |
+          safe_ref="$(echo "${GITHUB_REF_NAME}" | tr '/[:upper:]' '-[:lower:]' | sed 's/[^a-z0-9_.-]/-/g')"
+          {
+            echo "safe_ref=${safe_ref}"
+            echo "short_sha=${GITHUB_SHA::12}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
@@ -46,8 +56,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.REGISTRY_IMAGE }}:custom
-            ${{ env.REGISTRY_IMAGE }}:${{ github.ref_name }}
-            ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}
+            ${{ env.REGISTRY_IMAGE }}:${{ steps.docker-tags.outputs.safe_ref }}
+            ${{ env.REGISTRY_IMAGE }}:${{ steps.docker-tags.outputs.short_sha }}
           build-args: |
             COMMIT_HASH=${{ github.sha }}
             BUILD_DATE=${{ steps.current-time.outputs.time }}
