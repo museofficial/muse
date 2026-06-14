@@ -118,6 +118,30 @@ export default class implements Command {
         .setMaxLength(500)
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
+      .setName('set-log-channel')
+      .setDescription('set where deleted and edited message logs are posted')
+      .addChannelOption(option => option
+        .setName('channel')
+        .setDescription('message log channel')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('clear-log-channel')
+      .setDescription('turn off message logging'))
+    .addSubcommand(subcommand => subcommand
+      .setName('set-log-deletes')
+      .setDescription('set whether deleted messages are logged')
+      .addBooleanOption(option => option
+        .setName('value')
+        .setDescription('whether deleted messages are logged')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('set-log-edits')
+      .setDescription('set whether edited messages are logged')
+      .addBooleanOption(option => option
+        .setName('value')
+        .setDescription('whether edited messages are logged')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
       .setName('get')
       .setDescription('show all settings'));
 
@@ -347,6 +371,72 @@ export default class implements Command {
         break;
       }
 
+      case 'set-log-channel': {
+        const channel = interaction.options.getChannel('channel', true);
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            messageLogChannelId: channel.id,
+          },
+        });
+
+        await interaction.reply(`message logs will go to <#${channel.id}>`);
+
+        break;
+      }
+
+      case 'clear-log-channel': {
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            messageLogChannelId: null,
+          },
+        });
+
+        await interaction.reply('message logging disabled');
+
+        break;
+      }
+
+      case 'set-log-deletes': {
+        const value = interaction.options.getBoolean('value', true);
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            logDeletedMessages: value,
+          },
+        });
+
+        await interaction.reply(`deleted message logging ${value ? 'enabled' : 'disabled'}`);
+
+        break;
+      }
+
+      case 'set-log-edits': {
+        const value = interaction.options.getBoolean('value', true);
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            logEditedMessages: value,
+          },
+        });
+
+        await interaction.reply(`edited message logging ${value ? 'enabled' : 'disabled'}`);
+
+        break;
+      }
+
       case 'set-reduce-vol-when-voice': {
         const value = interaction.options.getBoolean('value')!;
 
@@ -401,6 +491,9 @@ export default class implements Command {
           'Welcome message': config.welcomeMessage,
           'Leave channel': config.leaveChannelId ? `<#${config.leaveChannelId}>` : 'disabled',
           'Leave message': config.leaveMessage,
+          'Message log channel': config.messageLogChannelId ? `<#${config.messageLogChannelId}>` : 'disabled',
+          'Log deleted messages': config.logDeletedMessages ? 'yes' : 'no',
+          'Log edited messages': config.logEditedMessages ? 'yes' : 'no',
         };
 
         let description = '';

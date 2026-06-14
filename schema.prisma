@@ -38,6 +38,9 @@ model Setting {
   welcomeMessage                      String   @default("Welcome {user} to {server}.")
   leaveChannelId                      String?
   leaveMessage                        String   @default("{user} has left the server. Go fuck yourself!")
+  messageLogChannelId                 String?
+  logDeletedMessages                  Boolean  @default(true)
+  logEditedMessages                   Boolean  @default(true)
   createdAt                           DateTime @default(now())
   updatedAt                           DateTime @updatedAt
 }

@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import {Container} from 'inversify';
 import {TYPES} from './types.js';
 import Bot from './bot.js';
-import {Client, GatewayIntentBits} from 'discord.js';
+import {Client, GatewayIntentBits, Partials} from 'discord.js';
 import ConfigProvider from './services/config.js';
 
 // Managers
@@ -36,6 +36,7 @@ import Resume from './commands/resume.js';
 import Seek from './commands/seek.js';
 import Shuffle from './commands/shuffle.js';
 import Skip from './commands/skip.js';
+import Snipe from './commands/snipe.js';
 import Stop from './commands/stop.js';
 import Unskip from './commands/unskip.js';
 import Volume from './commands/volume.js';
@@ -50,12 +51,14 @@ const container = new Container();
 const intents: GatewayIntentBits[] = [];
 intents.push(GatewayIntentBits.Guilds); // To listen for guildCreate event
 intents.push(GatewayIntentBits.GuildMembers); // To listen for guildMemberAdd and guildMemberRemove events
+intents.push(GatewayIntentBits.GuildMessages); // To listen for message delete and edit events
 intents.push(GatewayIntentBits.GuildMessageReactions); // To listen for message reactions (messageReactionAdd event)
+intents.push(GatewayIntentBits.MessageContent); // To read deleted/edited message content for logging and snipe
 intents.push(GatewayIntentBits.GuildVoiceStates); // To listen for voice state changes (voiceStateUpdate event)
 
 // Bot
 container.bind<Bot>(TYPES.Bot).to(Bot).inSingletonScope();
-container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
+container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents, partials: [Partials.Message, Partials.Channel]}));
 
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();
@@ -97,6 +100,7 @@ if (config.SPOTIFY_CLIENT_ID !== '' && config.SPOTIFY_CLIENT_SECRET !== '') {
   Seek,
   Shuffle,
   Skip,
+  Snipe,
   Stop,
   Unskip,
   UserInfo,
