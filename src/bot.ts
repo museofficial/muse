@@ -53,6 +53,8 @@ export default class {
       }
     }
 
+    this.commandsByName.get('help')?.setCommands?.([...this.commandsByName.values()]);
+
     // Register event handlers
     // eslint-disable-next-line complexity
     this.client.on('interactionCreate', async interaction => {
