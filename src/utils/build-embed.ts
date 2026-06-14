@@ -1,6 +1,6 @@
 import getYouTubeID from 'get-youtube-id';
 import {EmbedBuilder} from 'discord.js';
-import {APIActionRowComponent, APIMessageActionRowComponent, ButtonStyle, ComponentType} from 'discord-api-types/v10';
+import {ButtonStyle, ComponentType} from 'discord-api-types/v10';
 import Player, {MediaSource, QueuedSong, STATUS} from '../services/player.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
@@ -17,7 +17,7 @@ export const MUSIC_BUTTON_IDS = {
   queue: 'music:queue',
 } as const;
 
-export type PlayerControlRows = Array<APIActionRowComponent<APIMessageActionRowComponent>>;
+export type PlayerControlRows = any[];
 export const EMPTY_PLAYER_CONTROL_ROWS: PlayerControlRows = [];
 
 const getMaxSongTitleLength = (title: string) => {
