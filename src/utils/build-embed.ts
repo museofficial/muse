@@ -1,5 +1,5 @@
 import getYouTubeID from 'get-youtube-id';
-import {ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder} from 'discord.js';
+import {ActionRowData, ButtonStyle, ComponentType, EmbedBuilder, MessageActionRowComponentData} from 'discord.js';
 import Player, {MediaSource, QueuedSong, STATUS} from '../services/player.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
@@ -98,43 +98,40 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   return message;
 };
 
-export const buildPlayerControlRows = (player: Player): Array<ActionRowBuilder<ButtonBuilder>> => [
-  new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(MUSIC_BUTTON_IDS.replay)
-      .setLabel('Restart')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(MUSIC_BUTTON_IDS.pauseResume)
-      .setLabel(player.status === STATUS.PLAYING ? 'Pause' : 'Resume')
-      .setStyle(player.status === STATUS.PLAYING ? ButtonStyle.Primary : ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(MUSIC_BUTTON_IDS.skip)
-      .setLabel('Skip')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId(MUSIC_BUTTON_IDS.stop)
-      .setLabel('Stop')
-      .setStyle(ButtonStyle.Danger),
-  ),
-  new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(MUSIC_BUTTON_IDS.loopSong)
-      .setLabel(`Repeat Song: ${player.loopCurrentSong ? 'On' : 'Off'}`)
-      .setStyle(player.loopCurrentSong ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(MUSIC_BUTTON_IDS.loopQueue)
-      .setLabel(`Repeat Queue: ${player.loopCurrentQueue ? 'On' : 'Off'}`)
-      .setStyle(player.loopCurrentQueue ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(MUSIC_BUTTON_IDS.shuffle)
-      .setLabel('Shuffle')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(MUSIC_BUTTON_IDS.queue)
-      .setLabel('Queue')
-      .setStyle(ButtonStyle.Secondary),
-  ),
+export const buildPlayerControlRows = (player: Player): Array<ActionRowData<MessageActionRowComponentData>> => [
+  {
+    type: ComponentType.ActionRow,
+    components: [
+      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.replay, label: 'Restart', style: ButtonStyle.Secondary},
+      {
+        type: ComponentType.Button,
+        customId: MUSIC_BUTTON_IDS.pauseResume,
+        label: player.status === STATUS.PLAYING ? 'Pause' : 'Resume',
+        style: player.status === STATUS.PLAYING ? ButtonStyle.Primary : ButtonStyle.Success,
+      },
+      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.skip, label: 'Skip', style: ButtonStyle.Primary},
+      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.stop, label: 'Stop', style: ButtonStyle.Danger},
+    ],
+  },
+  {
+    type: ComponentType.ActionRow,
+    components: [
+      {
+        type: ComponentType.Button,
+        customId: MUSIC_BUTTON_IDS.loopSong,
+        label: `Repeat Song: ${player.loopCurrentSong ? 'On' : 'Off'}`,
+        style: player.loopCurrentSong ? ButtonStyle.Success : ButtonStyle.Secondary,
+      },
+      {
+        type: ComponentType.Button,
+        customId: MUSIC_BUTTON_IDS.loopQueue,
+        label: `Repeat Queue: ${player.loopCurrentQueue ? 'On' : 'Off'}`,
+        style: player.loopCurrentQueue ? ButtonStyle.Success : ButtonStyle.Secondary,
+      },
+      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.shuffle, label: 'Shuffle', style: ButtonStyle.Secondary},
+      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.queue, label: 'Queue', style: ButtonStyle.Secondary},
+    ],
+  },
 ];
 
 export const buildQueueEmbed = (player: Player, page: number, pageSize: number): EmbedBuilder => {
