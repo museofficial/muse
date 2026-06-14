@@ -1,5 +1,5 @@
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from 'discord.js';
+import {ChannelType, ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from 'discord.js';
 import {injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
 import Command from './index.js';
@@ -80,6 +80,44 @@ export default class implements Command {
         .setDescription('page size of the /queue command')
         .setMinValue(1)
         .setMaxValue(30)
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('set-welcome-channel')
+      .setDescription('set where welcome messages are posted')
+      .addChannelOption(option => option
+        .setName('channel')
+        .setDescription('welcome channel')
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('clear-welcome-channel')
+      .setDescription('turn off welcome messages'))
+    .addSubcommand(subcommand => subcommand
+      .setName('set-welcome-message')
+      .setDescription('set the welcome message. Supports {user}, {username}, {server}, {memberCount}')
+      .addStringOption(option => option
+        .setName('message')
+        .setDescription('message template')
+        .setMaxLength(500)
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('set-leave-channel')
+      .setDescription('set where leave messages are posted')
+      .addChannelOption(option => option
+        .setName('channel')
+        .setDescription('leave channel')
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('clear-leave-channel')
+      .setDescription('turn off leave messages'))
+    .addSubcommand(subcommand => subcommand
+      .setName('set-leave-message')
+      .setDescription('set the leave message. Supports {user}, {username}, {server}, {memberCount}')
+      .addStringOption(option => option
+        .setName('message')
+        .setDescription('message template')
+        .setMaxLength(500)
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('get')
@@ -213,6 +251,104 @@ export default class implements Command {
         break;
       }
 
+      case 'set-welcome-channel': {
+        const channel = interaction.options.getChannel('channel', true);
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            welcomeChannelId: channel.id,
+          },
+        });
+
+        await interaction.reply(`welcome messages will go to <#${channel.id}>`);
+
+        break;
+      }
+
+      case 'clear-welcome-channel': {
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            welcomeChannelId: null,
+          },
+        });
+
+        await interaction.reply('welcome messages disabled');
+
+        break;
+      }
+
+      case 'set-welcome-message': {
+        const message = interaction.options.getString('message', true);
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            welcomeMessage: message,
+          },
+        });
+
+        await interaction.reply('welcome message updated');
+
+        break;
+      }
+
+      case 'set-leave-channel': {
+        const channel = interaction.options.getChannel('channel', true);
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            leaveChannelId: channel.id,
+          },
+        });
+
+        await interaction.reply(`leave messages will go to <#${channel.id}>`);
+
+        break;
+      }
+
+      case 'clear-leave-channel': {
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            leaveChannelId: null,
+          },
+        });
+
+        await interaction.reply('leave messages disabled');
+
+        break;
+      }
+
+      case 'set-leave-message': {
+        const message = interaction.options.getString('message', true);
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            leaveMessage: message,
+          },
+        });
+
+        await interaction.reply('leave message updated');
+
+        break;
+      }
+
       case 'set-reduce-vol-when-voice': {
         const value = interaction.options.getBoolean('value')!;
 
@@ -259,10 +395,14 @@ export default class implements Command {
             : `${config.secondsToWaitAfterQueueEmpties}s`,
           'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
           'Auto announce next song in queue': config.autoAnnounceNextSong ? 'yes' : 'no',
-          'Add to queue reponses show for requester only': config.autoAnnounceNextSong ? 'yes' : 'no',
+          'Add to queue responses show for requester only': config.queueAddResponseEphemeral ? 'yes' : 'no',
           'Default Volume': config.defaultVolume,
           'Default queue page size': config.defaultQueuePageSize,
           'Reduce volume when people speak': config.turnDownVolumeWhenPeopleSpeak ? 'yes' : 'no',
+          'Welcome channel': config.welcomeChannelId ? `<#${config.welcomeChannelId}>` : 'disabled',
+          'Welcome message': config.welcomeMessage,
+          'Leave channel': config.leaveChannelId ? `<#${config.leaveChannelId}>` : 'disabled',
+          'Leave message': config.leaveMessage,
         };
 
         let description = '';

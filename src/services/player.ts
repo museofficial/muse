@@ -21,7 +21,7 @@ import {
 import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {buildPlayerControlRows, buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getYouTubeMediaSource} from '../utils/yt-dlp.js';
 import {Setting} from '@prisma/client';
 
@@ -665,6 +665,7 @@ export default class {
       if (autoAnnounceNextSong && this.currentChannel) {
         await this.currentChannel.send({
           embeds: [buildPlayingMessageEmbed(this)],
+          components: buildPlayerControlRows(this),
         });
       }
     }

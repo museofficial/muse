@@ -1,9 +1,20 @@
 import getYouTubeID from 'get-youtube-id';
-import {EmbedBuilder} from 'discord.js';
+import {ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder} from 'discord.js';
 import Player, {MediaSource, QueuedSong, STATUS} from '../services/player.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
 import {truncate} from './string.js';
+
+export const MUSIC_BUTTON_IDS = {
+  replay: 'music:replay',
+  pauseResume: 'music:pause-resume',
+  skip: 'music:skip',
+  stop: 'music:stop',
+  loopSong: 'music:loop-song',
+  loopQueue: 'music:loop-queue',
+  shuffle: 'music:shuffle',
+  queue: 'music:queue',
+} as const;
 
 const getMaxSongTitleLength = (title: string) => {
   // eslint-disable-next-line no-control-regex
@@ -31,6 +42,18 @@ const getQueueInfo = (player: Player) => {
   }
 
   return queueSize === 1 ? '1 song' : `${queueSize} songs`;
+};
+
+const getLoopLabel = (player: Player) => {
+  if (player.loopCurrentSong) {
+    return 'Song';
+  }
+
+  if (player.loopCurrentQueue) {
+    return 'Queue';
+  }
+
+  return 'Off';
 };
 
 const getPlayerUI = (player: Player) => {
@@ -75,6 +98,45 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   return message;
 };
 
+export const buildPlayerControlRows = (player: Player): Array<ActionRowBuilder<ButtonBuilder>> => [
+  new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(MUSIC_BUTTON_IDS.replay)
+      .setLabel('Restart')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(MUSIC_BUTTON_IDS.pauseResume)
+      .setLabel(player.status === STATUS.PLAYING ? 'Pause' : 'Resume')
+      .setStyle(player.status === STATUS.PLAYING ? ButtonStyle.Primary : ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(MUSIC_BUTTON_IDS.skip)
+      .setLabel('Skip')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(MUSIC_BUTTON_IDS.stop)
+      .setLabel('Stop')
+      .setStyle(ButtonStyle.Danger),
+  ),
+  new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(MUSIC_BUTTON_IDS.loopSong)
+      .setLabel(`Repeat Song: ${player.loopCurrentSong ? 'On' : 'Off'}`)
+      .setStyle(player.loopCurrentSong ? ButtonStyle.Success : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(MUSIC_BUTTON_IDS.loopQueue)
+      .setLabel(`Repeat Queue: ${player.loopCurrentQueue ? 'On' : 'Off'}`)
+      .setStyle(player.loopCurrentQueue ? ButtonStyle.Success : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(MUSIC_BUTTON_IDS.shuffle)
+      .setLabel('Shuffle')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(MUSIC_BUTTON_IDS.queue)
+      .setLabel('Queue')
+      .setStyle(ButtonStyle.Secondary),
+  ),
+];
+
 export const buildQueueEmbed = (player: Player, page: number, pageSize: number): EmbedBuilder => {
   const currentlyPlaying = player.getCurrent();
 
@@ -118,12 +180,12 @@ export const buildQueueEmbed = (player: Player, page: number, pageSize: number):
   }
 
   message
-    .setTitle(player.status === STATUS.PLAYING ? `Now Playing ${player.loopCurrentSong ? '(loop on)' : ''}` : 'Queued songs')
-    .setColor(player.status === STATUS.PLAYING ? 'DarkGreen' : 'NotQuiteBlack')
+    .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Queued Songs')
+    .setColor(player.status === STATUS.PLAYING ? 0x00E5A8 : 0x5865F2)
     .setDescription(description)
     .addFields([{name: 'In queue', value: getQueueInfo(player), inline: true}, {
       name: 'Total length', value: `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, inline: true,
-    }, {name: 'Page', value: `${page} out of ${maxQueuePage}`, inline: true}])
+    }, {name: 'Page', value: `${page} out of ${maxQueuePage}`, inline: true}, {name: 'Repeat', value: getLoopLabel(player), inline: true}])
     .setFooter({text: `Source: ${artist} ${playlistTitle}`});
 
   if (thumbnailUrl) {

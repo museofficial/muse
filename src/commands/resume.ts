@@ -4,7 +4,7 @@ import Command from './index.js';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {buildPlayerControlRows, buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
 import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
 
@@ -40,6 +40,7 @@ export default class implements Command {
     await interaction.reply({
       content: 'the stop-and-go light is now green',
       embeds: [buildPlayingMessageEmbed(player)],
+      components: buildPlayerControlRows(player),
     });
   }
 }

@@ -34,6 +34,10 @@ model Setting {
   defaultQueuePageSize                Int      @default(10)
   turnDownVolumeWhenPeopleSpeak       Boolean  @default(false)
   turnDownVolumeWhenPeopleSpeakTarget Int      @default(20)
+  welcomeChannelId                    String?
+  welcomeMessage                      String   @default("Welcome {user} to {server}.")
+  leaveChannelId                      String?
+  leaveMessage                        String   @default("{user} has left the server. Go fuck yourself!")
   createdAt                           DateTime @default(now())
   updatedAt                           DateTime @updatedAt
 }
