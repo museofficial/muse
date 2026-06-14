@@ -1,5 +1,6 @@
 import getYouTubeID from 'get-youtube-id';
-import {ActionRowData, ButtonStyle, ComponentType, EmbedBuilder, MessageActionRowComponentData} from 'discord.js';
+import {EmbedBuilder} from 'discord.js';
+import {APIActionRowComponent, APIMessageActionRowComponent, ButtonStyle, ComponentType} from 'discord-api-types/v10';
 import Player, {MediaSource, QueuedSong, STATUS} from '../services/player.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
@@ -16,7 +17,7 @@ export const MUSIC_BUTTON_IDS = {
   queue: 'music:queue',
 } as const;
 
-export type PlayerControlRows = Array<ActionRowData<MessageActionRowComponentData>>;
+export type PlayerControlRows = Array<APIActionRowComponent<APIMessageActionRowComponent>>;
 export const EMPTY_PLAYER_CONTROL_ROWS: PlayerControlRows = [];
 
 const getMaxSongTitleLength = (title: string) => {
@@ -105,15 +106,15 @@ export const buildPlayerControlRows = (player: Player): PlayerControlRows => [
   {
     type: ComponentType.ActionRow,
     components: [
-      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.replay, label: 'Restart', style: ButtonStyle.Secondary},
+      {type: ComponentType.Button, custom_id: MUSIC_BUTTON_IDS.replay, label: 'Restart', style: ButtonStyle.Secondary},
       {
         type: ComponentType.Button,
-        customId: MUSIC_BUTTON_IDS.pauseResume,
+        custom_id: MUSIC_BUTTON_IDS.pauseResume,
         label: player.status === STATUS.PLAYING ? 'Pause' : 'Resume',
         style: player.status === STATUS.PLAYING ? ButtonStyle.Primary : ButtonStyle.Success,
       },
-      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.skip, label: 'Skip', style: ButtonStyle.Primary},
-      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.stop, label: 'Stop', style: ButtonStyle.Danger},
+      {type: ComponentType.Button, custom_id: MUSIC_BUTTON_IDS.skip, label: 'Skip', style: ButtonStyle.Primary},
+      {type: ComponentType.Button, custom_id: MUSIC_BUTTON_IDS.stop, label: 'Stop', style: ButtonStyle.Danger},
     ],
   },
   {
@@ -121,18 +122,18 @@ export const buildPlayerControlRows = (player: Player): PlayerControlRows => [
     components: [
       {
         type: ComponentType.Button,
-        customId: MUSIC_BUTTON_IDS.loopSong,
+        custom_id: MUSIC_BUTTON_IDS.loopSong,
         label: `Repeat Song: ${player.loopCurrentSong ? 'On' : 'Off'}`,
         style: player.loopCurrentSong ? ButtonStyle.Success : ButtonStyle.Secondary,
       },
       {
         type: ComponentType.Button,
-        customId: MUSIC_BUTTON_IDS.loopQueue,
+        custom_id: MUSIC_BUTTON_IDS.loopQueue,
         label: `Repeat Queue: ${player.loopCurrentQueue ? 'On' : 'Off'}`,
         style: player.loopCurrentQueue ? ButtonStyle.Success : ButtonStyle.Secondary,
       },
-      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.shuffle, label: 'Shuffle', style: ButtonStyle.Secondary},
-      {type: ComponentType.Button, customId: MUSIC_BUTTON_IDS.queue, label: 'Queue', style: ButtonStyle.Secondary},
+      {type: ComponentType.Button, custom_id: MUSIC_BUTTON_IDS.shuffle, label: 'Shuffle', style: ButtonStyle.Secondary},
+      {type: ComponentType.Button, custom_id: MUSIC_BUTTON_IDS.queue, label: 'Queue', style: ButtonStyle.Secondary},
     ],
   },
 ];

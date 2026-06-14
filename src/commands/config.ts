@@ -1,5 +1,5 @@
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {ChannelType, ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from 'discord.js';
+import {ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from 'discord.js';
 import {injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
 import Command from './index.js';
@@ -87,7 +87,6 @@ export default class implements Command {
       .addChannelOption(option => option
         .setName('channel')
         .setDescription('welcome channel')
-        .addChannelTypes(ChannelType.GuildText)
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('clear-welcome-channel')
@@ -106,7 +105,6 @@ export default class implements Command {
       .addChannelOption(option => option
         .setName('channel')
         .setDescription('leave channel')
-        .addChannelTypes(ChannelType.GuildText)
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('clear-leave-channel')
