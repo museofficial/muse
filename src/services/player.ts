@@ -1,4 +1,4 @@
-import {VoiceChannel, Snowflake} from 'discord.js';
+import {VoiceChannel, Snowflake, Client, Message, PermissionFlagsBits, GuildTextBasedChannel} from 'discord.js';
 import {Readable} from 'stream';
 import {setTimeout as sleep} from 'timers/promises';
 import hasha from 'hasha';
@@ -80,16 +80,21 @@ export default class {
   private playPositionInterval: NodeJS.Timeout | undefined;
   private lastSongURL = '';
 
+  private nowPlayingMessage: Message | undefined;
+  private nowPlayingMessageInterval: NodeJS.Timeout | undefined;
+
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
+  private readonly client: Client;
   private disconnectTimer: NodeJS.Timeout | null = null;
 
   private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
   private hasRegisteredVoiceActivityListener = false;
 
-  constructor(fileCache: FileCacheProvider, guildId: string) {
+  constructor(fileCache: FileCacheProvider, guildId: string, client: Client) {
     this.fileCache = fileCache;
     this.guildId = guildId;
+    this.client = client;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -157,6 +162,7 @@ export default class {
       this.currentChannel = undefined;
       this.channelToSpeakingUsers.clear();
       this.hasRegisteredVoiceActivityListener = false;
+      void this.clearNowPlayingMessage();
     }
   }
 
@@ -257,6 +263,7 @@ export default class {
 
       this.status = STATUS.PLAYING;
       this.nowPlaying = currentSong;
+      await this.setupNowPlayingMessage(currentSong);
 
       if (currentSong.url === this.lastSongURL) {
         this.startTrackingPosition();
@@ -489,6 +496,23 @@ export default class {
     return this.volume ?? this.defaultVolume;
   }
 
+  public async clearNowPlayingMessage(): Promise<void> {
+    if (this.nowPlayingMessageInterval) {
+      clearInterval(this.nowPlayingMessageInterval);
+      this.nowPlayingMessageInterval = undefined;
+    }
+
+    if (this.nowPlayingMessage) {
+      try {
+        await this.nowPlayingMessage.delete();
+      } catch (error: unknown) {
+        debug(error);
+      }
+
+      this.nowPlayingMessage = undefined;
+    }
+  }
+
   private getHashForCache(url: string): string {
     return hasha(url);
   }
@@ -661,8 +685,8 @@ export default class {
 
       // Auto announce the next song if configured to
       const settings = await getGuildSettings(this.guildId);
-      const {autoAnnounceNextSong} = settings;
-      if (autoAnnounceNextSong && this.currentChannel) {
+      const {autoAnnounceNextSong, persistentNowPlayingMessage} = settings;
+      if (autoAnnounceNextSong && !persistentNowPlayingMessage && this.currentChannel) {
         await this.currentChannel.send({
           embeds: [buildPlayingMessageEmbed(this)],
         });
@@ -673,6 +697,7 @@ export default class {
   private async finishQueue(): Promise<void> {
     this.status = STATUS.IDLE;
     this.audioPlayer?.stop(true);
+    await this.clearNowPlayingMessage();
 
     const settings = await getGuildSettings(this.guildId);
 
@@ -685,6 +710,58 @@ export default class {
           this.disconnect();
         }
       }, secondsToWaitAfterQueueEmpties * 1000);
+    }
+  }
+
+  private async setupNowPlayingMessage(song: QueuedSong): Promise<void> {
+    await this.clearNowPlayingMessage();
+
+    try {
+      const settings = await getGuildSettings(this.guildId);
+      if (!settings.persistentNowPlayingMessage) {
+        return;
+      }
+
+      const channel = await this.client.channels.fetch(song.addedInChannelId);
+      if (!channel || !channel.isTextBased()) {
+        return;
+      }
+
+      const textChannel = channel as GuildTextBasedChannel;
+      const permissions = textChannel.permissionsFor(this.client.user!.id);
+      if (!permissions?.has([PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+        return;
+      }
+
+      this.nowPlayingMessage = await textChannel.send({
+        embeds: [buildPlayingMessageEmbed(this)],
+      });
+
+      this.nowPlayingMessageInterval = setInterval(() => {
+        void this.updateNowPlayingMessage();
+      }, 10_000);
+    } catch (error: unknown) {
+      debug(error);
+    }
+  }
+
+  private async updateNowPlayingMessage(): Promise<void> {
+    try {
+      if (!this.nowPlayingMessage) {
+        return;
+      }
+
+      if (!this.getCurrent()) {
+        await this.clearNowPlayingMessage();
+        return;
+      }
+
+      await this.nowPlayingMessage.edit({
+        embeds: [buildPlayingMessageEmbed(this)],
+      });
+    } catch (error: unknown) {
+      debug(error);
+      await this.clearNowPlayingMessage();
     }
   }
 

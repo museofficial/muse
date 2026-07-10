@@ -1,7 +1,9 @@
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from 'discord.js';
-import {injectable} from 'inversify';
+import {inject, injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
+import {TYPES} from '../types.js';
+import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildMessageEmbed} from '../utils/build-embed.js';
@@ -66,6 +68,13 @@ export default class implements Command {
         .setDescription('whether to announce the next song in the queue automatically')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
+      .setName('set-persistent-now-playing-message')
+      .setDescription('set whether to keep a now playing message updated in the request channel')
+      .addBooleanOption(option => option
+        .setName('value')
+        .setDescription('whether to keep a now playing message updated in the request channel')
+        .setRequired(true)))
+    .addSubcommand(subcommand => subcommand
       .setName('set-default-volume')
       .setDescription('set default volume used when entering the voice channel')
       .addIntegerOption(option => option
@@ -87,6 +96,13 @@ export default class implements Command {
       .setName('get')
       .setDescription('show all settings'));
 
+  private readonly playerManager: PlayerManager;
+
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
+    this.playerManager = playerManager;
+  }
+
+  // eslint-disable-next-line complexity
   async execute(interaction: ChatInputCommandInteraction) {
     // Ensure guild settings exist before trying to update
     await getGuildSettings(interaction.guild!.id);
@@ -181,6 +197,27 @@ export default class implements Command {
         break;
       }
 
+      case 'set-persistent-now-playing-message': {
+        const value = interaction.options.getBoolean('value')!;
+
+        await prisma.setting.update({
+          where: {
+            guildId: interaction.guild!.id,
+          },
+          data: {
+            persistentNowPlayingMessage: value,
+          },
+        });
+
+        if (!value) {
+          await this.playerManager.get(interaction.guild!.id).clearNowPlayingMessage();
+        }
+
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.persistentNowPlayingMessageUpdated)]});
+
+        break;
+      }
+
       case 'set-default-volume': {
         const value = interaction.options.getInteger('level')!;
 
@@ -261,6 +298,7 @@ export default class implements Command {
             : `${config.secondsToWaitAfterQueueEmpties}s`,
           [messages.config.labels.leaveIfNoListeners]: config.leaveIfNoListeners ? messages.common.yes : messages.common.no,
           [messages.config.labels.autoAnnounceNextSong]: config.autoAnnounceNextSong ? messages.common.yes : messages.common.no,
+          [messages.config.labels.persistentNowPlayingMessage]: config.persistentNowPlayingMessage ? messages.common.yes : messages.common.no,
           [messages.config.labels.queueAddResponseEphemeral]: config.autoAnnounceNextSong ? messages.common.yes : messages.common.no,
           [messages.config.labels.defaultVolume]: config.defaultVolume,
           [messages.config.labels.defaultQueuePageSize]: config.defaultQueuePageSize,

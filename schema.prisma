@@ -30,6 +30,7 @@ model Setting {
   leaveIfNoListeners                  Boolean  @default(true)
   queueAddResponseEphemeral           Boolean  @default(false)
   autoAnnounceNextSong                Boolean  @default(false)
+  persistentNowPlayingMessage         Boolean  @default(false)
   defaultVolume                       Int      @default(100)
   defaultQueuePageSize                Int      @default(10)
   turnDownVolumeWhenPeopleSpeak       Boolean  @default(false)
