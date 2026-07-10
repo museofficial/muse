@@ -4,6 +4,7 @@ import Player, {MediaSource, QueuedSong, STATUS} from '../services/player.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
 import {truncate} from './string.js';
+import messages from '../messages.js';
 
 const getMaxSongTitleLength = (title: string) => {
   // eslint-disable-next-line no-control-regex
@@ -49,11 +50,17 @@ const getPlayerUI = (player: Player) => {
   return `${button} ${progressBar} \`[${elapsedTime}]\`🔉 ${vol} ${loop}`;
 };
 
+export const buildMessageEmbed = (description: string): EmbedBuilder =>
+  new EmbedBuilder().setColor('DarkGreen').setDescription(description);
+
+export const buildErrorEmbed = (description: string): EmbedBuilder =>
+  new EmbedBuilder().setColor('DarkRed').setDescription(description);
+
 export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
-    throw new Error('No playing song found');
+    throw new Error(messages.queue.noPlayingSong);
   }
 
   const {artist, thumbnailUrl, requestedBy} = currentlyPlaying;
@@ -79,14 +86,14 @@ export const buildQueueEmbed = (player: Player, page: number, pageSize: number):
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
-    throw new Error('queue is empty');
+    throw new Error(messages.queue.empty);
   }
 
   const queueSize = player.queueSize();
   const maxQueuePage = Math.ceil((queueSize + 1) / pageSize);
 
   if (page > maxQueuePage) {
-    throw new Error('the queue isn\'t that big');
+    throw new Error(messages.queue.tooBig);
   }
 
   const queuePageBegin = (page - 1) * pageSize;

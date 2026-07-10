@@ -7,13 +7,22 @@ import Command from './commands/index.js';
 import debug from './utils/debug.js';
 import handleGuildCreate from './events/guild-create.js';
 import handleVoiceStateUpdate from './events/voice-state-update.js';
-import errorMsg from './utils/error-msg.js';
+import {buildErrorEmbed} from './utils/build-embed.js';
+import messages from './messages.js';
 import {isUserInVoice} from './utils/channels.js';
 import Config from './services/config.js';
 import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v10';
 import registerCommandsOnGuild from './utils/register-commands-on-guild.js';
+
+const errorText = (error?: string | Error): string => {
+  if (!error) {
+    return messages.common.unknownError;
+  }
+
+  return `${messages.common.errorPrefix} ${typeof error === 'string' ? error : error.message}`;
+};
 
 @injectable()
 export default class {
@@ -65,13 +74,13 @@ export default class {
           }
 
           if (!interaction.guild) {
-            await interaction.reply(errorMsg('you can\'t use this bot in a DM'));
+            await interaction.reply({embeds: [buildErrorEmbed(errorText(messages.errors.dmNotSupported))]});
             return;
           }
 
           const requiresVC = command.requiresVC instanceof Function ? command.requiresVC(interaction) : command.requiresVC;
           if (requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
-            await interaction.reply({content: errorMsg('gotta be in a voice channel'), ephemeral: true});
+            await interaction.reply({embeds: [buildErrorEmbed(errorText(messages.errors.notInVoiceChannel))], ephemeral: true});
             return;
           }
 
@@ -105,9 +114,9 @@ export default class {
         // This can fail if the message was deleted, and we don't want to crash the whole bot
         try {
           if ((interaction.isCommand() || interaction.isButton()) && (interaction.replied || interaction.deferred)) {
-            await interaction.editReply(errorMsg(error as Error));
+            await interaction.editReply({embeds: [buildErrorEmbed(errorText(error as Error))]});
           } else if (interaction.isCommand() || interaction.isButton()) {
-            await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
+            await interaction.reply({embeds: [buildErrorEmbed(errorText(error as Error))], ephemeral: true});
           }
         } catch {}
       }

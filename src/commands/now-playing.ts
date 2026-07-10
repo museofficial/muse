@@ -5,6 +5,7 @@ import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -22,7 +23,7 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.getCurrent()) {
-      throw new Error('nothing is currently playing');
+      throw new Error(messages.nowPlaying.nothingPlaying);
     }
 
     await interaction.reply({

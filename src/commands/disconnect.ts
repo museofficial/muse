@@ -4,6 +4,8 @@ import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -23,11 +25,11 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.voiceConnection) {
-      throw new Error('not connected');
+      throw new Error(messages.errors.notConnected);
     }
 
     player.disconnect();
 
-    await interaction.reply('u betcha, disconnected');
+    await interaction.reply({embeds: [buildMessageEmbed(messages.disconnect.success)]});
   }
 }

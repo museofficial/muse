@@ -5,13 +5,14 @@ import {TYPES} from '../types.js';
 import GetSongs from '../services/get-songs.js';
 import {MediaSource, SongMetadata, STATUS} from './player.js';
 import PlayerManager from '../managers/player.js';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {buildMessageEmbed, buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {SponsorBlock} from 'sponsorblock-api';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class AddQueryToQueue {
@@ -61,7 +62,7 @@ export default class AddQueryToQueue {
     let [newSongs, extraMsg] = await this.getSongs.getSongs(query, playlistLimit, shouldSplitChapters);
 
     if (newSongs.length === 0) {
-      throw new Error('no songs found');
+      throw new Error(messages.queueAdd.noSongsFound);
     }
 
     if (shuffleAdditions) {
@@ -91,7 +92,7 @@ export default class AddQueryToQueue {
       await player.play();
 
       if (wasPlayingSong) {
-        statusMsg = 'resuming playback';
+        statusMsg = messages.queueAdd.resumingPlayback;
       }
 
       await interaction.editReply({
@@ -106,7 +107,7 @@ export default class AddQueryToQueue {
       try {
         await player.forward(1);
       } catch (_: unknown) {
-        throw new Error('no song to skip to');
+        throw new Error(messages.errors.noSongToSkip);
       }
     }
 
@@ -124,9 +125,13 @@ export default class AddQueryToQueue {
     }
 
     if (newSongs.length === 1) {
-      await interaction.editReply(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`);
+      await interaction.editReply({
+        embeds: [buildMessageEmbed(messages.queueAdd.single(firstSong.title, {front: addToFrontOfQueue, skipped: skipCurrentTrack, extra: extraMsg}))],
+      });
     } else {
-      await interaction.editReply(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`);
+      await interaction.editReply({
+        embeds: [buildMessageEmbed(messages.queueAdd.multiple(firstSong.title, newSongs.length - 1, {skipped: skipCurrentTrack, extra: extraMsg}))],
+      });
     }
   }
 

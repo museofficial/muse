@@ -4,8 +4,9 @@ import Command from './index.js';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {buildMessageEmbed, buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
+import messages from '../messages.js';
 import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
 
 @injectable()
@@ -26,20 +27,19 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
     const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
     if (player.status === STATUS.PLAYING) {
-      throw new Error('already playing, give me a song name');
+      throw new Error(messages.resume.alreadyPlaying);
     }
 
     // Must be resuming play
     if (!player.getCurrent()) {
-      throw new Error('nothing to play');
+      throw new Error(messages.resume.nothingToPlay);
     }
 
     await player.connect(targetVoiceChannel);
     await player.play();
 
     await interaction.reply({
-      content: 'the stop-and-go light is now green',
-      embeds: [buildPlayingMessageEmbed(player)],
+      embeds: [buildMessageEmbed(messages.resume.success), buildPlayingMessageEmbed(player)],
     });
   }
 }

@@ -4,6 +4,8 @@ import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -33,15 +35,15 @@ export default class implements Command {
     const range = interaction.options.getInteger('range') ?? 1;
 
     if (position < 1) {
-      throw new Error('position must be at least 1');
+      throw new Error(messages.errors.invalidPosition);
     }
 
     if (range < 1) {
-      throw new Error('range must be at least 1');
+      throw new Error(messages.remove.invalidRange);
     }
 
     player.removeFromQueue(position, range);
 
-    await interaction.reply(':wastebasket: removed');
+    await interaction.reply({embeds: [buildMessageEmbed(messages.remove.success)]});
   }
 }

@@ -6,6 +6,8 @@ import AddQueryToQueue from '../services/add-query-to-queue.js';
 import {TYPES} from '../types.js';
 import {prisma} from '../utils/db.js';
 import {Pagination} from 'pagination.djs';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -78,7 +80,7 @@ export default class implements Command {
         await this.remove(interaction);
         break;
       default:
-        throw new Error('unknown subcommand');
+        throw new Error(messages.errors.unknownSubcommand);
     }
   }
 
@@ -118,7 +120,7 @@ export default class implements Command {
     });
 
     if (!favorite) {
-      throw new Error('no favorite with that name exists');
+      throw new Error(messages.favorites.noFavoriteWithName);
     }
 
     await this.addQueryToQueue.addToQueue({
@@ -139,7 +141,7 @@ export default class implements Command {
     });
 
     if (favorites.length === 0) {
-      await interaction.reply('there aren\'t any favorites yet');
+      await interaction.reply({embeds: [buildMessageEmbed(messages.favorites.noneYet)]});
       return;
     }
 
@@ -171,7 +173,7 @@ export default class implements Command {
     }});
 
     if (existingFavorite) {
-      throw new Error('a favorite with that name already exists');
+      throw new Error(messages.favorites.alreadyExists);
     }
 
     await prisma.favoriteQuery.create({
@@ -183,7 +185,7 @@ export default class implements Command {
       },
     });
 
-    await interaction.reply('👍 favorite created');
+    await interaction.reply({embeds: [buildMessageEmbed(messages.favorites.created)]});
   }
 
   private async remove(interaction: ChatInputCommandInteraction) {
@@ -195,17 +197,17 @@ export default class implements Command {
     }});
 
     if (!favorite) {
-      throw new Error('no favorite with that name exists');
+      throw new Error(messages.favorites.noFavoriteWithName);
     }
 
     const isUserGuildOwner = interaction.member!.user.id === interaction.guild!.ownerId;
 
     if (favorite.authorId !== interaction.member!.user.id && !isUserGuildOwner) {
-      throw new Error('you can only remove your own favorites');
+      throw new Error(messages.favorites.onlyOwnFavorites);
     }
 
     await prisma.favoriteQuery.delete({where: {id: favorite.id}});
 
-    await interaction.reply('👍 favorite removed');
+    await interaction.reply({embeds: [buildMessageEmbed(messages.favorites.removed)]});
   }
 }

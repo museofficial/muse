@@ -7,6 +7,8 @@ import {prisma} from '../utils/db.js';
 import {REST} from '@discordjs/rest';
 import {Setting} from '@prisma/client';
 import registerCommandsOnGuild from '../utils/register-commands-on-guild.js';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 export async function createGuildSettings(guildId: string): Promise<Setting> {
   return prisma.setting.upsert({
@@ -40,5 +42,5 @@ export default async (guild: Guild): Promise<void> => {
   }
 
   const owner = await guild.fetchOwner();
-  await owner.send('👋 Hi! Someone (probably you) just invited me to a server you own. By default, I\'m usable by all guild member in all guild channels. To change this, check out the wiki page on permissions: https://github.com/museofficial/muse/wiki/Configuring-Bot-Permissions.');
+  await owner.send({embeds: [buildMessageEmbed(messages.guildCreate.welcomeDm)]});
 };

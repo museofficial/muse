@@ -4,6 +4,8 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -23,11 +25,11 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (player.isQueueEmpty()) {
-      throw new Error('not enough songs to shuffle');
+      throw new Error(messages.shuffle.notEnoughSongs);
     }
 
     player.shuffle();
 
-    await interaction.reply('shuffled');
+    await interaction.reply({embeds: [buildMessageEmbed(messages.shuffle.success)]});
   }
 }

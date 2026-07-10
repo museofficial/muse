@@ -6,6 +6,8 @@ import Command from './index.js';
 import {parseTime, prettyTime} from '../utils/time.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import durationStringToSeconds from '../utils/duration-string-to-seconds.js';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -32,11 +34,11 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      throw new Error('nothing is playing');
+      throw new Error(messages.errors.nothingIsPlaying);
     }
 
     if (currentSong.isLive) {
-      throw new Error('can\'t seek in a livestream');
+      throw new Error(messages.errors.cantSeekLive);
     }
 
     const time = interaction.options.getString('time')!;
@@ -50,7 +52,7 @@ export default class implements Command {
     }
 
     if (seekTime > currentSong.length) {
-      throw new Error('can\'t seek past the end of the song');
+      throw new Error(messages.errors.seekPastEnd);
     }
 
     await Promise.all([
@@ -58,6 +60,6 @@ export default class implements Command {
       interaction.deferReply(),
     ]);
 
-    await interaction.editReply(`👍 seeked to ${prettyTime(player.getPosition())}`);
+    await interaction.editReply({embeds: [buildMessageEmbed(messages.shared.seekedTo(prettyTime(player.getPosition())))]});
   }
 }

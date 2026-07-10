@@ -4,6 +4,8 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -25,11 +27,11 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      throw new Error('nothing is playing');
+      throw new Error(messages.errors.nothingIsPlaying);
     }
 
     if (currentSong.isLive) {
-      throw new Error('can\'t replay a livestream');
+      throw new Error(messages.replay.cantReplayLive);
     }
 
     await Promise.all([
@@ -37,6 +39,6 @@ export default class implements Command {
       interaction.deferReply(),
     ]);
 
-    await interaction.editReply('👍 replayed the current song');
+    await interaction.editReply({embeds: [buildMessageEmbed(messages.replay.success)]});
   }
 }

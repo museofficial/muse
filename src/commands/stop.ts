@@ -5,6 +5,8 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';
 import Command from './index.js';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -24,14 +26,14 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.voiceConnection) {
-      throw new Error('not connected');
+      throw new Error(messages.errors.notConnected);
     }
 
     if (player.status !== STATUS.PLAYING) {
-      throw new Error('not currently playing');
+      throw new Error(messages.errors.notCurrentlyPlaying);
     }
 
     player.stop();
-    await interaction.reply('u betcha, stopped');
+    await interaction.reply({embeds: [buildMessageEmbed(messages.stop.success)]});
   }
 }

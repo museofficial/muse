@@ -4,6 +4,8 @@ import {injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
 import Command from './index.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -94,7 +96,7 @@ export default class implements Command {
         const limit: number = interaction.options.getInteger('limit')!;
 
         if (limit < 1) {
-          throw new Error('invalid limit');
+          throw new Error(messages.config.invalidLimit);
         }
 
         await prisma.setting.update({
@@ -106,7 +108,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 limit updated');
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.limitUpdated)]});
 
         break;
       }
@@ -123,7 +125,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 wait delay updated');
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.waitDelayUpdated)]});
 
         break;
       }
@@ -140,7 +142,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 leave setting updated');
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.leaveSettingUpdated)]});
 
         break;
       }
@@ -157,7 +159,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 queue add notification setting updated');
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.queueAddNotificationUpdated)]});
 
         break;
       }
@@ -174,7 +176,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 auto announce setting updated');
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.autoAnnounceUpdated)]});
 
         break;
       }
@@ -191,7 +193,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 volume setting updated');
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.volumeSettingUpdated)]});
 
         break;
       }
@@ -208,7 +210,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 default queue page size updated');
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.defaultQueuePageSizeUpdated)]});
 
         break;
       }
@@ -225,7 +227,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 turn down volume setting updated');
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.turnDownVolumeUpdated)]});
 
         break;
       }
@@ -242,27 +244,27 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 turn down volume target setting updated');
+        await interaction.reply({embeds: [buildMessageEmbed(messages.config.turnDownVolumeTargetUpdated)]});
 
         break;
       }
 
       case 'get': {
-        const embed = new EmbedBuilder().setTitle('Config');
+        const embed = new EmbedBuilder().setTitle(messages.config.title);
 
         const config = await getGuildSettings(interaction.guild!.id);
 
         const settingsToShow = {
-          'Playlist Limit': config.playlistLimit,
-          'Wait before leaving after queue empty': config.secondsToWaitAfterQueueEmpties === 0
+          [messages.config.labels.playlistLimit]: config.playlistLimit,
+          [messages.config.labels.waitBeforeLeave]: config.secondsToWaitAfterQueueEmpties === 0
             ? 'never leave'
             : `${config.secondsToWaitAfterQueueEmpties}s`,
-          'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
-          'Auto announce next song in queue': config.autoAnnounceNextSong ? 'yes' : 'no',
-          'Add to queue reponses show for requester only': config.autoAnnounceNextSong ? 'yes' : 'no',
-          'Default Volume': config.defaultVolume,
-          'Default queue page size': config.defaultQueuePageSize,
-          'Reduce volume when people speak': config.turnDownVolumeWhenPeopleSpeak ? 'yes' : 'no',
+          [messages.config.labels.leaveIfNoListeners]: config.leaveIfNoListeners ? messages.common.yes : messages.common.no,
+          [messages.config.labels.autoAnnounceNextSong]: config.autoAnnounceNextSong ? messages.common.yes : messages.common.no,
+          [messages.config.labels.queueAddResponseEphemeral]: config.autoAnnounceNextSong ? messages.common.yes : messages.common.no,
+          [messages.config.labels.defaultVolume]: config.defaultVolume,
+          [messages.config.labels.defaultQueuePageSize]: config.defaultQueuePageSize,
+          [messages.config.labels.turnDownVolumeWhenPeopleSpeak]: config.turnDownVolumeWhenPeopleSpeak ? messages.common.yes : messages.common.no,
         };
 
         let description = '';
@@ -278,7 +280,7 @@ export default class implements Command {
       }
 
       default:
-        throw new Error('unknown subcommand');
+        throw new Error(messages.errors.unknownSubcommand);
     }
   }
 }

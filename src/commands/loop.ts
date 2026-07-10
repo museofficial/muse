@@ -5,6 +5,8 @@ import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {STATUS} from '../services/player.js';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -24,7 +26,7 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (player.status === STATUS.IDLE) {
-      throw new Error('no song to loop!');
+      throw new Error(messages.loop.noSongToLoop);
     }
 
     if (player.loopCurrentQueue) {
@@ -33,6 +35,6 @@ export default class implements Command {
 
     player.loopCurrentSong = !player.loopCurrentSong;
 
-    await interaction.reply((player.loopCurrentSong ? 'looped :)' : 'stopped looping :('));
+    await interaction.reply({embeds: [buildMessageEmbed(player.loopCurrentSong ? messages.loop.enabled : messages.loop.disabled)]});
   }
 }

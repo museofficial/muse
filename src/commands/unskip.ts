@@ -4,7 +4,8 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {buildMessageEmbed, buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -26,11 +27,10 @@ export default class implements Command {
     try {
       await player.back();
       await interaction.reply({
-        content: 'back \'er up\'',
-        embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
+        embeds: [buildMessageEmbed(messages.unskip.success), ...(player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [])],
       });
     } catch (_: unknown) {
-      throw new Error('no song to go back to');
+      throw new Error(messages.unskip.noSongToGoBack);
     }
   }
 }

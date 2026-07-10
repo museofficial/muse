@@ -4,6 +4,8 @@ import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {buildMessageEmbed} from '../utils/build-embed.js';
+import messages from '../messages.js';
 
 @injectable()
 export default class implements Command {
@@ -33,15 +35,15 @@ export default class implements Command {
     const to = interaction.options.getInteger('to') ?? 1;
 
     if (from < 1) {
-      throw new Error('position must be at least 1');
+      throw new Error(messages.errors.invalidPosition);
     }
 
     if (to < 1) {
-      throw new Error('position must be at least 1');
+      throw new Error(messages.errors.invalidPosition);
     }
 
     const {title} = player.move(from, to);
 
-    await interaction.reply('moved **' + title + '** to position **' + String(to) + '**');
+    await interaction.reply({embeds: [buildMessageEmbed(messages.move.success(title, to))]});
   }
 }
