@@ -68,7 +68,7 @@ export default class implements Command {
         .setDescription('whether to announce the next song in the queue automatically')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
-      .setName('set-persistent-now-playing-message')
+      .setName('set-persistent-now-playing')
       .setDescription('set whether to keep a now playing message updated in the request channel')
       .addBooleanOption(option => option
         .setName('value')
@@ -197,7 +197,7 @@ export default class implements Command {
         break;
       }
 
-      case 'set-persistent-now-playing-message': {
+      case 'set-persistent-now-playing': {
         const value = interaction.options.getBoolean('value')!;
 
         await prisma.setting.update({
