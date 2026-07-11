@@ -98,6 +98,14 @@ If you keep the same `DISCORD_TOKEN`, reuse the same `/data` volume, and point y
 
 **Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/museofficial/muse/issues/345) for details.
 
+### Local validation
+
+Run the behavior suite locally with:
+
+```bash
+npm test
+```
+
 ## ⚙️ Additional configuration (advanced)
 
 ### Cache
@@ -163,4 +171,4 @@ You can configure the bot to automatically turn down the volume when people are 
 
 - `/config set-reduce-vol-when-voice true` - Enable automatic volume reduction
 - `/config set-reduce-vol-when-voice false` - Disable automatic volume reduction
-- `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 70)
+- `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 20)
