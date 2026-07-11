@@ -79,8 +79,9 @@ export default class {
   private volume?: number;
   private defaultVolume: number = DEFAULT_VOLUME;
   private nowPlaying: QueuedSong | null = null;
+  private currentQueueEntryVersion = 0;
+  private nowPlayingQueueEntryVersion: number | null = null;
   private playPositionInterval: NodeJS.Timeout | undefined;
-  private lastSongURL = '';
 
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
@@ -88,6 +89,9 @@ export default class {
   private disconnectTimer: NodeJS.Timeout | null = null;
 
   private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
+  private volumeBeforeVoiceActivity?: number;
+  private voiceActivityVolumeTarget?: number;
+  private voiceActivitySessionGeneration = 0;
   private hasRegisteredVoiceActivityListener = false;
 
   constructor(fileCache: FileCacheProvider, guildId: string, ageRestrictedFallbackResolver?: AgeRestrictedFallbackResolver) {
@@ -150,6 +154,8 @@ export default class {
   }
 
   disconnect(): void {
+    this.voiceActivitySessionGeneration++;
+
     if (this.voiceConnection) {
       if (this.status === STATUS.PLAYING) {
         this.pause();
@@ -164,6 +170,8 @@ export default class {
       this.audioResource = null;
       this.currentChannel = undefined;
       this.channelToSpeakingUsers.clear();
+      this.volumeBeforeVoiceActivity = undefined;
+      this.voiceActivityVolumeTarget = undefined;
       this.hasRegisteredVoiceActivityListener = false;
     }
   }
@@ -229,7 +237,9 @@ export default class {
     }
 
     // Resume from paused state
-    if (this.status === STATUS.PAUSED && currentSong.url === this.nowPlaying?.url) {
+    if (this.status === STATUS.PAUSED
+      && currentSong === this.nowPlaying
+      && this.currentQueueEntryVersion === this.nowPlayingQueueEntryVersion) {
       if (this.audioPlayer) {
         this.audioPlayer.unpause();
         this.status = STATUS.PLAYING;
@@ -265,14 +275,8 @@ export default class {
 
       this.status = STATUS.PLAYING;
       this.nowPlaying = currentSong;
-
-      if (currentSong.url === this.lastSongURL) {
-        this.startTrackingPosition();
-      } else {
-        // Reset position counter
-        this.startTrackingPosition(0);
-        this.lastSongURL = currentSong.url;
-      }
+      this.nowPlayingQueueEntryVersion = this.currentQueueEntryVersion;
+      this.startTrackingPosition(0);
     } catch (error: unknown) {
       const isGone = typeof error === 'object'
         && error !== null
@@ -312,33 +316,44 @@ export default class {
   }
 
   async forward(skip: number): Promise<void> {
+    const originalQueuePosition = this.queuePosition;
+    const originalQueueEntryVersion = this.currentQueueEntryVersion;
     this.manualForward(skip);
 
     try {
-      if (this.getCurrent() && this.status !== STATUS.PAUSED) {
-        await this.play();
-      } else {
+      if (!this.getCurrent()) {
         await this.finishQueue();
+      } else if (this.status !== STATUS.PAUSED) {
+        await this.play();
       }
     } catch (error: unknown) {
-      this.queuePosition--;
+      this.queuePosition = originalQueuePosition;
+      this.currentQueueEntryVersion = originalQueueEntryVersion;
       throw error;
     }
   }
 
   registerVoiceActivityListener(guildSettings: Setting) {
     const {turnDownVolumeWhenPeopleSpeak, turnDownVolumeWhenPeopleSpeakTarget} = guildSettings;
-    if (!turnDownVolumeWhenPeopleSpeak || !this.voiceConnection) {
+    const {voiceConnection, currentChannel} = this;
+    if (!turnDownVolumeWhenPeopleSpeak || !voiceConnection || !currentChannel) {
       return;
     }
 
-    this.voiceConnection.receiver.speaking.on('start', (userId: string) => {
-      if (!this.currentChannel) {
+    const voiceActivitySessionGeneration = ++this.voiceActivitySessionGeneration;
+    const isCurrentVoiceActivitySession = () => (
+      voiceActivitySessionGeneration === this.voiceActivitySessionGeneration
+      && voiceConnection === this.voiceConnection
+      && currentChannel === this.currentChannel
+    );
+
+    voiceConnection.receiver.speaking.on('start', (userId: string) => {
+      if (!isCurrentVoiceActivitySession()) {
         return;
       }
 
-      const member = this.currentChannel.members.get(userId);
-      const channelId = this.currentChannel?.id;
+      const member = currentChannel.members.get(userId);
+      const {id: channelId} = currentChannel;
 
       if (member) {
         if (!this.channelToSpeakingUsers.has(channelId)) {
@@ -351,20 +366,12 @@ export default class {
       this.suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget);
     });
 
-    this.voiceConnection.receiver.speaking.on('end', (userId: string) => {
-      if (!this.currentChannel) {
+    voiceConnection.receiver.speaking.on('end', (userId: string) => {
+      if (!isCurrentVoiceActivitySession()) {
         return;
       }
 
-      const member = this.currentChannel.members.get(userId);
-      const channelId = this.currentChannel.id;
-      if (member) {
-        if (!this.channelToSpeakingUsers.has(channelId)) {
-          this.channelToSpeakingUsers.set(channelId, new Set());
-        }
-
-        this.channelToSpeakingUsers.get(channelId)?.delete(member.id);
-      }
+      this.channelToSpeakingUsers.get(currentChannel.id)?.delete(userId);
 
       this.suppressVoiceWhenPeopleAreSpeaking(turnDownVolumeWhenPeopleSpeakTarget);
     });
@@ -377,9 +384,17 @@ export default class {
 
     const speakingUsers = this.channelToSpeakingUsers.get(this.currentChannel.id);
     if (speakingUsers && speakingUsers.size > 0) {
-      this.setVolume(turnDownVolumeWhenPeopleSpeakTarget);
-    } else {
-      this.setVolume(this.defaultVolume);
+      if (this.volumeBeforeVoiceActivity === undefined) {
+        this.volumeBeforeVoiceActivity = this.getVolume();
+      }
+
+      this.voiceActivityVolumeTarget = turnDownVolumeWhenPeopleSpeakTarget;
+      this.setAudioPlayerVolume(turnDownVolumeWhenPeopleSpeakTarget);
+    } else if (this.volumeBeforeVoiceActivity !== undefined) {
+      const {volumeBeforeVoiceActivity} = this;
+      this.volumeBeforeVoiceActivity = undefined;
+      this.voiceActivityVolumeTarget = undefined;
+      this.setAudioPlayerVolume(volumeBeforeVoiceActivity);
     }
   }
 
@@ -390,6 +405,7 @@ export default class {
   manualForward(skip: number): void {
     if (this.canGoForward(skip)) {
       this.queuePosition += skip;
+      this.currentQueueEntryVersion++;
       this.positionInSeconds = 0;
       this.stopTrackingPosition();
     } else {
@@ -404,6 +420,7 @@ export default class {
   async back(): Promise<void> {
     if (this.canGoBack()) {
       this.queuePosition--;
+      this.currentQueueEntryVersion++;
       this.positionInSeconds = 0;
       this.stopTrackingPosition();
 
@@ -432,6 +449,8 @@ export default class {
   }
 
   add(song: QueuedSong, {immediate = false, immediateOffset = 0} = {}): void {
+    const currentSong = this.getCurrent();
+
     if (immediate) {
       // Add as the next song to be played
       const insertAt = this.queuePosition + immediateOffset + 1;
@@ -439,6 +458,10 @@ export default class {
     } else {
       // Add to end of queue
       this.queue.push(song);
+    }
+
+    if (this.getCurrent() !== currentSong) {
+      this.currentQueueEntryVersion++;
     }
   }
 
@@ -468,6 +491,7 @@ export default class {
 
   removeCurrent(): void {
     this.queue = [...this.queue.slice(0, this.queuePosition), ...this.queue.slice(this.queuePosition + 1)];
+    this.currentQueueEntryVersion++;
   }
 
   queueSize(): number {
@@ -482,6 +506,7 @@ export default class {
     this.disconnect();
     this.queuePosition = 0;
     this.queue = [];
+    this.currentQueueEntryVersion++;
   }
 
   move(from: number, to: number): QueuedSong {
@@ -497,12 +522,18 @@ export default class {
   setVolume(level: number): void {
     // Level should be a number between 0 and 100 = 0% => 100%
     this.volume = level;
-    this.setAudioPlayerVolume(level);
+
+    if (this.volumeBeforeVoiceActivity === undefined) {
+      this.setAudioPlayerVolume(level);
+    } else {
+      this.volumeBeforeVoiceActivity = level;
+      this.setAudioPlayerVolume(this.voiceActivityVolumeTarget);
+    }
   }
 
   getVolume(): number {
     // Only use default volume if player volume is not already set (in the event of a reconnect we shouldn't reset)
-    return this.volume ?? this.defaultVolume;
+    return this.voiceActivityVolumeTarget ?? this.volume ?? this.defaultVolume;
   }
 
   private getHashForCache(url: string): string {
@@ -582,6 +613,7 @@ export default class {
   private stopTrackingPosition(): void {
     if (this.playPositionInterval) {
       clearInterval(this.playPositionInterval);
+      this.playPositionInterval = undefined;
     }
   }
 
@@ -745,6 +777,7 @@ export default class {
   }
 
   private async finishQueue(): Promise<void> {
+    this.stopTrackingPosition();
     this.status = STATUS.IDLE;
     this.audioPlayer?.stop(true);
 

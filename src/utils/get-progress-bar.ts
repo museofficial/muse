@@ -1,5 +1,5 @@
 export default (width: number, progress: number): string => {
-  const dotPosition = Math.floor(width * progress);
+  const dotPosition = Math.max(0, Math.min(width - 1, Math.floor(width * progress)));
 
   let res = '';
 
