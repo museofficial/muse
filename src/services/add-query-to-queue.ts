@@ -72,12 +72,15 @@ export default class AddQueryToQueue {
       newSongs = await Promise.all(newSongs.map(this.skipNonMusicSegments.bind(this)));
     }
 
-    newSongs.forEach(song => {
+    newSongs.forEach((song, index) => {
       player.add({
         ...song,
         addedInChannelId: interaction.channel!.id,
         requestedBy: interaction.member!.user.id,
-      }, {immediate: addToFrontOfQueue ?? false});
+      }, {
+        immediate: addToFrontOfQueue ?? false,
+        immediateOffset: index,
+      });
     });
 
     const firstSong = newSongs[0];
@@ -111,9 +114,11 @@ export default class AddQueryToQueue {
       });
     }
 
-    if (skipCurrentTrack) {
+    let didSkipCurrentTrack = false;
+    if (skipCurrentTrack && wasPlayingSong) {
       try {
         await player.forward(1);
+        didSkipCurrentTrack = true;
       } catch (_: unknown) {
         throw new Error('no song to skip to');
       }
@@ -133,9 +138,9 @@ export default class AddQueryToQueue {
     }
 
     if (newSongs.length === 1) {
-      await interaction.editReply(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`);
+      await interaction.editReply(`u betcha, **${firstSong.title}** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}`);
     } else {
-      await interaction.editReply(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${skipCurrentTrack ? 'and current track skipped' : ''}${extraMsg}`);
+      await interaction.editReply(`u betcha, **${firstSong.title}** and ${newSongs.length - 1} other songs were added to the queue${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}`);
     }
   }
 
@@ -161,7 +166,7 @@ export default class AddQueryToQueue {
           const previousSegment = acc[acc.length - 1];
           // If segments overlap merge
           if (previousSegment && previousSegment.endTime > startTime) {
-            acc[acc.length - 1].endTime = endTime;
+            acc[acc.length - 1].endTime = Math.max(previousSegment.endTime, endTime);
           } else {
             acc.push({startTime, endTime});
           }
@@ -171,14 +176,18 @@ export default class AddQueryToQueue {
 
       const intro = skipSegments[0];
       const outro = skipSegments.at(-1);
-      if (outro && outro?.endTime >= song.length - 2) {
-        song.length -= outro.endTime - outro.startTime;
+      const shouldTrimIntro = intro && intro.startTime <= 2;
+      const shouldTrimOutro = outro && outro.endTime >= song.length - 2;
+      if (shouldTrimOutro && (!shouldTrimIntro || outro !== intro)) {
+        song.length -= Math.max(0, outro.endTime - outro.startTime);
       }
 
-      if (intro?.startTime <= 2) {
-        song.offset = Math.floor(intro.endTime);
+      if (shouldTrimIntro) {
+        song.offset = Math.max(0, Math.floor(intro.endTime));
         song.length -= song.offset;
       }
+
+      song.length = Math.max(0, song.length);
 
       return song;
     } catch (e) {
