@@ -22,7 +22,7 @@ import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
-import {getYouTubeMediaSource} from '../utils/yt-dlp.js';
+import {getYouTubeMediaSource, YtDlpMediaUnavailableError} from '../utils/yt-dlp.js';
 import {Setting} from '@prisma/client';
 
 export enum MediaSource {
@@ -270,15 +270,16 @@ export default class {
         this.lastSongURL = currentSong.url;
       }
     } catch (error: unknown) {
-      await this.forward(1);
+      const isGone = typeof error === 'object'
+        && error !== null
+        && 'statusCode' in error
+        && error.statusCode === 410;
 
-      if ((error as {statusCode: number}).statusCode === 410 && currentSong) {
-        const channelId = currentSong.addedInChannelId;
-
-        if (channelId) {
-          debug(`${currentSong.title} is unavailable`);
-          return;
-        }
+      if (error instanceof YtDlpMediaUnavailableError || isGone) {
+        const detail = error instanceof Error ? error.message : 'media returned HTTP 410';
+        console.warn(`Skipping unplayable YouTube track for guild ${this.guildId}: ${detail}`);
+        await this.advancePastUnplayableTrack();
+        return;
       }
 
       throw error;
@@ -582,8 +583,12 @@ export default class {
       return;
     }
 
-    if (this.audioPlayer.listeners('stateChange').length === 0) {
-      this.audioPlayer.on(AudioPlayerStatus.Idle, this.onAudioPlayerIdle.bind(this));
+    if (this.audioPlayer.listeners(AudioPlayerStatus.Idle).length === 0) {
+      this.audioPlayer.on(AudioPlayerStatus.Idle, (oldState, newState) => {
+        void this.onAudioPlayerIdle(oldState, newState).catch(error => {
+          console.error(`Audio player idle handler failed for guild ${this.guildId}:`, error);
+        });
+      });
     }
   }
 
@@ -631,6 +636,17 @@ export default class {
 
   private async waitForVoiceConnectionReady(voiceConnection: VoiceConnection): Promise<void> {
     await entersState(voiceConnection, VoiceConnectionStatus.Ready, 60_000);
+  }
+
+  private async advancePastUnplayableTrack(): Promise<void> {
+    this.manualForward(1);
+
+    if (!this.getCurrent()) {
+      await this.finishQueue();
+      return;
+    }
+
+    await this.play();
   }
 
   private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {

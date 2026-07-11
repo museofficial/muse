@@ -36,6 +36,9 @@ export default class implements Command {
 
     await player.connect(targetVoiceChannel);
     await player.play();
+    if (!player.getCurrent()) {
+      throw new Error('no playable songs found');
+    }
 
     await interaction.reply({
       content: 'the stop-and-go light is now green',

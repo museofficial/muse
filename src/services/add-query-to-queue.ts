@@ -83,6 +83,7 @@ export default class AddQueryToQueue {
     const firstSong = newSongs[0];
 
     let statusMsg = '';
+    let shouldShowPlayingEmbed = false;
 
     if (player.voiceConnection === null) {
       await player.connect(targetVoiceChannel);
@@ -94,12 +95,20 @@ export default class AddQueryToQueue {
         statusMsg = 'resuming playback';
       }
 
-      await interaction.editReply({
-        embeds: [buildPlayingMessageEmbed(player)],
-      });
+      shouldShowPlayingEmbed = true;
     } else if (player.status === STATUS.IDLE) {
       // Player is idle, start playback instead
       await player.play();
+    }
+
+    if (!player.getCurrent()) {
+      throw new Error('no playable songs found');
+    }
+
+    if (shouldShowPlayingEmbed) {
+      await interaction.editReply({
+        embeds: [buildPlayingMessageEmbed(player)],
+      });
     }
 
     if (skipCurrentTrack) {

@@ -71,11 +71,14 @@ services:
     restart: always
     volumes:
       - ./muse:/data
+      # Optional: mount YouTube-only cookies for age-restricted videos.
+      # - ./youtube-cookies.txt:/run/secrets/youtube-cookies.txt:ro
     environment:
       - DISCORD_TOKEN=
       - YOUTUBE_API_KEY=
       - SPOTIFY_CLIENT_ID=
       - SPOTIFY_CLIENT_SECRET=
+      # - YT_DLP_COOKIES_PATH=/run/secrets/youtube-cookies.txt
 ```
 
 If you keep the same `DISCORD_TOKEN`, reuse the same `/data` volume, and point your Compose service at a newer image tag, Muse will come back up with the same bot identity and persisted database/cache.
@@ -106,6 +109,10 @@ By default, Muse limits the total cache size to around 2 GB. If you want to chan
 Muse now uses `yt-dlp` to resolve playable YouTube media URLs. In Docker, the image already includes it. For direct Node.js installs, either put `yt-dlp` on your `PATH` or set `YT_DLP_PATH` in your environment file.
 
 Muse logs `YT_DLP_VERSION` on startup. Set `YT_DLP_AUTO_UPDATE=true` to make Muse try to update the configured `yt-dlp` installation before connecting to Discord. This works best with the Docker image's bundled virtualenv, or when `YT_DLP_PATH` points at a virtualenv or standalone `yt-dlp` executable that Muse can update.
+
+Age-restricted videos require cookies from an age-verified YouTube account. Export a YouTube-only Netscape cookie file using the [official yt-dlp guidance](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies), mount it outside `/data`, and set `YT_DLP_COOKIES_PATH` to its container path. Treat this file like a password. Muse copies it to a private per-extraction temporary file because yt-dlp updates the cookie jar while it runs, so the mounted source may remain read-only and concurrent guilds do not share a writable cookie file.
+
+Current YouTube extraction also requires a supported JavaScript runtime. The Docker image includes the matching `yt-dlp-ejs` package and uses its bundled Node.js runtime. Direct installs should install `yt-dlp[default]` and provide Node.js 22 or newer.
 
 The `ghcr.io/museofficial/muse:yt-dlp-latest` image is rebuilt on a schedule from the latest Muse release with the newest `yt-dlp` published to PyPI. Versioned refresh tags are also published as `:<muse-version>-yt-dlp-<yt-dlp-version>`.
 

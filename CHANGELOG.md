@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add optional age-verified YouTube cookie-file support for age-restricted playback.
+- Prevent unavailable YouTube tracks and rejected automatic queue advances from restarting Muse.
+- Install current yt-dlp JavaScript challenge support and use the bundled Node.js runtime.
+
 ## [2.11.5] - 2026-06-04
 
 - Fix queue-empty crashes when auto-announce is enabled or playback ends without a next song.
