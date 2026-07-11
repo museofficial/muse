@@ -75,6 +75,10 @@ export default class Config {
           throw new Error(`Invalid numeric value for ${key}`);
         }
 
+        if (key === 'CACHE_LIMIT_IN_BYTES' && value < 0) {
+          throw new Error('Invalid numeric value for CACHE_LIMIT_IN_BYTES: value must be non-negative');
+        }
+
         this[key as ConditionalKeys<typeof CONFIG_MAP, number>] = value;
       } else if (typeof value === 'string') {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
