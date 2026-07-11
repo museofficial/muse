@@ -37,16 +37,33 @@ export interface YtDlpUpdateResult {
   readonly error?: string;
 }
 
-export class YtDlpMediaUnavailableError extends Error {}
+export type YtDlpMediaUnavailableReason = 'age-restricted' | 'unavailable';
 
-const isMediaUnavailableError = (detail: string) => [
-  /sign in to confirm your age/i,
-  /this video is not available/i,
-  /video unavailable/i,
-  /private video/i,
-  /video has been removed/i,
-  /members-only content/i,
-].some(pattern => pattern.test(detail));
+export class YtDlpMediaUnavailableError extends Error {
+  readonly reason: YtDlpMediaUnavailableReason;
+
+  constructor(message: string, reason: YtDlpMediaUnavailableReason = 'unavailable') {
+    super(message);
+    this.name = 'YtDlpMediaUnavailableError';
+    this.reason = reason;
+  }
+}
+
+const getMediaUnavailableReason = (detail: string): YtDlpMediaUnavailableReason | null => {
+  if (/sign in to confirm your age/i.test(detail)) {
+    return 'age-restricted';
+  }
+
+  return [
+    /this video is not available/i,
+    /video unavailable/i,
+    /private video/i,
+    /video has been removed/i,
+    /members-only content/i,
+  ].some(pattern => pattern.test(detail))
+    ? 'unavailable'
+    : null;
+};
 
 const firstNonEmpty = (...values: Array<string | undefined>) => values
   .map(value => value?.trim())
@@ -322,8 +339,9 @@ export const getYouTubeMediaSource = async (videoIdOrUrl: string): Promise<YtDlp
       const detail = error.stderr?.trim() ?? error.shortMessage ?? 'Unknown yt-dlp error';
       const extractionError = `yt-dlp failed to extract media: ${detail}`;
 
-      if (isMediaUnavailableError(detail)) {
-        throw new YtDlpMediaUnavailableError(extractionError);
+      const unavailableReason = getMediaUnavailableReason(detail);
+      if (unavailableReason) {
+        throw new YtDlpMediaUnavailableError(extractionError, unavailableReason);
       }
 
       throw new Error(extractionError);

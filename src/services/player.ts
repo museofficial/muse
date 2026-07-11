@@ -51,6 +51,8 @@ export interface QueuedSong extends SongMetadata {
   requestedBy: string;
 }
 
+export type AgeRestrictedFallbackResolver = (song: QueuedSong) => Promise<SongMetadata | null>;
+
 export enum STATUS {
   PLAYING,
   PAUSED,
@@ -82,14 +84,16 @@ export default class {
 
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
+  private readonly ageRestrictedFallbackResolver?: AgeRestrictedFallbackResolver;
   private disconnectTimer: NodeJS.Timeout | null = null;
 
   private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
   private hasRegisteredVoiceActivityListener = false;
 
-  constructor(fileCache: FileCacheProvider, guildId: string) {
+  constructor(fileCache: FileCacheProvider, guildId: string, ageRestrictedFallbackResolver?: AgeRestrictedFallbackResolver) {
     this.fileCache = fileCache;
     this.guildId = guildId;
+    this.ageRestrictedFallbackResolver = ageRestrictedFallbackResolver;
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
@@ -209,7 +213,7 @@ export default class {
     return this.positionInSeconds;
   }
 
-  async play(): Promise<void> {
+  async play(allowAgeRestrictedFallback = true): Promise<void> {
     const voiceConnection = await this.ensureVoiceConnectionReady();
 
     const currentSong = this.getCurrent();
@@ -274,6 +278,13 @@ export default class {
         && error !== null
         && 'statusCode' in error
         && error.statusCode === 410;
+
+      if (error instanceof YtDlpMediaUnavailableError
+        && error.reason === 'age-restricted'
+        && allowAgeRestrictedFallback
+        && await this.tryAgeRestrictedAudioFallback(currentSong)) {
+        return;
+      }
 
       if (error instanceof YtDlpMediaUnavailableError || isGone) {
         const detail = error instanceof Error ? error.message : 'media returned HTTP 410';
@@ -647,6 +658,49 @@ export default class {
     }
 
     await this.play();
+  }
+
+  private async tryAgeRestrictedAudioFallback(song: QueuedSong): Promise<boolean> {
+    if (!this.ageRestrictedFallbackResolver || song.source !== MediaSource.Youtube) {
+      return false;
+    }
+
+    let fallback: SongMetadata | null;
+    try {
+      fallback = await this.ageRestrictedFallbackResolver(song);
+    } catch {
+      console.warn(`Audio fallback search failed for age-restricted track in guild ${this.guildId}.`);
+      return false;
+    }
+
+    if (this.getCurrent() !== song) {
+      return true;
+    }
+
+    if (!fallback || fallback.source !== MediaSource.Youtube || fallback.url === song.url) {
+      return false;
+    }
+
+    const {queuePosition} = this;
+    const replacement: QueuedSong = {
+      ...fallback,
+      playlist: song.playlist,
+      addedInChannelId: song.addedInChannelId,
+      requestedBy: song.requestedBy,
+    };
+    this.queue[queuePosition] = replacement;
+    console.warn(`Trying audio fallback for age-restricted YouTube track in guild ${this.guildId}: ${song.url} -> ${replacement.url}`);
+
+    try {
+      await this.play(false);
+      return true;
+    } catch (error: unknown) {
+      if (this.queue[queuePosition] === replacement) {
+        this.queue[queuePosition] = song;
+      }
+
+      throw error;
+    }
   }
 
   private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
