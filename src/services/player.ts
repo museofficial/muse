@@ -113,6 +113,10 @@ export default class {
     this.currentChannel = channel;
     this.hasRegisteredVoiceActivityListener = false;
 
+    voiceConnection.on('error', error => {
+      console.error(`Voice connection error for guild ${this.guildId}:`, error);
+    });
+
     const guildSettings = await getGuildSettings(this.guildId);
     const stateTransitions = [voiceConnection.state.status];
     voiceConnection.on('stateChange', (oldState, newState) => {
