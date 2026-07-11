@@ -20,76 +20,76 @@ export default class {
   async getSongs(query: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], string]> {
     const newSongs: SongMetadata[] = [];
     let extraMsg = '';
+    let url: URL;
 
     // Test if it's a complete URL
     try {
-      const url = new URL(query);
-
-      const YOUTUBE_HOSTS = [
-        'www.youtube.com',
-        'youtu.be',
-        'youtube.com',
-        'music.youtube.com',
-        'www.music.youtube.com',
-      ];
-
-      if (YOUTUBE_HOSTS.includes(url.host)) {
-        // YouTube source
-        if (url.searchParams.get('list')) {
-          // YouTube playlist
-          newSongs.push(...await this.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters));
-        } else {
-          const songs = await this.youtubeVideo(url.href, shouldSplitChapters);
-
-          if (songs) {
-            newSongs.push(...songs);
-          } else {
-            throw new Error('that doesn\'t exist');
-          }
-        }
-      } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        if (this.spotifyAPI === undefined) {
-          throw new Error('Spotify is not enabled!');
-        }
-
-        const [convertedSongs, nSongsNotFound, totalSongs] = await this.spotifySource(query, playlistLimit, shouldSplitChapters);
-
-        if (totalSongs > playlistLimit) {
-          extraMsg = `a random sample of ${playlistLimit} songs was taken`;
-        }
-
-        if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
-          extraMsg += ' and ';
-        }
-
-        if (nSongsNotFound !== 0) {
-          if (nSongsNotFound === 1) {
-            extraMsg += '1 song was not found';
-          } else {
-            extraMsg += `${nSongsNotFound.toString()} songs were not found`;
-          }
-        }
-
-        newSongs.push(...convertedSongs);
-      } else {
-        const song = await this.httpLiveStream(query);
-
-        if (song) {
-          newSongs.push(song);
-        } else {
-          throw new Error('that doesn\'t exist');
-        }
-      }
-    } catch (err: any) {
-      if (err instanceof Error && err.message === 'Spotify is not enabled!') {
-        throw err;
-      }
-
+      url = new URL(query);
+    } catch (_: unknown) {
       // Not a URL, must search YouTube
       const songs = await this.youtubeVideoSearch(query, shouldSplitChapters);
 
       if (songs) {
         newSongs.push(...songs);
+      } else {
+        throw new Error('that doesn\'t exist');
+      }
+
+      return [newSongs, extraMsg];
+    }
+
+    const YOUTUBE_HOSTS = [
+      'www.youtube.com',
+      'youtu.be',
+      'youtube.com',
+      'music.youtube.com',
+      'www.music.youtube.com',
+    ];
+
+    if (YOUTUBE_HOSTS.includes(url.host)) {
+      // YouTube source
+      if (url.searchParams.get('list')) {
+        // YouTube playlist
+        const songs = await this.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters);
+        newSongs.push(...songs.slice(0, playlistLimit));
+      } else {
+        const songs = await this.youtubeVideo(url.href, shouldSplitChapters);
+
+        if (songs) {
+          newSongs.push(...songs);
+        } else {
+          throw new Error('that doesn\'t exist');
+        }
+      }
+    } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
+      if (this.spotifyAPI === undefined) {
+        throw new Error('Spotify is not enabled!');
+      }
+
+      const [convertedSongs, nSongsNotFound, totalSongs] = await this.spotifySource(query, playlistLimit, shouldSplitChapters);
+
+      if (totalSongs > playlistLimit) {
+        extraMsg = `a random sample of ${playlistLimit} songs was taken`;
+      }
+
+      if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
+        extraMsg += ' and ';
+      }
+
+      if (nSongsNotFound !== 0) {
+        if (nSongsNotFound === 1) {
+          extraMsg += '1 song was not found';
+        } else {
+          extraMsg += `${nSongsNotFound.toString()} songs were not found`;
+        }
+      }
+
+      newSongs.push(...convertedSongs);
+    } else {
+      const song = await this.httpLiveStream(query);
+
+      if (song) {
+        newSongs.push(song);
       } else {
         throw new Error('that doesn\'t exist');
       }
@@ -148,7 +148,8 @@ export default class {
     return new Promise((resolve, reject) => {
       ffmpeg(url).ffprobe((err, _) => {
         if (err) {
-          reject();
+          reject(err);
+          return;
         }
 
         resolve({
@@ -175,6 +176,10 @@ export default class {
     // Count songs that couldn't be found
     const songs: SongMetadata[] = searchResults.reduce((accum: SongMetadata[], result) => {
       if (result.status === 'fulfilled') {
+        if (result.value.length === 0) {
+          nSongsNotFound++;
+        }
+
         for (const v of result.value) {
           accum.push({
             ...v,
