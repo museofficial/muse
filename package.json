@@ -18,7 +18,8 @@
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "typecheck": "tsc --noEmit",
-    "test": "npm run lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "start": "npm run env:set-database-url -- tsx src/scripts/migrate-and-start.ts",
     "cache:clear-key-value": "npm run env:set-database-url tsx src/scripts/cache-clear-key-value.ts",
     "dev": "npm run env:set-database-url -- tsx watch src/scripts/start.ts",
@@ -53,7 +54,8 @@
     "prisma": "5.21.1",
     "release-it": "^14.11.8",
     "type-fest": "^2.12.0",
-    "typescript": "^4.6.4"
+    "typescript": "^4.6.4",
+    "vitest": "4.1.10"
   },
   "eslintConfig": {
     "extends": [
@@ -81,7 +83,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm test"
+      "pre-commit": "npm run lint && npm test"
     }
   },
   "dependencies": {

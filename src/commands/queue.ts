@@ -15,6 +15,7 @@ export default class implements Command {
     .addIntegerOption(option => option
       .setName('page')
       .setDescription('page of queue to show [default: 1]')
+      .setMinValue(1)
       .setRequired(false))
     .addIntegerOption(option => option
       .setName('page-size')

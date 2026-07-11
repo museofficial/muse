@@ -27,7 +27,7 @@ export default class implements Command {
       throw new Error('no songs to loop!');
     }
 
-    if (player.queueSize() < 2) {
+    if (player.queueSize() < 1) {
       throw new Error('not enough songs to loop a queue!');
     }
 
