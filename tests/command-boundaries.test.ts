@@ -293,6 +293,27 @@ describe('seek parsing', () => {
     expect(editReply).toHaveBeenCalledWith('👍 seeked to 00:00');
   });
 
+  it.each([
+    ['+1', 1],
+    ['+0:01', 1],
+  ])('keeps explicit-positive /seek value %s valid', async (value, expectedPosition) => {
+    let position = -1;
+    const player = {
+      getCurrent: () => ({length: 300, isLive: false}),
+      seek: vi.fn(async (nextPosition: number) => {
+        position = nextPosition;
+      }),
+      getPosition: () => position,
+    };
+    const {interaction, deferReply, editReply} = makeInteraction({strings: {time: value}});
+
+    await new Seek(managerFor(player) as never).execute(interaction);
+
+    expect(player.seek).toHaveBeenCalledWith(expectedPosition);
+    expect(deferReply).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledWith('👍 seeked to 00:01');
+  });
+
   it.each(['0', '-1', 'not-a-time', '1s trailing', '1e999s'])(
     '/fseek rejects non-positive or invalid value %s without side effects',
     async value => {
@@ -326,6 +347,24 @@ describe('seek parsing', () => {
     expect(player.forwardSeek).toHaveBeenCalledWith(15);
     expect(deferReply).toHaveBeenCalledOnce();
     expect(editReply).toHaveBeenCalledWith('👍 seeked to 00:25');
+  });
+
+  it('keeps explicit-positive /fseek +1s valid', async () => {
+    let position = 10;
+    const player = {
+      getCurrent: () => ({length: 300, isLive: false}),
+      getPosition: () => position,
+      forwardSeek: vi.fn(async (value: number) => {
+        position += value;
+      }),
+    };
+    const {interaction, deferReply, editReply} = makeInteraction({strings: {time: '+1s'}});
+
+    await new ForwardSeek(managerFor(player) as never).execute(interaction);
+
+    expect(player.forwardSeek).toHaveBeenCalledWith(1);
+    expect(deferReply).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledWith('👍 seeked to 00:11');
   });
 });
 
