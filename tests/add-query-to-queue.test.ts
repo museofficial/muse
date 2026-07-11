@@ -53,19 +53,49 @@ const makeInteraction = () => ({
   editReply: vi.fn().mockResolvedValue(undefined),
 });
 
+const makePausedPlayer = (...songs: QueuedSong[]) => {
+  const player = new Player({} as never, GUILD_ID);
+  songs.forEach(song => player.add(song));
+  player.voiceConnection = {} as never;
+  player.status = STATUS.PAUSED;
+  return player;
+};
+
+const makePromiseBarrier = () => {
+  let markEntered!: () => void;
+  let release!: () => void;
+  const entered = new Promise<void>(resolve => {
+    markEntered = resolve;
+  });
+  const blocked = new Promise<void>(resolve => {
+    release = resolve;
+  });
+
+  return {
+    entered,
+    release,
+    wait: async () => {
+      markEntered();
+      await blocked;
+    },
+  };
+};
+
 const makeService = ({
   player,
   songs = [makeSong('New song')],
   extraMessage = '',
   cacheWrap,
+  getSongs,
 }: {
   player: object;
   songs?: SongMetadata[];
   extraMessage?: string;
   cacheWrap?: (fetchValue: () => Promise<unknown>) => Promise<unknown>;
+  getSongs?: ReturnType<typeof vi.fn>;
 }) => {
-  const getSongs = {
-    getSongs: vi.fn().mockResolvedValue([songs, extraMessage]),
+  const songProvider = {
+    getSongs: getSongs ?? vi.fn().mockResolvedValue([songs, extraMessage]),
   };
   const playerManager = {
     get: vi.fn(() => player),
@@ -80,7 +110,7 @@ const makeService = ({
 
   return {
     cache,
-    service: new AddQueryToQueue(getSongs as never, playerManager as never, config as never, cache as never),
+    service: new AddQueryToQueue(songProvider as never, playerManager as never, config as never, cache as never),
   };
 };
 
@@ -118,6 +148,7 @@ beforeEach(() => {
   dependencyMocks.getGuildSettings.mockResolvedValue({
     playlistLimit: 50,
     queueAddResponseEphemeral: false,
+    secondsToWaitAfterQueueEmpties: 0,
   });
   dependencyMocks.getMemberVoiceChannel.mockReturnValue([{id: 'voice-channel-id'}]);
   dependencyMocks.getMostPopularVoiceChannel.mockReturnValue([{id: 'fallback-voice-channel-id'}]);
@@ -130,6 +161,7 @@ describe('AddQueryToQueue skip semantics', () => {
       voiceConnection: null as object | null,
       status: STATUS.IDLE,
       getCurrent: vi.fn(() => queue[0] ?? null),
+      getCurrentQueueEntryId: vi.fn(() => queue.length === 0 ? null : 1),
       add: vi.fn((song: QueuedSong) => queue.push(song)),
       connect: vi.fn(async () => {
         player.voiceConnection = {};
@@ -142,30 +174,104 @@ describe('AddQueryToQueue skip semantics', () => {
 
     await addToQueue(service, interaction, {skip: true});
 
-    expect(queue.map(song => song.title)).toEqual(['New song']);
     expect(player.getCurrent()?.title).toBe('New song');
+    expect(player.connect).toHaveBeenCalledOnce();
+    expect(player.play).toHaveBeenCalledOnce();
     expect(player.forward).not.toHaveBeenCalled();
     expect(interaction.editReply).toHaveBeenLastCalledWith('u betcha, **New song** added to the queue');
   });
 
   it('skips a pre-existing current track and reports the skip with correct spacing', async () => {
-    const queue = [makeQueuedSong('Existing song')];
-    const player = {
-      voiceConnection: {},
-      status: STATUS.PLAYING,
-      getCurrent: vi.fn(() => queue[0] ?? null),
-      add: vi.fn((song: QueuedSong) => queue.push(song)),
-      connect: vi.fn().mockResolvedValue(undefined),
-      play: vi.fn().mockResolvedValue(undefined),
-      forward: vi.fn().mockResolvedValue(undefined),
-    };
+    const player = makePausedPlayer(makeQueuedSong('Existing song'));
+    const forward = vi.spyOn(player, 'forward');
     const {service} = makeService({player});
     const interaction = makeInteraction();
 
     await addToQueue(service, interaction, {skip: true});
 
-    expect(player.forward).toHaveBeenCalledWith(1);
+    expect(forward).toHaveBeenCalledWith(1);
+    expect(player.getCurrent()?.title).toBe('New song');
     expect(interaction.editReply).toHaveBeenLastCalledWith('u betcha, **New song** added to the queue and current track skipped');
+  });
+
+  it('does not skip after the captured current entry advances while song lookup is blocked', async () => {
+    const player = makePausedPlayer(
+      makeQueuedSong('Captured current'),
+      makeQueuedSong('Already upcoming'),
+    );
+    const forward = vi.spyOn(player, 'forward');
+    const barrier = makePromiseBarrier();
+    const getSongs = vi.fn(async () => {
+      await barrier.wait();
+      return [[makeSong('New song')], ''];
+    });
+    const {service} = makeService({player, getSongs});
+    const interaction = makeInteraction();
+
+    const request = addToQueue(service, interaction, {skip: true});
+    await barrier.entered;
+    player.manualForward(1);
+    expect(player.getCurrent()?.title).toBe('Already upcoming');
+
+    barrier.release();
+    await request;
+
+    expect(player.getCurrent()?.title).toBe('Already upcoming');
+    expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
+    expect(forward).not.toHaveBeenCalled();
+    expect(interaction.editReply).toHaveBeenLastCalledWith('u betcha, **New song** added to the queue');
+  });
+
+  it('does not skip the new current song after the captured entry disappears during song lookup', async () => {
+    const player = makePausedPlayer(makeQueuedSong('Captured current'));
+    const forward = vi.spyOn(player, 'forward');
+    const barrier = makePromiseBarrier();
+    const getSongs = vi.fn(async () => {
+      await barrier.wait();
+      return [[makeSong('New song')], ''];
+    });
+    const {service} = makeService({player, getSongs});
+    const interaction = makeInteraction();
+
+    const request = addToQueue(service, interaction, {skip: true});
+    await barrier.entered;
+    player.removeCurrent();
+    expect(player.getCurrent()).toBeNull();
+
+    barrier.release();
+    await request;
+
+    expect(player.getCurrent()?.title).toBe('New song');
+    expect(player.getQueue()).toEqual([]);
+    expect(forward).not.toHaveBeenCalled();
+    expect(interaction.editReply).toHaveBeenLastCalledWith('u betcha, **New song** added to the queue');
+  });
+
+  it('does not treat a looped reuse of the same song object as the captured queue entry', async () => {
+    const repeatedSong = makeQueuedSong('Repeated song');
+    const player = makePausedPlayer(repeatedSong);
+    const forward = vi.spyOn(player, 'forward');
+    const barrier = makePromiseBarrier();
+    const getSongs = vi.fn(async () => {
+      await barrier.wait();
+      return [[makeSong('New song')], ''];
+    });
+    const {service} = makeService({player, getSongs});
+    const interaction = makeInteraction();
+
+    const request = addToQueue(service, interaction, {skip: true});
+    await barrier.entered;
+    player.add(repeatedSong);
+    player.manualForward(1);
+    expect(player.getCurrent()).toBe(repeatedSong);
+
+    barrier.release();
+    await request;
+
+    expect(player.getCurrent()).toBe(repeatedSong);
+    expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
+    expect(forward).not.toHaveBeenCalled();
+    expect(interaction.editReply).toHaveBeenLastCalledWith('u betcha, **New song** added to the queue');
   });
 });
 

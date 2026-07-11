@@ -44,7 +44,7 @@ export default class implements Command {
     let seekTime = 0;
 
     if (time.includes(':')) {
-      if (!/^[+-]?\d+(?::\d+)+$/.test(time)) {
+      if (!/^\+?\d+(?::\d+)+$/.test(time)) {
         throw new Error('invalid seek value');
       }
 

@@ -13,6 +13,10 @@ import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
 
+const isSameQueueEntry = (capturedId: number | null, currentId: number | null) => (
+  capturedId !== null && capturedId === currentId
+);
+
 @injectable()
 export default class AddQueryToQueue {
   private readonly sponsorBlock?: SponsorBlock;
@@ -48,7 +52,8 @@ export default class AddQueryToQueue {
   }): Promise<void> {
     const guildId = interaction.guild!.id;
     const player = this.playerManager.get(guildId);
-    const wasPlayingSong = player.getCurrent() !== null;
+    const currentQueueEntryId = player.getCurrentQueueEntryId();
+    const wasPlayingSong = currentQueueEntryId !== null;
 
     const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
 
@@ -115,7 +120,7 @@ export default class AddQueryToQueue {
     }
 
     let didSkipCurrentTrack = false;
-    if (skipCurrentTrack && wasPlayingSong) {
+    if (skipCurrentTrack && isSameQueueEntry(currentQueueEntryId, player.getCurrentQueueEntryId())) {
       try {
         await player.forward(1);
         didSkipCurrentTrack = true;

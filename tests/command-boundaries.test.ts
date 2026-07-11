@@ -258,7 +258,7 @@ describe('seek parsing', () => {
     expect(durationStringToSeconds('27,681 ns')).toBeCloseTo(0.000027681);
   });
 
-  it.each(['-1', 'not-a-time', '1:bad', '1s trailing', '1e999s'])(
+  it.each(['-1', '-0:01', '-00:30', 'not-a-time', '1:bad', '1s trailing', '1e999s'])(
     '/seek rejects invalid absolute value %s without side effects',
     async value => {
       const player = {
@@ -294,9 +294,10 @@ describe('seek parsing', () => {
   });
 
   it.each([
-    ['+1', 1],
-    ['+0:01', 1],
-  ])('keeps explicit-positive /seek value %s valid', async (value, expectedPosition) => {
+    ['+1', 1, '00:01'],
+    ['0:00', 0, '00:00'],
+    ['+0:01', 1, '00:01'],
+  ])('keeps supported signed or zero /seek value %s valid', async (value, expectedPosition, expectedTime) => {
     let position = -1;
     const player = {
       getCurrent: () => ({length: 300, isLive: false}),
@@ -311,7 +312,7 @@ describe('seek parsing', () => {
 
     expect(player.seek).toHaveBeenCalledWith(expectedPosition);
     expect(deferReply).toHaveBeenCalledOnce();
-    expect(editReply).toHaveBeenCalledWith('👍 seeked to 00:01');
+    expect(editReply).toHaveBeenCalledWith(`👍 seeked to ${expectedTime}`);
   });
 
   it.each(['0', '-1', 'not-a-time', '1s trailing', '1e999s'])(

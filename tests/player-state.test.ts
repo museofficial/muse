@@ -192,6 +192,21 @@ describe('Player forward state transitions', () => {
 });
 
 describe('Player same-URL entry identity', () => {
+  it('exposes a distinct identity when a loop reuses the same song object as a new queue entry', () => {
+    const player = new Player({} as never, GUILD_ID);
+    const repeatedSong = makeSong('Looped entry');
+    player.add(repeatedSong);
+    const originalEntryIdentity = player.getCurrentQueueEntryId();
+
+    player.add(repeatedSong);
+    player.manualForward(1);
+
+    expect(player.getCurrent()).toBe(repeatedSong);
+    expect(originalEntryIdentity).not.toBeNull();
+    expect(typeof originalEntryIdentity).toBe('number');
+    expect(player.getCurrentQueueEntryId()).not.toBe(originalEntryIdentity);
+  });
+
   it.each([
     ['duplicate', makeSong('Duplicate', {url: 'shared-video'})],
     ['split chapter', makeSong('Chapter two', {url: 'shared-video', offset: 30, length: 40})],

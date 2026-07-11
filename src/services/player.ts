@@ -440,6 +440,10 @@ export default class {
     return null;
   }
 
+  getCurrentQueueEntryId(): number | null {
+    return this.getCurrent() === null ? null : this.currentQueueEntryVersion;
+  }
+
   /**
    * Returns queue, not including the current song.
    * @returns {QueuedSong[]}
