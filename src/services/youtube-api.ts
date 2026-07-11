@@ -169,10 +169,15 @@ export default class {
     const playlistVideos: PlaylistItem[] = [];
     const videoDetailsPromises: Array<Promise<void>> = [];
     const videoDetails: VideoDetailsResponse[] = [];
+    const requestedPageTokens = new Set<string>();
 
     let nextToken: string | undefined;
 
-    while (playlistVideos.length < playlist.contentDetails.itemCount) {
+    do {
+      if (nextToken) {
+        requestedPageTokens.add(nextToken);
+      }
+
       const playlistItemsParams = {
         searchParams: {
           part: 'id, contentDetails',
@@ -196,11 +201,13 @@ export default class {
 
       // Start fetching extra details about videos
       // PlaylistItem misses some details, eg. if the video is a livestream
-      videoDetailsPromises.push((async () => {
-        const videoDetailItems = await this.getVideosByID(items.map(item => item.contentDetails.videoId));
-        videoDetails.push(...videoDetailItems);
-      })());
-    }
+      if (items.length > 0) {
+        videoDetailsPromises.push((async () => {
+          const videoDetailItems = await this.getVideosByID(items.map(item => item.contentDetails.videoId));
+          videoDetails.push(...videoDetailItems);
+        })());
+      }
+    } while (nextToken && !requestedPageTokens.has(nextToken));
 
     await Promise.all(videoDetailsPromises);
 
@@ -270,7 +277,7 @@ export default class {
   }
 
   private parseChaptersFromDescription(description: string, videoDurationSeconds: number) {
-    const map = new Map<string, {offset: number; length: number}>();
+    const chapters: Array<[string, {offset: number; length: number}]> = [];
     let foundFirstTimestamp = false;
 
     const foundTimestamps: Array<{name: string; offset: number}> = [];
@@ -281,10 +288,10 @@ export default class {
       }
 
       if (!foundFirstTimestamp) {
-        if (/0{1,2}:00/.test(timestamps[0][0])) {
+        if (timestamps[0][0] === '0:00' || timestamps[0][0] === '00:00') {
           foundFirstTimestamp = true;
         } else {
-          continue;
+          return null;
         }
       }
 
@@ -295,20 +302,26 @@ export default class {
       foundTimestamps.push({name: chapterName, offset: seconds});
     }
 
+    const hasInvalidChapter = foundTimestamps.some(({name, offset}, index) => (
+      !name
+      || offset >= videoDurationSeconds
+      || (index > 0 && offset <= foundTimestamps[index - 1].offset)
+    ));
+
+    if (foundTimestamps.length === 0 || hasInvalidChapter) {
+      return null;
+    }
+
     for (const [i, {name, offset}] of foundTimestamps.entries()) {
-      map.set(name, {
+      chapters.push([name, {
         offset,
         length: i === foundTimestamps.length - 1
           ? videoDurationSeconds - offset
           : foundTimestamps[i + 1].offset - offset,
-      });
+      }]);
     }
 
-    if (!map.size) {
-      return null;
-    }
-
-    return map;
+    return chapters;
   }
 
   private async searchVideoIDs(query: string, options: {videoCategoryId?: string} = {}): Promise<string[]> {
