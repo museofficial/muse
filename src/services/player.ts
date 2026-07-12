@@ -81,6 +81,7 @@ export default class {
   private nowPlaying: QueuedSong | null = null;
   private currentQueueEntryVersion = 0;
   private nowPlayingQueueEntryVersion: number | null = null;
+  private playbackAttemptVersion = 0;
   private playPositionInterval: NodeJS.Timeout | undefined;
 
   private positionInSeconds = 0;
@@ -154,6 +155,7 @@ export default class {
   }
 
   disconnect(): void {
+    this.invalidatePlaybackAttempts();
     this.voiceActivitySessionGeneration++;
 
     if (this.voiceConnection) {
@@ -177,40 +179,8 @@ export default class {
   }
 
   async seek(positionSeconds: number): Promise<void> {
-    this.status = STATUS.PAUSED;
-
-    const voiceConnection = await this.ensureVoiceConnectionReady();
-
-    const currentSong = this.getCurrent();
-
-    if (!currentSong) {
-      throw new Error('No song currently playing');
-    }
-
-    if (positionSeconds > currentSong.length) {
-      throw new Error('Seek position is outside the range of the song.');
-    }
-
-    let realPositionSeconds = positionSeconds;
-    let to: number | undefined;
-    if (currentSong.offset !== undefined) {
-      realPositionSeconds += currentSong.offset;
-      to = currentSong.length + currentSong.offset;
-    }
-
-    const stream = await this.getStream(currentSong, {seek: realPositionSeconds, to});
-    this.audioPlayer = createAudioPlayer({
-      behaviors: {
-        // Needs to be somewhat high for livestreams
-        maxMissedFrames: 50,
-      },
-    });
-    voiceConnection.subscribe(this.audioPlayer);
-    this.playAudioPlayerResource(this.createAudioStream(stream));
-    this.attachListeners();
-    this.startTrackingPosition(positionSeconds);
-
-    this.status = STATUS.PLAYING;
+    const playbackAttemptVersion = this.beginPlaybackAttempt();
+    await this.seekWithAttempt(positionSeconds, playbackAttemptVersion);
   }
 
   async forwardSeek(positionSeconds: number): Promise<void> {
@@ -222,83 +192,8 @@ export default class {
   }
 
   async play(allowAgeRestrictedFallback = true): Promise<void> {
-    const voiceConnection = await this.ensureVoiceConnectionReady();
-
-    const currentSong = this.getCurrent();
-
-    if (!currentSong) {
-      throw new Error('Queue empty.');
-    }
-
-    // Cancel any pending idle disconnection
-    if (this.disconnectTimer) {
-      clearInterval(this.disconnectTimer);
-      this.disconnectTimer = null;
-    }
-
-    // Resume from paused state
-    if (this.status === STATUS.PAUSED
-      && currentSong === this.nowPlaying
-      && this.currentQueueEntryVersion === this.nowPlayingQueueEntryVersion) {
-      if (this.audioPlayer) {
-        this.audioPlayer.unpause();
-        this.status = STATUS.PLAYING;
-        this.startTrackingPosition();
-        return;
-      }
-
-      // Was disconnected, need to recreate stream
-      if (!currentSong.isLive) {
-        return this.seek(this.getPosition());
-      }
-    }
-
-    try {
-      let positionSeconds: number | undefined;
-      let to: number | undefined;
-      if (currentSong.offset !== undefined) {
-        positionSeconds = currentSong.offset;
-        to = currentSong.length + currentSong.offset;
-      }
-
-      const stream = await this.getStream(currentSong, {seek: positionSeconds, to});
-      this.audioPlayer = createAudioPlayer({
-        behaviors: {
-          // Needs to be somewhat high for livestreams
-          maxMissedFrames: 50,
-        },
-      });
-      voiceConnection.subscribe(this.audioPlayer);
-      this.playAudioPlayerResource(this.createAudioStream(stream));
-
-      this.attachListeners();
-
-      this.status = STATUS.PLAYING;
-      this.nowPlaying = currentSong;
-      this.nowPlayingQueueEntryVersion = this.currentQueueEntryVersion;
-      this.startTrackingPosition(0);
-    } catch (error: unknown) {
-      const isGone = typeof error === 'object'
-        && error !== null
-        && 'statusCode' in error
-        && error.statusCode === 410;
-
-      if (error instanceof YtDlpMediaUnavailableError
-        && error.reason === 'age-restricted'
-        && allowAgeRestrictedFallback
-        && await this.tryAgeRestrictedAudioFallback(currentSong)) {
-        return;
-      }
-
-      if (error instanceof YtDlpMediaUnavailableError || isGone) {
-        const detail = error instanceof Error ? error.message : 'media returned HTTP 410';
-        console.warn(`Skipping unplayable YouTube track for guild ${this.guildId}: ${detail}`);
-        await this.advancePastUnplayableTrack();
-        return;
-      }
-
-      throw error;
-    }
+    const playbackAttemptVersion = this.beginPlaybackAttempt();
+    await this.playWithAttempt(playbackAttemptVersion, allowAgeRestrictedFallback);
   }
 
   pause(): void {
@@ -306,6 +201,7 @@ export default class {
       throw new Error('Not currently playing.');
     }
 
+    this.invalidatePlaybackAttempts();
     this.status = STATUS.PAUSED;
 
     if (this.audioPlayer) {
@@ -319,16 +215,28 @@ export default class {
     const originalQueuePosition = this.queuePosition;
     const originalQueueEntryVersion = this.currentQueueEntryVersion;
     this.manualForward(skip);
+    const destinationSong = this.getCurrent();
+    const destinationQueueEntryVersion = this.currentQueueEntryVersion;
+    let destinationPlaybackAttemptVersion: number | null = null;
 
     try {
-      if (!this.getCurrent()) {
+      if (!destinationSong) {
         await this.finishQueue();
       } else if (this.status !== STATUS.PAUSED) {
-        await this.play();
+        const playPromise = this.play();
+        destinationPlaybackAttemptVersion = this.playbackAttemptVersion;
+        await playPromise;
       }
     } catch (error: unknown) {
-      this.queuePosition = originalQueuePosition;
-      this.currentQueueEntryVersion = originalQueueEntryVersion;
+      const failedTransitionStillOwnsDestination = this.getCurrent() === destinationSong
+        && this.currentQueueEntryVersion === destinationQueueEntryVersion
+        && (destinationPlaybackAttemptVersion === null
+          || this.playbackAttemptVersion === destinationPlaybackAttemptVersion);
+      if (failedTransitionStillOwnsDestination) {
+        this.queuePosition = originalQueuePosition;
+        this.currentQueueEntryVersion = originalQueueEntryVersion;
+      }
+
       throw error;
     }
   }
@@ -540,6 +448,186 @@ export default class {
     return this.voiceActivityVolumeTarget ?? this.volume ?? this.defaultVolume;
   }
 
+  private async seekWithAttempt(positionSeconds: number, playbackAttemptVersion: number): Promise<void> {
+    this.status = STATUS.PAUSED;
+
+    const currentSong = this.getCurrent();
+    const currentQueueEntryVersion = this.getCurrentQueueEntryId();
+    const voiceConnection = await this.ensureVoiceConnectionReady();
+
+    if (!this.isPlaybackAttemptCurrent(playbackAttemptVersion, voiceConnection)) {
+      return;
+    }
+
+    if (!currentSong) {
+      throw new Error('No song currently playing');
+    }
+
+    if (currentQueueEntryVersion === null
+      || !this.isPlaybackAttemptOwner(playbackAttemptVersion, currentSong, currentQueueEntryVersion, voiceConnection)) {
+      return;
+    }
+
+    if (positionSeconds > currentSong.length) {
+      throw new Error('Seek position is outside the range of the song.');
+    }
+
+    let realPositionSeconds = positionSeconds;
+    let to: number | undefined;
+    if (currentSong.offset !== undefined) {
+      realPositionSeconds += currentSong.offset;
+      to = currentSong.length + currentSong.offset;
+    }
+
+    const stream = await this.getStream(currentSong, {seek: realPositionSeconds, to});
+    if (!this.isPlaybackAttemptOwner(playbackAttemptVersion, currentSong, currentQueueEntryVersion, voiceConnection)) {
+      this.destroyStaleStream(stream);
+      return;
+    }
+
+    this.audioPlayer = createAudioPlayer({
+      behaviors: {
+        // Needs to be somewhat high for livestreams
+        maxMissedFrames: 50,
+      },
+    });
+    voiceConnection.subscribe(this.audioPlayer);
+    this.playAudioPlayerResource(this.createAudioStream(stream));
+    this.attachListeners();
+    this.startTrackingPosition(positionSeconds);
+
+    this.status = STATUS.PLAYING;
+    this.nowPlaying = currentSong;
+    this.nowPlayingQueueEntryVersion = currentQueueEntryVersion;
+  }
+
+  private async playWithAttempt(playbackAttemptVersion: number, allowAgeRestrictedFallback: boolean): Promise<void> {
+    const currentSong = this.getCurrent();
+    const currentQueueEntryVersion = this.getCurrentQueueEntryId();
+    const voiceConnection = await this.ensureVoiceConnectionReady();
+
+    if (!this.isPlaybackAttemptCurrent(playbackAttemptVersion, voiceConnection)) {
+      return;
+    }
+
+    if (!currentSong) {
+      throw new Error('Queue empty.');
+    }
+
+    if (currentQueueEntryVersion === null
+      || !this.isPlaybackAttemptOwner(playbackAttemptVersion, currentSong, currentQueueEntryVersion, voiceConnection)) {
+      return;
+    }
+
+    // Cancel any pending idle disconnection
+    if (this.disconnectTimer) {
+      clearInterval(this.disconnectTimer);
+      this.disconnectTimer = null;
+    }
+
+    // Resume from paused state
+    if (this.status === STATUS.PAUSED
+      && currentSong === this.nowPlaying
+      && this.currentQueueEntryVersion === this.nowPlayingQueueEntryVersion) {
+      if (this.audioPlayer) {
+        this.audioPlayer.unpause();
+        this.status = STATUS.PLAYING;
+        this.startTrackingPosition();
+        return;
+      }
+
+      // Was disconnected, need to recreate stream
+      if (!currentSong.isLive) {
+        return this.seekWithAttempt(this.getPosition(), playbackAttemptVersion);
+      }
+    }
+
+    try {
+      let positionSeconds: number | undefined;
+      let to: number | undefined;
+      if (currentSong.offset !== undefined) {
+        positionSeconds = currentSong.offset;
+        to = currentSong.length + currentSong.offset;
+      }
+
+      const stream = await this.getStream(currentSong, {seek: positionSeconds, to});
+      if (!this.isPlaybackAttemptOwner(playbackAttemptVersion, currentSong, currentQueueEntryVersion, voiceConnection)) {
+        this.destroyStaleStream(stream);
+        return;
+      }
+
+      this.audioPlayer = createAudioPlayer({
+        behaviors: {
+          // Needs to be somewhat high for livestreams
+          maxMissedFrames: 50,
+        },
+      });
+      voiceConnection.subscribe(this.audioPlayer);
+      this.playAudioPlayerResource(this.createAudioStream(stream));
+
+      this.attachListeners();
+
+      this.status = STATUS.PLAYING;
+      this.nowPlaying = currentSong;
+      this.nowPlayingQueueEntryVersion = currentQueueEntryVersion;
+      this.startTrackingPosition(0);
+    } catch (error: unknown) {
+      await this.handlePlaybackError(
+        error,
+        {currentSong, currentQueueEntryVersion, playbackAttemptVersion, voiceConnection},
+        allowAgeRestrictedFallback,
+      );
+    }
+  }
+
+  private async handlePlaybackError(
+    error: unknown,
+    playback: {
+      currentSong: QueuedSong;
+      currentQueueEntryVersion: number;
+      playbackAttemptVersion: number;
+      voiceConnection: VoiceConnection;
+    },
+    allowAgeRestrictedFallback: boolean,
+  ): Promise<void> {
+    const {currentSong, currentQueueEntryVersion, playbackAttemptVersion, voiceConnection} = playback;
+    if (!this.isPlaybackAttemptOwner(playbackAttemptVersion, currentSong, currentQueueEntryVersion, voiceConnection)) {
+      throw error;
+    }
+
+    const isGone = typeof error === 'object'
+      && error !== null
+      && 'statusCode' in error
+      && error.statusCode === 410;
+
+    if (error instanceof YtDlpMediaUnavailableError
+      && error.reason === 'age-restricted'
+      && allowAgeRestrictedFallback) {
+      const fallbackHandled = await this.tryAgeRestrictedAudioFallback(
+        currentSong,
+        currentQueueEntryVersion,
+        playbackAttemptVersion,
+        voiceConnection,
+      );
+      if (fallbackHandled) {
+        return;
+      }
+
+      if (!this.isPlaybackAttemptOwner(playbackAttemptVersion, currentSong, currentQueueEntryVersion, voiceConnection)) {
+        throw error;
+      }
+    }
+
+    if (error instanceof YtDlpMediaUnavailableError || isGone) {
+      const detail = error instanceof Error ? error.message : 'media returned HTTP 410';
+      console.warn(`Skipping unplayable YouTube track for guild ${this.guildId}: ${detail}`);
+      await this.advancePastUnplayableTrack();
+      return;
+    }
+
+    throw error;
+  }
+
   private getHashForCache(url: string): string {
     return hasha(url);
   }
@@ -696,20 +784,33 @@ export default class {
     await this.play();
   }
 
-  private async tryAgeRestrictedAudioFallback(song: QueuedSong): Promise<boolean> {
+  private async tryAgeRestrictedAudioFallback(
+    song: QueuedSong,
+    queueEntryVersion: number,
+    playbackAttemptVersion: number,
+    voiceConnection: VoiceConnection,
+  ): Promise<boolean> {
     if (!this.ageRestrictedFallbackResolver || song.source !== MediaSource.Youtube) {
       return false;
+    }
+
+    if (!this.isPlaybackAttemptOwner(playbackAttemptVersion, song, queueEntryVersion, voiceConnection)) {
+      return true;
     }
 
     let fallback: SongMetadata | null;
     try {
       fallback = await this.ageRestrictedFallbackResolver(song);
     } catch {
+      if (!this.isPlaybackAttemptOwner(playbackAttemptVersion, song, queueEntryVersion, voiceConnection)) {
+        return true;
+      }
+
       console.warn(`Audio fallback search failed for age-restricted track in guild ${this.guildId}.`);
       return false;
     }
 
-    if (this.getCurrent() !== song) {
+    if (!this.isPlaybackAttemptOwner(playbackAttemptVersion, song, queueEntryVersion, voiceConnection)) {
       return true;
     }
 
@@ -728,10 +829,11 @@ export default class {
     console.warn(`Trying audio fallback for age-restricted YouTube track in guild ${this.guildId}: ${song.url} -> ${replacement.url}`);
 
     try {
-      await this.play(false);
+      await this.playWithAttempt(playbackAttemptVersion, false);
       return true;
     } catch (error: unknown) {
-      if (this.queue[queuePosition] === replacement) {
+      if (this.isPlaybackAttemptOwner(playbackAttemptVersion, replacement, queueEntryVersion, voiceConnection)
+        && this.queue[queuePosition] === replacement) {
         this.queue[queuePosition] = song;
       }
 
@@ -781,6 +883,7 @@ export default class {
   }
 
   private async finishQueue(): Promise<void> {
+    this.invalidatePlaybackAttempts();
     this.stopTrackingPosition();
     this.status = STATUS.IDLE;
     this.audioPlayer?.stop(true);
@@ -869,5 +972,39 @@ export default class {
   private setAudioPlayerVolume(level?: number) {
     // Audio resource expects a float between 0 and 1 to represent level percentage
     this.audioResource?.volume?.setVolume((level ?? this.getVolume()) / 100);
+  }
+
+  private beginPlaybackAttempt(): number {
+    this.playbackAttemptVersion++;
+    return this.playbackAttemptVersion;
+  }
+
+  private invalidatePlaybackAttempts(): void {
+    this.playbackAttemptVersion++;
+  }
+
+  private isPlaybackAttemptOwner(
+    playbackAttemptVersion: number,
+    song: QueuedSong,
+    queueEntryVersion: number,
+    voiceConnection: VoiceConnection,
+  ): boolean {
+    return this.isPlaybackAttemptCurrent(playbackAttemptVersion, voiceConnection)
+      && this.getCurrent() === song
+      && this.currentQueueEntryVersion === queueEntryVersion;
+  }
+
+  private isPlaybackAttemptCurrent(
+    playbackAttemptVersion: number,
+    voiceConnection: VoiceConnection,
+  ): boolean {
+    return this.playbackAttemptVersion === playbackAttemptVersion
+      && this.voiceConnection === voiceConnection;
+  }
+
+  private destroyStaleStream(stream: Readable): void {
+    if (!stream.destroyed) {
+      stream.destroy();
+    }
   }
 }

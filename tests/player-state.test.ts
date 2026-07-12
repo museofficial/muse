@@ -43,6 +43,24 @@ import {YtDlpMediaUnavailableError} from '../src/utils/yt-dlp.js';
 
 const GUILD_ID = 'guild-id';
 
+const makeDeferred = <T>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return {promise, reject, resolve};
+};
+
+const makeTrackedStream = () => {
+  const stream = new Readable({read() {}});
+  const destroy = vi.spyOn(stream, 'destroy');
+
+  return {destroy, stream};
+};
+
 const makeSong = (title: string, overrides: Partial<QueuedSong> = {}): QueuedSong => ({
   title,
   artist: 'Artist',
@@ -90,10 +108,13 @@ const makeReadyPlayer = (ageRestrictedFallbackResolver?: (song: QueuedSong) => P
 
 const getPrivateState = (player: Player) => player as unknown as {
   audioPlayer: ReturnType<typeof makeAudioPlayer> | null;
-  audioResource: {volume: {setVolume: ReturnType<typeof vi.fn>}} | null;
+  audioResource: {sourceStream?: Readable; volume: {setVolume: ReturnType<typeof vi.fn>}} | null;
   channelToSpeakingUsers: Map<string, Set<string>>;
   currentChannel: object | undefined;
+  currentQueueEntryVersion: number;
   finishQueue(): Promise<void>;
+  nowPlaying: QueuedSong | null;
+  nowPlayingQueueEntryVersion: number | null;
   playAudioPlayerResource(resource: object): void;
 };
 
@@ -127,7 +148,8 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.clearAllMocks();
   dependencyMocks.createAudioPlayer.mockImplementation(makeAudioPlayer);
-  dependencyMocks.createAudioResource.mockImplementation(() => ({
+  dependencyMocks.createAudioResource.mockImplementation((sourceStream: Readable) => ({
+    sourceStream,
     volume: {setVolume: vi.fn()},
   }));
   dependencyMocks.entersState.mockResolvedValue(undefined);
@@ -188,6 +210,175 @@ describe('Player forward state transitions', () => {
     expect(player.getCurrent()).toBeNull();
     expect(player.status).toBe(STATUS.IDLE);
     expect(dependencyMocks.getGuildSettings).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a newer C transition when an older B stream resolves afterward', async () => {
+    const {getStream, player} = makeReadyPlayer();
+    const first = makeSong('A');
+    const slowDestination = makeSong('B');
+    const newerDestination = makeSong('C');
+    player.add(first);
+    player.add(slowDestination);
+    player.add(newerDestination);
+    await player.play();
+
+    const slowStream = makeTrackedStream();
+    const newerStream = makeTrackedStream();
+    const slowStreamStarted = makeDeferred<void>();
+    const slowStreamResult = makeDeferred<Readable>();
+    getStream.mockReset();
+    getStream.mockImplementation((song: QueuedSong) => {
+      if (song === slowDestination) {
+        slowStreamStarted.resolve(undefined);
+        return slowStreamResult.promise;
+      }
+
+      if (song === newerDestination) {
+        return Promise.resolve(newerStream.stream);
+      }
+
+      throw new Error(`Unexpected stream request for ${song.title}`);
+    });
+
+    const olderForward = player.forward(1);
+    await slowStreamStarted.promise;
+    await player.forward(1);
+    const newerAudioPlayer = getPrivateState(player).audioPlayer;
+    const newerEntryId = player.getCurrentQueueEntryId();
+
+    slowStreamResult.resolve(slowStream.stream);
+    await olderForward;
+
+    const state = getPrivateState(player);
+    expect(player.getCurrent()).toBe(newerDestination);
+    expect(player.getCurrentQueueEntryId()).toBe(newerEntryId);
+    expect(player.status).toBe(STATUS.PLAYING);
+    expect(state.nowPlaying).toBe(newerDestination);
+    expect(state.nowPlayingQueueEntryVersion).toBe(newerEntryId);
+    expect(state.audioPlayer).toBe(newerAudioPlayer);
+    expect(state.audioResource?.sourceStream).toBe(newerStream.stream);
+    expect(slowStream.destroy).toHaveBeenCalledOnce();
+  });
+
+  it('does not roll back a newer C transition when an older B stream rejects', async () => {
+    const {getStream, player} = makeReadyPlayer();
+    const first = makeSong('A');
+    const slowDestination = makeSong('B');
+    const newerDestination = makeSong('C');
+    player.add(first);
+    player.add(slowDestination);
+    player.add(newerDestination);
+    await player.play();
+
+    const slowStreamStarted = makeDeferred<void>();
+    const slowStreamResult = makeDeferred<Readable>();
+    const newerStream = makeTrackedStream();
+    getStream.mockReset();
+    getStream.mockImplementation((song: QueuedSong) => {
+      if (song === slowDestination) {
+        slowStreamStarted.resolve(undefined);
+        return slowStreamResult.promise;
+      }
+
+      return Promise.resolve(newerStream.stream);
+    });
+
+    const olderForward = player.forward(1);
+    await slowStreamStarted.promise;
+    await player.forward(1);
+    const newerEntryId = player.getCurrentQueueEntryId();
+    const newerAudioPlayer = getPrivateState(player).audioPlayer;
+
+    slowStreamResult.reject(new Error('stale B extraction failed'));
+    await expect(olderForward).rejects.toThrow('stale B extraction failed');
+
+    const state = getPrivateState(player);
+    expect(player.getCurrent()).toBe(newerDestination);
+    expect(player.getCurrentQueueEntryId()).toBe(newerEntryId);
+    expect(state.currentQueueEntryVersion).toBe(newerEntryId);
+    expect(player.status).toBe(STATUS.PLAYING);
+    expect(state.nowPlaying).toBe(newerDestination);
+    expect(state.nowPlayingQueueEntryVersion).toBe(newerEntryId);
+    expect(state.audioPlayer).toBe(newerAudioPlayer);
+  });
+
+  it('does not run unavailable fallback or advance when an older B extraction fails after C succeeds', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const resolver = vi.fn().mockResolvedValue(null);
+    const {getStream, player} = makeReadyPlayer(resolver);
+    const first = makeSong('A');
+    const slowDestination = makeSong('B');
+    const newerDestination = makeSong('C');
+    player.add(first);
+    player.add(slowDestination);
+    player.add(newerDestination);
+    await player.play();
+
+    const slowStreamStarted = makeDeferred<void>();
+    const slowStreamResult = makeDeferred<Readable>();
+    const newerStream = makeTrackedStream();
+    getStream.mockReset();
+    getStream.mockImplementation((song: QueuedSong) => {
+      if (song === slowDestination) {
+        slowStreamStarted.resolve(undefined);
+        return slowStreamResult.promise;
+      }
+
+      return Promise.resolve(newerStream.stream);
+    });
+
+    const olderForward = player.forward(1);
+    await slowStreamStarted.promise;
+    await player.forward(1);
+    const newerEntryId = player.getCurrentQueueEntryId();
+
+    slowStreamResult.reject(new YtDlpMediaUnavailableError('sign in to confirm your age', 'age-restricted'));
+    await expect(olderForward).rejects.toBeInstanceOf(YtDlpMediaUnavailableError);
+
+    const state = getPrivateState(player);
+    expect(player.getCurrent()).toBe(newerDestination);
+    expect(player.getCurrentQueueEntryId()).toBe(newerEntryId);
+    expect(state.currentQueueEntryVersion).toBe(newerEntryId);
+    expect(player.status).toBe(STATUS.PLAYING);
+    expect(state.nowPlaying).toBe(newerDestination);
+    expect(state.nowPlayingQueueEntryVersion).toBe(newerEntryId);
+    expect(resolver).not.toHaveBeenCalled();
+    expect(getStream).toHaveBeenCalledTimes(2);
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe('Player playback attempt ownership', () => {
+  it('keeps the newest play attempt for the same queue entry', async () => {
+    const {getStream, player} = makeReadyPlayer();
+    const song = makeSong('Same entry');
+    const olderStream = makeTrackedStream();
+    const newerStream = makeTrackedStream();
+    const olderStreamStarted = makeDeferred<void>();
+    const olderStreamResult = makeDeferred<Readable>();
+    player.add(song);
+    getStream
+      .mockImplementationOnce(() => {
+        olderStreamStarted.resolve(undefined);
+        return olderStreamResult.promise;
+      })
+      .mockResolvedValueOnce(newerStream.stream);
+
+    const olderPlay = player.play();
+    await olderStreamStarted.promise;
+    await player.play();
+    const newerAudioPlayer = getPrivateState(player).audioPlayer;
+
+    olderStreamResult.resolve(olderStream.stream);
+    await olderPlay;
+
+    const state = getPrivateState(player);
+    expect(player.getCurrent()).toBe(song);
+    expect(state.nowPlaying).toBe(song);
+    expect(state.nowPlayingQueueEntryVersion).toBe(player.getCurrentQueueEntryId());
+    expect(state.audioPlayer).toBe(newerAudioPlayer);
+    expect(state.audioResource?.sourceStream).toBe(newerStream.stream);
+    expect(olderStream.destroy).toHaveBeenCalledOnce();
   });
 });
 
@@ -417,6 +608,80 @@ describe('Player age-restricted fallback preservation', () => {
     });
     expect(player.status).toBe(STATUS.PLAYING);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('Trying audio fallback'));
+  });
+
+  it('does not apply a slow fallback to a later loop entry that reuses the same song object', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const fallback = makeSong('Fallback audio', {url: 'fallback-id'});
+    const fallbackStarted = makeDeferred<void>();
+    const fallbackResult = makeDeferred<SongMetadata | null>();
+    const resolver = vi.fn().mockImplementation(() => {
+      fallbackStarted.resolve(undefined);
+      return fallbackResult.promise;
+    });
+    const {getStream, player} = makeReadyPlayer(resolver);
+    const loopedSong = makeSong('Age restricted', {url: 'restricted-id'});
+    player.add(loopedSong);
+    player.add(loopedSong);
+    const firstEntryId = player.getCurrentQueueEntryId();
+    getStream
+      .mockRejectedValueOnce(new YtDlpMediaUnavailableError('sign in to confirm your age', 'age-restricted'))
+      .mockResolvedValueOnce(Readable.from([]));
+
+    const firstEntryPlay = player.play();
+    await fallbackStarted.promise;
+    player.manualForward(1);
+    const loopedEntryId = player.getCurrentQueueEntryId();
+    expect(loopedEntryId).not.toBe(firstEntryId);
+
+    fallbackResult.resolve(fallback);
+    await firstEntryPlay;
+
+    const state = getPrivateState(player);
+    expect(player.getCurrent()).toBe(loopedSong);
+    expect(player.getCurrentQueueEntryId()).toBe(loopedEntryId);
+    expect(state.currentQueueEntryVersion).toBe(loopedEntryId);
+    expect(player.status).toBe(STATUS.PAUSED);
+    expect(state.nowPlaying).toBeNull();
+    expect(state.nowPlayingQueueEntryVersion).toBeNull();
+    expect(state.audioPlayer).toBeNull();
+    expect(getStream).toHaveBeenCalledOnce();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('rechecks ownership after an unusable fallback resolves before advancing', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    let newerForward: Promise<void> | undefined;
+    let player: Player;
+    const unusableFallback = makeSong('Unusable fallback');
+    Object.defineProperty(unusableFallback, 'source', {
+      get: () => {
+        queueMicrotask(() => {
+          newerForward = player.forward(1);
+        });
+
+        return MediaSource.HLS;
+      },
+    });
+    const resolver = vi.fn().mockResolvedValue(unusableFallback);
+    const readyPlayer = makeReadyPlayer(resolver);
+    player = readyPlayer.player;
+    const restricted = makeSong('Age restricted', {url: 'restricted-id'});
+    const newerEntry = makeSong('Newer entry');
+    player.add(restricted);
+    player.add(newerEntry);
+    readyPlayer.getStream.mockRejectedValueOnce(
+      new YtDlpMediaUnavailableError('sign in to confirm your age', 'age-restricted'),
+    );
+
+    await expect(player.play()).rejects.toBeInstanceOf(YtDlpMediaUnavailableError);
+    await newerForward;
+
+    expect(player.getCurrent()).toBe(newerEntry);
+    expect(player.status).toBe(STATUS.PAUSED);
+    expect(player.getQueue()).toEqual([]);
+    expect(readyPlayer.getStream).toHaveBeenCalledOnce();
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 
