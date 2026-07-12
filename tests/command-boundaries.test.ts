@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {PermissionFlagsBits} from 'discord.js';
 import type {ChatInputCommandInteraction} from 'discord.js';
 
 const mocks = vi.hoisted(() => ({
@@ -113,52 +114,160 @@ const makeInteraction = (options: {
 
 const managerFor = (player: object) => ({get: () => player});
 
+const COMMAND_NAMES = [
+  'clear',
+  'config',
+  'disconnect',
+  'favorites',
+  'fseek',
+  'loop-queue',
+  'loop',
+  'move',
+  'next',
+  'now-playing',
+  'pause',
+  'play',
+  'queue',
+  'remove',
+  'replay',
+  'resume',
+  'seek',
+  'shuffle',
+  'skip',
+  'stop',
+  'unskip',
+  'volume',
+] as const;
+
+const makeCommands = () => {
+  const playerManager = {} as never;
+  const addQueryToQueue = {} as never;
+
+  return [
+    new Clear(playerManager),
+    new Config(),
+    new Disconnect(playerManager),
+    new Favorites(addQueryToQueue),
+    new ForwardSeek(playerManager),
+    new LoopQueue(playerManager),
+    new Loop(playerManager),
+    new Move(playerManager),
+    new Next(playerManager),
+    new NowPlaying(playerManager),
+    new Pause(playerManager),
+    new Play(undefined as never, {} as never, addQueryToQueue),
+    new Queue(playerManager),
+    new Remove(playerManager),
+    new Replay(playerManager),
+    new Resume(playerManager),
+    new Seek(playerManager),
+    new Shuffle(playerManager),
+    new Skip(playerManager),
+    new Stop(playerManager),
+    new Unskip(playerManager),
+    new Volume(playerManager),
+  ];
+};
+
+interface SerializedOption {
+  max_value?: number;
+  min_value?: number;
+  name: string;
+  options?: SerializedOption[];
+}
+
+const findOption = (command: {options?: SerializedOption[]}, ...path: string[]): SerializedOption => {
+  let options = command.options;
+  let result: SerializedOption | undefined;
+
+  for (const name of path) {
+    result = options?.find(option => option.name === name);
+    expect(result, `missing command option ${path.join(' > ')}`).toBeDefined();
+    options = result?.options;
+  }
+
+  return result!;
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 describe('command metadata', () => {
-  it('serializes all 22 command builders', () => {
-    const playerManager = {} as never;
-    const addQueryToQueue = {} as never;
-    const commands = [
-      new Clear(playerManager),
-      new Config(),
-      new Disconnect(playerManager),
-      new Favorites(addQueryToQueue),
-      new ForwardSeek(playerManager),
-      new LoopQueue(playerManager),
-      new Loop(playerManager),
-      new Move(playerManager),
-      new Next(playerManager),
-      new NowPlaying(playerManager),
-      new Pause(playerManager),
-      new Play(undefined as never, {} as never, addQueryToQueue),
-      new Queue(playerManager),
-      new Remove(playerManager),
-      new Replay(playerManager),
-      new Resume(playerManager),
-      new Seek(playerManager),
-      new Shuffle(playerManager),
-      new Skip(playerManager),
-      new Stop(playerManager),
-      new Unskip(playerManager),
-      new Volume(playerManager),
-    ];
-
-    const serialized = commands.map(command => command.slashCommand.toJSON());
+  it('publishes the exact 22 unique command names', () => {
+    const serialized = makeCommands().map(command => command.slashCommand.toJSON());
+    const names = serialized.map(command => command.name);
 
     expect(serialized).toHaveLength(22);
-    expect(new Set(serialized.map(command => command.name))).toHaveLength(22);
+    expect(new Set(names)).toHaveLength(22);
+    expect([...names].sort()).toEqual([...COMMAND_NAMES].sort());
   });
 
-  it('publishes minimum values for queue and remove positions', () => {
-    const queue = new Queue({} as never).slashCommand.toJSON();
-    const remove = new Remove({} as never).slashCommand.toJSON();
+  it('preserves the audited voice-channel requirement matrix', () => {
+    const commandsByName = new Map(makeCommands().map(command => [
+      command.slashCommand.toJSON().name,
+      command as {requiresVC?: boolean | ((interaction: ChatInputCommandInteraction) => boolean)},
+    ]));
+    const alwaysRequiresVoice = [
+      'clear',
+      'disconnect',
+      'fseek',
+      'loop-queue',
+      'loop',
+      'next',
+      'pause',
+      'play',
+      'replay',
+      'resume',
+      'seek',
+      'shuffle',
+      'skip',
+      'stop',
+      'unskip',
+      'volume',
+    ];
+    const neverRequiresVoice = ['config', 'move', 'now-playing', 'queue', 'remove'];
 
-    expect(queue.options?.find(option => option.name === 'page')).toMatchObject({min_value: 1});
-    expect(remove.options?.find(option => option.name === 'position')).toMatchObject({min_value: 1});
-    expect(remove.options?.find(option => option.name === 'range')).toMatchObject({min_value: 1});
+    for (const name of alwaysRequiresVoice) {
+      expect(commandsByName.get(name)?.requiresVC, `/${name}`).toBe(true);
+    }
+
+    for (const name of neverRequiresVoice) {
+      expect(commandsByName.get(name)?.requiresVC, `/${name}`).toBeUndefined();
+    }
+
+    const favoritesGuard = commandsByName.get('favorites')?.requiresVC;
+    expect(favoritesGuard).toBeTypeOf('function');
+    const interactionFor = (subcommand: string) => ({
+      options: {getSubcommand: () => subcommand},
+    }) as unknown as ChatInputCommandInteraction;
+    expect((favoritesGuard as (interaction: ChatInputCommandInteraction) => boolean)(interactionFor('use'))).toBe(true);
+    expect((favoritesGuard as (interaction: ChatInputCommandInteraction) => boolean)(interactionFor('list'))).toBe(false);
+    expect((favoritesGuard as (interaction: ChatInputCommandInteraction) => boolean)(interactionFor('create'))).toBe(false);
+    expect((favoritesGuard as (interaction: ChatInputCommandInteraction) => boolean)(interactionFor('remove'))).toBe(false);
+  });
+
+  it('publishes the existing audited integer option bounds', () => {
+    const serialized = new Map(makeCommands().map(command => {
+      const json = command.slashCommand.toJSON();
+      return [json.name, json as unknown as {options?: SerializedOption[]}];
+    }));
+
+    expect(findOption(serialized.get('queue')!, 'page')).toMatchObject({min_value: 1});
+    expect(findOption(serialized.get('queue')!, 'page-size')).toMatchObject({min_value: 1, max_value: 30});
+    expect(findOption(serialized.get('remove')!, 'position')).toMatchObject({min_value: 1});
+    expect(findOption(serialized.get('remove')!, 'range')).toMatchObject({min_value: 1});
+    expect(findOption(serialized.get('volume')!, 'level')).toMatchObject({min_value: 0, max_value: 100});
+    expect(findOption(serialized.get('config')!, 'set-wait-after-queue-empties', 'delay')).toMatchObject({min_value: 0});
+    expect(findOption(serialized.get('config')!, 'set-reduce-vol-when-voice-target', 'volume')).toMatchObject({min_value: 0, max_value: 100});
+    expect(findOption(serialized.get('config')!, 'set-default-volume', 'level')).toMatchObject({min_value: 0, max_value: 100});
+    expect(findOption(serialized.get('config')!, 'set-default-queue-page-size', 'page-size')).toMatchObject({min_value: 1, max_value: 30});
+  });
+
+  it('limits /config to members with Manage Guild by default', () => {
+    const config = new Config().slashCommand.toJSON();
+
+    expect(config.default_member_permissions).toBe(PermissionFlagsBits.ManageGuild.toString());
   });
 });
 
