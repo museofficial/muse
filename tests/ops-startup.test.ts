@@ -36,6 +36,7 @@ const resetConfigEnvironment = () => {
 
 const loadConfig = async (environment: NodeJS.ProcessEnv = {}) => {
   vi.resetModules();
+  process.chdir(temporaryRoot);
   resetConfigEnvironment();
   Object.assign(process.env, environment);
   return import('../src/services/config.js');
@@ -72,8 +73,6 @@ describe('OPS-01 environment and config loading', () => {
       'DATA_DIR=./explicit-data',
       '',
     ].join('\n'));
-    process.chdir(temporaryRoot);
-
     const defaultModule = await loadConfig();
     const defaultConfig = new defaultModule.default();
     const resolvedTemporaryRoot = process.cwd();
@@ -184,8 +183,11 @@ describe('OPS-01 environment and config loading', () => {
       YOUTUBE_API_KEY: 'youtube-secret',
     });
     const config = new Config();
-    const expectedDataDirectory = path.resolve(originalCwd, 'data');
+    const resolvedTemporaryRoot = await fs.realpath(temporaryRoot);
+    const expectedDataDirectory = path.resolve(resolvedTemporaryRoot, 'data');
 
+    expect(process.cwd()).toBe(resolvedTemporaryRoot);
+    expect(process.cwd()).not.toBe(originalCwd);
     expect(DATA_DIR).toBe(expectedDataDirectory);
     expect(config.DATA_DIR).toBe(expectedDataDirectory);
     expect(config.CACHE_DIR).toBe(path.join(expectedDataDirectory, 'cache'));
