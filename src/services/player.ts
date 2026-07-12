@@ -82,6 +82,7 @@ export default class {
   private currentQueueEntryVersion = 0;
   private nowPlayingQueueEntryVersion: number | null = null;
   private playbackAttemptVersion = 0;
+  private readonly programmaticallyStoppedAudioPlayers = new WeakSet<AudioPlayer>();
   private playPositionInterval: NodeJS.Timeout | undefined;
 
   private positionInSeconds = 0;
@@ -165,7 +166,7 @@ export default class {
 
       this.loopCurrentSong = false;
       this.voiceConnection.destroy();
-      this.audioPlayer?.stop(true);
+      this.stopAudioPlayer(true);
 
       this.voiceConnection = null;
       this.audioPlayer = null;
@@ -634,9 +635,9 @@ export default class {
 
   private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
     if (this.status === STATUS.PLAYING) {
-      this.audioPlayer?.stop();
+      this.stopAudioPlayer();
     } else if (this.status === STATUS.PAUSED) {
-      this.audioPlayer?.stop(true);
+      this.stopAudioPlayer(true);
     }
 
     if (song.source === MediaSource.HLS) {
@@ -718,8 +719,16 @@ export default class {
       return;
     }
 
-    if (this.audioPlayer.listeners(AudioPlayerStatus.Idle).length === 0) {
-      this.audioPlayer.on(AudioPlayerStatus.Idle, (oldState, newState) => {
+    const {audioPlayer} = this;
+    const queueEntryVersion = this.currentQueueEntryVersion;
+    if (audioPlayer.listeners(AudioPlayerStatus.Idle).length === 0) {
+      audioPlayer.on(AudioPlayerStatus.Idle, (oldState, newState) => {
+        if (this.programmaticallyStoppedAudioPlayers.has(audioPlayer)
+          || this.audioPlayer !== audioPlayer
+          || this.currentQueueEntryVersion !== queueEntryVersion) {
+          return;
+        }
+
         void this.onAudioPlayerIdle(oldState, newState).catch(error => {
           console.error(`Audio player idle handler failed for guild ${this.guildId}:`, error);
         });
@@ -886,7 +895,7 @@ export default class {
     this.invalidatePlaybackAttempts();
     this.stopTrackingPosition();
     this.status = STATUS.IDLE;
-    this.audioPlayer?.stop(true);
+    this.stopAudioPlayer(true);
 
     const settings = await getGuildSettings(this.guildId);
 
@@ -972,6 +981,15 @@ export default class {
   private setAudioPlayerVolume(level?: number) {
     // Audio resource expects a float between 0 and 1 to represent level percentage
     this.audioResource?.volume?.setVolume((level ?? this.getVolume()) / 100);
+  }
+
+  private stopAudioPlayer(force = false): void {
+    if (!this.audioPlayer) {
+      return;
+    }
+
+    this.programmaticallyStoppedAudioPlayers.add(this.audioPlayer);
+    this.audioPlayer.stop(force);
   }
 
   private beginPlaybackAttempt(): number {

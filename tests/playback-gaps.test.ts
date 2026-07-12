@@ -122,6 +122,34 @@ const makeReadyPlayer = () => {
   return {getStream, player, voiceConnection};
 };
 
+const makeProductionStreamPlayer = () => {
+  const fileCache = {getPathFor: vi.fn().mockResolvedValue('/cached/audio.webm')};
+  const player = new Player(fileCache as never, GUILD_ID);
+  const voiceConnection = makeVoiceConnection();
+  const createReadStream = vi.fn().mockResolvedValue(Readable.from([]));
+  player.voiceConnection = voiceConnection as never;
+  Object.assign(player, {createReadStream});
+
+  return {createReadStream, player, voiceConnection};
+};
+
+const makeDeferred = <T>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>(resolvePromise => {
+    resolve = resolvePromise;
+  });
+
+  return {promise, resolve};
+};
+
+const flushAsyncWork = async () => {
+  for (let index = 0; index < 12; index++) {
+    // Flush chained async idle-handler work without advancing timers.
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.resolve();
+  }
+};
+
 const getPrivatePlayer = (player: Player) => player as unknown as {
   audioPlayer: FakeAudioPlayer | null;
   onAudioPlayerIdle(oldState: object, newState: {status: string}): Promise<void>;
@@ -271,6 +299,69 @@ describe('PLAY-06 autocomplete preservation', () => {
     expect(choices).toHaveLength(10);
     expect(choices.filter(choice => choice.value.startsWith('spotify:album:'))).toHaveLength(1);
     expect(choices.filter(choice => choice.value.startsWith('spotify:track:'))).toHaveLength(4);
+    expect(new Set(choices.map(choice => choice.name)).size).toBe(10);
+  });
+
+  it('fills the Spotify half from unique albums when no tracks are available', async () => {
+    dependencyMocks.got.mockReturnValue({
+      json: vi.fn().mockResolvedValue(['albums', Array.from({length: 10}, (_, index) => `YouTube ${index + 1}`)]),
+    });
+    const albums = Array.from({length: 5}, (_, index) => ({
+      id: `album-${index + 1}`,
+      name: `Album ${index + 1}`,
+      artists: [{name: `Album Artist ${index + 1}`}],
+    }));
+    const spotify = {
+      search: vi.fn().mockResolvedValue({
+        body: {
+          albums: {items: [...albums, {...albums[0], id: 'duplicate-album-id'}]},
+          tracks: {items: []},
+        },
+      }),
+    };
+    const {command, interaction} = makeAutocompleteHarness('albums', spotify);
+
+    await command.handleAutocompleteInteraction(interaction as never);
+
+    const choices = interaction.respond.mock.calls[0][0] as Array<{name: string; value: string}>;
+    expect(choices).toHaveLength(10);
+    expect(choices.filter(choice => choice.value.startsWith('spotify:album:'))).toHaveLength(5);
+    expect(choices.filter(choice => choice.value.startsWith('spotify:track:'))).toHaveLength(0);
+    expect(choices.filter(choice => choice.name.startsWith('YouTube:'))).toHaveLength(5);
+    expect(new Set(choices.map(choice => choice.name)).size).toBe(10);
+  });
+
+  it('backfills a track-short mixed distribution with remaining unique albums', async () => {
+    dependencyMocks.got.mockReturnValue({
+      json: vi.fn().mockResolvedValue(['mixed', Array.from({length: 10}, (_, index) => `YouTube ${index + 1}`)]),
+    });
+    const albums = Array.from({length: 3}, (_, index) => ({
+      id: `album-${index + 1}`,
+      name: `Album ${index + 1}`,
+      artists: [{name: `Album Artist ${index + 1}`}],
+    }));
+    const tracks = Array.from({length: 2}, (_, index) => ({
+      id: `track-${index + 1}`,
+      name: `Track ${index + 1}`,
+      artists: [{name: `Track Artist ${index + 1}`}],
+    }));
+    const spotify = {
+      search: vi.fn().mockResolvedValue({
+        body: {
+          albums: {items: [...albums, {...albums[0], id: 'duplicate-album-id'}]},
+          tracks: {items: [...tracks, {...tracks[0], id: 'duplicate-track-id'}]},
+        },
+      }),
+    };
+    const {command, interaction} = makeAutocompleteHarness('mixed', spotify);
+
+    await command.handleAutocompleteInteraction(interaction as never);
+
+    const choices = interaction.respond.mock.calls[0][0] as Array<{name: string; value: string}>;
+    expect(choices).toHaveLength(10);
+    expect(choices.filter(choice => choice.value.startsWith('spotify:album:'))).toHaveLength(3);
+    expect(choices.filter(choice => choice.value.startsWith('spotify:track:'))).toHaveLength(2);
+    expect(choices.filter(choice => choice.name.startsWith('YouTube:'))).toHaveLength(5);
     expect(new Set(choices.map(choice => choice.name)).size).toBe(10);
   });
 
@@ -548,6 +639,92 @@ describe('CTRL-20 audio-idle advance preservation', () => {
     vi.restoreAllMocks();
   });
 
+  it('ignores Idle emitted when a manual transition programmatically stops the prior audio player', async () => {
+    dependencyMocks.getGuildSettings.mockResolvedValue({
+      autoAnnounceNextSong: true,
+      secondsToWaitAfterQueueEmpties: 0,
+    });
+    const {createReadStream, player} = makeProductionStreamPlayer();
+    player.add(makeQueuedSong('First'));
+    player.add(makeQueuedSong('Second'));
+    player.add(makeQueuedSong('Third'));
+    const send = vi.fn().mockResolvedValue(undefined);
+    Object.assign(player, {currentChannel: {send}});
+    await player.play();
+    const priorAudioPlayer = getPrivatePlayer(player).audioPlayer!;
+    priorAudioPlayer.stop.mockReturnValue(true);
+    const nextStreamStarted = makeDeferred<void>();
+    const nextStream = makeDeferred<Readable>();
+    createReadStream.mockImplementationOnce(() => {
+      nextStreamStarted.resolve(undefined);
+      return nextStream.promise;
+    });
+
+    const forward = player.forward(1);
+    await nextStreamStarted.promise;
+    priorAudioPlayer.emit('idle', {status: 'playing'}, {status: 'idle'});
+    await flushAsyncWork();
+    nextStream.resolve(Readable.from([]));
+    await forward;
+
+    expect(priorAudioPlayer.stop).toHaveBeenCalled();
+    expect(player.getCurrent()?.title).toBe('Second');
+    expect(player.getQueue().map(song => song.title)).toEqual(['Third']);
+    expect(createReadStream).toHaveBeenCalledTimes(2);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('ignores Idle synchronously emitted by a same-entry programmatic replacement', async () => {
+    dependencyMocks.getGuildSettings.mockResolvedValue({
+      autoAnnounceNextSong: true,
+      secondsToWaitAfterQueueEmpties: 0,
+    });
+    const {createReadStream, player} = makeProductionStreamPlayer();
+    const current = makeQueuedSong('Current');
+    player.add(current);
+    player.add(makeQueuedSong('Upcoming'));
+    const send = vi.fn().mockResolvedValue(undefined);
+    Object.assign(player, {currentChannel: {send}});
+    await player.play();
+    const priorAudioPlayer = getPrivatePlayer(player).audioPlayer!;
+    let emittedIdle = false;
+    priorAudioPlayer.stop.mockImplementation(() => {
+      if (!emittedIdle) {
+        emittedIdle = true;
+        priorAudioPlayer.emit('idle', {status: 'playing'}, {status: 'idle'});
+      }
+
+      return true;
+    });
+
+    await player.play();
+    await flushAsyncWork();
+
+    expect(player.getCurrent()).toBe(current);
+    expect(player.getQueue().map(song => song.title)).toEqual(['Upcoming']);
+    expect(createReadStream).toHaveBeenCalledTimes(2);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('preserves same-entry paused resume on the current audio player', async () => {
+    const {createReadStream, player} = makeProductionStreamPlayer();
+    const current = makeQueuedSong('Current');
+    player.add(current);
+    player.add(makeQueuedSong('Upcoming'));
+    await player.play();
+    const audioPlayer = getPrivatePlayer(player).audioPlayer!;
+
+    player.pause();
+    await player.play();
+
+    expect(player.getCurrent()).toBe(current);
+    expect(player.getQueue().map(song => song.title)).toEqual(['Upcoming']);
+    expect(player.status).toBe(STATUS.PLAYING);
+    expect(getPrivatePlayer(player).audioPlayer).toBe(audioPlayer);
+    expect(audioPlayer.unpause).toHaveBeenCalledOnce();
+    expect(createReadStream).toHaveBeenCalledOnce();
+  });
+
   it('announces only the natural idle advance, not a manual forward', async () => {
     dependencyMocks.getGuildSettings.mockResolvedValue({
       autoAnnounceNextSong: true,
@@ -565,10 +742,8 @@ describe('CTRL-20 audio-idle advance preservation', () => {
     expect(player.getCurrent()?.title).toBe('Second');
     expect(send).not.toHaveBeenCalled();
 
-    await getPrivatePlayer(player).onAudioPlayerIdle(
-      {status: 'playing'},
-      {status: 'idle'},
-    );
+    getPrivatePlayer(player).audioPlayer!.emit('idle', {status: 'playing'}, {status: 'idle'});
+    await flushAsyncWork();
 
     expect(player.getCurrent()?.title).toBe('Third');
     expect(send).toHaveBeenCalledOnce();
