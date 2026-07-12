@@ -291,7 +291,7 @@ export default class {
         if (/^0+(?::0+)+$/u.test(timestamps[0][0])) {
           foundFirstTimestamp = true;
         } else {
-          return null;
+          continue;
         }
       }
 

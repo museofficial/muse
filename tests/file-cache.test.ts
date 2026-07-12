@@ -66,11 +66,11 @@ const installDatabaseFake = () => {
   fileCache.findFirst.mockImplementation(async () => [...rows.values()]
     .sort((first, second) => first.accessedAt.getTime() - second.accessedAt.getTime())[0] ?? null);
   fileCache.findMany.mockImplementation(async ({where, take}: {
-    where?: {createdAt: {gt: Date}};
+    where?: {hash: {gt: string}};
     take: number;
   }) => [...rows.values()]
-    .filter(row => !where || row.createdAt > where.createdAt.gt)
-    .sort((first, second) => first.createdAt.getTime() - second.createdAt.getTime())
+    .filter(row => !where || row.hash > where.hash.gt)
+    .sort((first, second) => first.hash.localeCompare(second.hash))
     .slice(0, take));
   fileCache.findUnique.mockImplementation(async ({where}: {where: {hash: string}}) => rows.get(where.hash) ?? null);
   fileCache.update.mockImplementation(async ({where, data}: {where: {hash: string}; data: {accessedAt: Date}}) => {
@@ -436,6 +436,24 @@ describe('FileCacheProvider startup cleanup', () => {
     expect(await pathExists(orphanPath)).toBe(false);
     expect(await pathExists(preservedDirectory)).toBe(true);
     expect(await fs.readFile(preservedFile, 'utf8')).toBe('keep');
+  });
+
+  it('removes every missing database row when more than one page shares a creation time', async () => {
+    const {provider} = await makeProvider();
+    const sharedCreatedAt = new Date('2026-01-01T00:00:00Z');
+
+    for (let index = 0; index < 51; index++) {
+      const hash = `missing-${String(index).padStart(2, '0')}`;
+      dependencyMocks.rows.set(hash, {
+        ...makeRow(hash, 1),
+        createdAt: sharedCreatedAt,
+      });
+    }
+
+    await provider.cleanup();
+
+    expect(dependencyMocks.rows.size).toBe(0);
+    expect(dependencyMocks.fileCache.delete).toHaveBeenCalledTimes(51);
   });
 });
 

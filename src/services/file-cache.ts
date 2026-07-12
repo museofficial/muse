@@ -299,17 +299,17 @@ export default class FileCacheProvider {
    */
   private getFindAllIterable() {
     const limit = 50;
-    let previousCreatedAt: Date | null = null;
+    let previousHash: string | null = null;
 
     let models: FileCache[] = [];
 
     const fetchNextBatch = async () => {
       let where;
 
-      if (previousCreatedAt) {
+      if (previousHash !== null) {
         where = {
-          createdAt: {
-            gt: previousCreatedAt,
+          hash: {
+            gt: previousHash,
           },
         };
       }
@@ -317,13 +317,13 @@ export default class FileCacheProvider {
       models = await prisma.fileCache.findMany({
         where,
         orderBy: {
-          createdAt: 'asc',
+          hash: 'asc',
         },
         take: limit,
       });
 
       if (models.length > 0) {
-        previousCreatedAt = models[models.length - 1].createdAt;
+        previousHash = models[models.length - 1].hash;
       }
     };
 

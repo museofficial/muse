@@ -224,21 +224,18 @@ describe('YoutubeAPI chapter parsing', () => {
     ]);
   });
 
-  it('does not scan past an earlier timestamp to find a later zero start', async () => {
+  it('scans past an incidental earlier timestamp to find a later zero-start chapter block', async () => {
     const video = makeVideo({
       id: 'laterzero01',
       duration: 'PT3M',
-      title: 'Unsplit video',
+      title: 'Chaptered video',
       description: '10:00 Preface\n0:00 Intro\n1:00 Main',
     });
     const {api} = makeHarness({videos: [video]});
 
-    await expect(api.getVideo(video.id, true)).resolves.toEqual([
-      expect.objectContaining({
-        title: video.snippet.title,
-        offset: 0,
-        length: 180,
-      }),
+    expect(chapterSummary(await api.getVideo(video.id, true))).toEqual([
+      {title: 'Intro (Chaptered video)', offset: 0, length: 60},
+      {title: 'Main (Chaptered video)', offset: 60, length: 120},
     ]);
   });
 
