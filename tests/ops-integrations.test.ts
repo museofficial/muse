@@ -26,6 +26,7 @@ vi.mock('@discordjs/voice', () => ({
   VoiceConnectionStatus: {
     Connecting: 'connecting',
     Disconnected: 'disconnected',
+    Destroyed: 'destroyed',
     Ready: 'ready',
     Signalling: 'signalling',
   },
@@ -199,7 +200,7 @@ const makeVoiceConnection = (overrides: Record<string, unknown> = {}) => {
 };
 
 const getPrivatePlayer = (player: Player) => player as unknown as {
-  onVoiceConnectionDisconnect(): Promise<void>;
+  onVoiceConnectionDisconnect(connection: object): Promise<void>;
 };
 
 beforeEach(() => {
@@ -596,7 +597,7 @@ describe('OPS-13 transient voice recovery', () => {
     const player = new Player({} as never, GUILD_ID);
     player.voiceConnection = connection as never;
 
-    await getPrivatePlayer(player).onVoiceConnectionDisconnect();
+    await getPrivatePlayer(player).onVoiceConnectionDisconnect(connection);
 
     expect(dependencyMocks.entersState).toHaveBeenCalledWith(connection, 'connecting', 5_000);
     expect(dependencyMocks.entersState).toHaveBeenCalledWith(connection, 'signalling', 5_000);
@@ -616,12 +617,40 @@ describe('OPS-13 transient voice recovery', () => {
     const player = new Player({} as never, GUILD_ID);
     player.voiceConnection = connection as never;
 
-    await getPrivatePlayer(player).onVoiceConnectionDisconnect();
+    await getPrivatePlayer(player).onVoiceConnectionDisconnect(connection);
 
     expect(dependencyMocks.entersState).toHaveBeenCalledWith(connection, 'connecting', 5_000);
     expect(dependencyMocks.entersState).toHaveBeenCalledWith(connection, 'signalling', 5_000);
     expect(connection.destroy).toHaveBeenCalledOnce();
     expect(player.voiceConnection).toBeNull();
+  });
+
+  it('does not disconnect a replacement when an old 4014 recovery wait later times out', async () => {
+    const oldRecovery = makeDeferred<void>();
+    dependencyMocks.entersState.mockReturnValue(oldRecovery.promise);
+    const {connection: oldConnection} = makeVoiceConnection({
+      state: {
+        status: 'disconnected',
+        reason: 'websocket-close',
+        closeCode: 4014,
+      },
+    });
+    const {connection: replacement} = makeVoiceConnection({
+      state: {status: 'disconnected'},
+    });
+    const player = new Player({} as never, GUILD_ID);
+    player.voiceConnection = oldConnection as never;
+
+    const recovery = getPrivatePlayer(player).onVoiceConnectionDisconnect(oldConnection);
+    await flushAsyncWork();
+    player.voiceConnection = replacement as never;
+    oldRecovery.reject(new Error('old 4014 recovery timed out'));
+    await recovery;
+
+    expect(oldConnection.destroy).not.toHaveBeenCalled();
+    expect(replacement.rejoin).not.toHaveBeenCalled();
+    expect(replacement.destroy).not.toHaveBeenCalled();
+    expect(player.voiceConnection).toBe(replacement);
   });
 
   it('backs off in five-second increments and rejoins below five attempts', async () => {
@@ -634,7 +663,7 @@ describe('OPS-13 transient voice recovery', () => {
     const player = new Player({} as never, GUILD_ID);
     player.voiceConnection = connection as never;
 
-    const recovery = getPrivatePlayer(player).onVoiceConnectionDisconnect();
+    const recovery = getPrivatePlayer(player).onVoiceConnectionDisconnect(connection);
     expect(dependencyMocks.sleep).toHaveBeenCalledWith(15_000);
     backoff.resolve(undefined);
     await recovery;
@@ -654,7 +683,7 @@ describe('OPS-13 transient voice recovery', () => {
     const player = new Player({} as never, GUILD_ID);
     player.voiceConnection = connection as never;
 
-    const recovery = getPrivatePlayer(player).onVoiceConnectionDisconnect();
+    const recovery = getPrivatePlayer(player).onVoiceConnectionDisconnect(connection);
     expect(dependencyMocks.sleep).toHaveBeenCalledWith(10_000);
 
     connection.state.status = 'ready';
@@ -666,6 +695,33 @@ describe('OPS-13 transient voice recovery', () => {
     expect(player.voiceConnection).toBe(connection);
   });
 
+  it('does not rejoin or destroy a replacement when an old transient backoff later releases', async () => {
+    const backoff = makeDeferred<void>();
+    dependencyMocks.sleep.mockReturnValue(backoff.promise);
+    const {connection: oldConnection} = makeVoiceConnection({
+      rejoinAttempts: 1,
+      state: {status: 'disconnected'},
+    });
+    const {connection: replacement} = makeVoiceConnection({
+      rejoinAttempts: 0,
+      state: {status: 'disconnected'},
+    });
+    const player = new Player({} as never, GUILD_ID);
+    player.voiceConnection = oldConnection as never;
+
+    const recovery = getPrivatePlayer(player).onVoiceConnectionDisconnect(oldConnection);
+    expect(dependencyMocks.sleep).toHaveBeenCalledWith(10_000);
+    player.voiceConnection = replacement as never;
+    backoff.resolve(undefined);
+    await recovery;
+
+    expect(oldConnection.rejoin).not.toHaveBeenCalled();
+    expect(oldConnection.destroy).not.toHaveBeenCalled();
+    expect(replacement.rejoin).not.toHaveBeenCalled();
+    expect(replacement.destroy).not.toHaveBeenCalled();
+    expect(player.voiceConnection).toBe(replacement);
+  });
+
   it('destroys a still-disconnected connection when rejoin fails below five attempts', async () => {
     const {connection} = makeVoiceConnection({
       rejoin: vi.fn(() => false),
@@ -675,7 +731,7 @@ describe('OPS-13 transient voice recovery', () => {
     const player = new Player({} as never, GUILD_ID);
     player.voiceConnection = connection as never;
 
-    await getPrivatePlayer(player).onVoiceConnectionDisconnect();
+    await getPrivatePlayer(player).onVoiceConnectionDisconnect(connection);
 
     expect(dependencyMocks.sleep).toHaveBeenCalledWith(5_000);
     expect(connection.rejoin).toHaveBeenCalledOnce();
@@ -691,12 +747,61 @@ describe('OPS-13 transient voice recovery', () => {
     const player = new Player({} as never, GUILD_ID);
     player.voiceConnection = connection as never;
 
-    await getPrivatePlayer(player).onVoiceConnectionDisconnect();
+    await getPrivatePlayer(player).onVoiceConnectionDisconnect(connection);
 
     expect(dependencyMocks.sleep).not.toHaveBeenCalled();
     expect(connection.rejoin).not.toHaveBeenCalled();
     expect(connection.destroy).toHaveBeenCalledOnce();
     expect(player.voiceConnection).toBeNull();
+  });
+
+  it('keeps a newer connection when an older initial Ready wait rejects and ignores the old Ready callback', async () => {
+    const readyA = makeDeferred<void>();
+    const readyB = makeDeferred<void>();
+    const {connection: connectionA, handlers: handlersA} = makeVoiceConnection({
+      rejoinAttempts: 2,
+      state: {status: 'connecting'},
+    });
+    const {connection: connectionB} = makeVoiceConnection({
+      state: {status: 'connecting'},
+    });
+    dependencyMocks.joinVoiceChannel
+      .mockReturnValueOnce(connectionA)
+      .mockReturnValueOnce(connectionB);
+    dependencyMocks.entersState.mockImplementation((_connection: unknown) => (
+      _connection === connectionA ? readyA.promise : readyB.promise
+    ));
+    const player = new Player({} as never, GUILD_ID);
+    const registerVoiceActivityListener = vi.spyOn(player, 'registerVoiceActivityListener');
+    const channelA = {
+      id: 'voice-channel-a',
+      guild: {id: GUILD_ID, voiceAdapterCreator: {}},
+    };
+    const channelB = {
+      id: 'voice-channel-b',
+      guild: {id: GUILD_ID, voiceAdapterCreator: {}},
+    };
+
+    const connectingA = player.connect(channelA as never);
+    await flushAsyncWork();
+    const connectingB = player.connect(channelB as never);
+    await flushAsyncWork();
+    expect(player.voiceConnection).toBe(connectionB);
+
+    handlersA.get('stateChange')!({status: 'connecting'}, {status: 'ready'});
+    connectionA.state.status = 'disconnected';
+    readyA.reject(new Error('connection A Ready timeout'));
+    await expect(connectingA).rejects.toThrow(
+      'Failed to connect to the voice channel (last state: disconnected, rejoin attempts: 2, recent states: connecting -> ready).',
+    );
+
+    readyB.resolve(undefined);
+    await connectingB;
+
+    expect(connectionA.destroy).toHaveBeenCalled();
+    expect(connectionB.destroy).not.toHaveBeenCalled();
+    expect(player.voiceConnection).toBe(connectionB);
+    expect(registerVoiceActivityListener).not.toHaveBeenCalled();
   });
 
   it('uses a 60-second initial Ready wait and preserves status, attempts, and recent-state diagnostics', async () => {

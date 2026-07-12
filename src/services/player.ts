@@ -137,20 +137,31 @@ export default class {
 
       debug(`Voice connection state changed: ${oldState.status} -> ${newState.status}`);
 
-      if (newState.status === VoiceConnectionStatus.Ready && !this.hasRegisteredVoiceActivityListener) {
+      if (this.voiceConnection === voiceConnection
+        && newState.status === VoiceConnectionStatus.Ready
+        && !this.hasRegisteredVoiceActivityListener) {
         this.registerVoiceActivityListener(guildSettings);
         this.hasRegisteredVoiceActivityListener = true;
       }
     });
 
-    voiceConnection.on(VoiceConnectionStatus.Disconnected, this.onVoiceConnectionDisconnect.bind(this));
+    voiceConnection.on(
+      VoiceConnectionStatus.Disconnected,
+      this.onVoiceConnectionDisconnect.bind(this, voiceConnection),
+    );
 
     try {
       await this.waitForVoiceConnectionReady(voiceConnection);
     } catch {
       const {status} = voiceConnection.state;
-      voiceConnection.destroy();
-      this.voiceConnection = null;
+      if (status !== VoiceConnectionStatus.Destroyed) {
+        voiceConnection.destroy();
+      }
+
+      if (this.voiceConnection === voiceConnection) {
+        this.voiceConnection = null;
+      }
+
       throw new Error(`Failed to connect to the voice channel (last state: ${status}, rejoin attempts: ${voiceConnection.rejoinAttempts}, recent states: ${stateTransitions.join(' -> ')}).`);
     }
   }
@@ -736,38 +747,43 @@ export default class {
     }
   }
 
-  private async onVoiceConnectionDisconnect(): Promise<void> {
-    if (!this.voiceConnection || this.voiceConnection.state.status !== VoiceConnectionStatus.Disconnected) {
+  private async onVoiceConnectionDisconnect(voiceConnection: VoiceConnection): Promise<void> {
+    if (this.voiceConnection !== voiceConnection || voiceConnection.state.status !== VoiceConnectionStatus.Disconnected) {
       return;
     }
 
-    const disconnectedState = this.voiceConnection.state;
+    const disconnectedState = voiceConnection.state;
     if (disconnectedState.reason === VoiceConnectionDisconnectReason.WebSocketClose && disconnectedState.closeCode === 4014) {
       try {
         await Promise.race([
-          entersState(this.voiceConnection, VoiceConnectionStatus.Connecting, 5_000),
-          entersState(this.voiceConnection, VoiceConnectionStatus.Signalling, 5_000),
+          entersState(voiceConnection, VoiceConnectionStatus.Connecting, 5_000),
+          entersState(voiceConnection, VoiceConnectionStatus.Signalling, 5_000),
         ]);
         return;
       } catch {
-        this.disconnect();
+        if (this.voiceConnection === voiceConnection) {
+          this.disconnect();
+        }
+
         return;
       }
     }
 
-    if (this.voiceConnection.rejoinAttempts < 5) {
-      await sleep((this.voiceConnection.rejoinAttempts + 1) * 5_000);
+    if (voiceConnection.rejoinAttempts < 5) {
+      await sleep((voiceConnection.rejoinAttempts + 1) * 5_000);
 
-      if (!this.voiceConnection || this.voiceConnection.state.status !== VoiceConnectionStatus.Disconnected) {
+      if (this.voiceConnection !== voiceConnection || voiceConnection.state.status !== VoiceConnectionStatus.Disconnected) {
         return;
       }
 
-      if (this.voiceConnection.rejoin()) {
+      if (voiceConnection.rejoin()) {
         return;
       }
     }
 
-    this.disconnect();
+    if (this.voiceConnection === voiceConnection) {
+      this.disconnect();
+    }
   }
 
   private async ensureVoiceConnectionReady(): Promise<VoiceConnection> {
