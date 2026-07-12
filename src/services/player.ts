@@ -758,10 +758,12 @@ export default class {
     if (this.voiceConnection.rejoinAttempts < 5) {
       await sleep((this.voiceConnection.rejoinAttempts + 1) * 5_000);
 
-      if (this.voiceConnection && this.voiceConnection.state.status === VoiceConnectionStatus.Disconnected) {
-        if (this.voiceConnection.rejoin()) {
-          return;
-        }
+      if (!this.voiceConnection || this.voiceConnection.state.status !== VoiceConnectionStatus.Disconnected) {
+        return;
+      }
+
+      if (this.voiceConnection.rejoin()) {
+        return;
       }
     }
 
