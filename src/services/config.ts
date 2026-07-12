@@ -14,8 +14,8 @@ const firstNonEmpty = (...values: Array<string | undefined>) => values
   .find((value): value is string => Boolean(value));
 
 const CONFIG_MAP = {
-  DISCORD_TOKEN: process.env.DISCORD_TOKEN,
-  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
+  DISCORD_TOKEN: firstNonEmpty(process.env.DISCORD_TOKEN),
+  YOUTUBE_API_KEY: firstNonEmpty(process.env.YOUTUBE_API_KEY),
   SPOTIFY_CLIENT_ID: process.env.SPOTIFY_CLIENT_ID ?? '',
   SPOTIFY_CLIENT_SECRET: process.env.SPOTIFY_CLIENT_SECRET ?? '',
   REGISTER_COMMANDS_ON_BOT: process.env.REGISTER_COMMANDS_ON_BOT === 'true',
