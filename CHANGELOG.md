@@ -10,10 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fall back once to a closely matched audio-focused upload when a music video is age-restricted.
 - Prevent unavailable YouTube tracks and rejected automatic queue advances from restarting Muse.
 - Install current yt-dlp JavaScript challenge support and use the bundled Node.js runtime.
-- Fix provider routing, playlist limits and pagination, and YouTube chapter parsing.
-- Fix queue command boundaries, queue insertion, and Player state transitions.
+- Fix provider routing and autocomplete allocation, playlist limits and pagination, and YouTube chapter parsing.
+- Fix queue command boundaries, queue insertion, and concurrent Player playback and voice-recovery transitions.
 - Correct SponsorBlock trimming and restore pre-duck volume after overlapping speakers finish.
-- Make cache writes safe under concurrent downloads and reject negative cache limits.
+- Make cache writes safe under concurrent downloads, reconcile every indexed row, and reject negative cache limits.
+- Reject blank required credentials and honor explicit SQLite database paths during legacy migrations.
 - Add a Node.js behavior suite for commands, providers, queueing, playback, and caching.
 
 ## [2.11.5] - 2026-06-04
