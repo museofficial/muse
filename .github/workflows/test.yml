@@ -4,13 +4,16 @@ on: [push, pull_request]
 
 jobs:
   test:
-    name: Test
+    name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['22.12.0', '22']
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node-version }}
           cache: 'yarn'
       - name: Install dependencies
         run: yarn install --frozen-lockfile

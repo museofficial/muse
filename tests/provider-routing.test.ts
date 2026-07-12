@@ -73,6 +73,22 @@ describe('GetSongs provider routing', () => {
     expect(youtubeAPI.getPlaylist).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'Queen:Bohemian Rhapsody',
+    'C418: Sweden',
+  ])('uses YouTube search for colon-bearing free text %s', async query => {
+    const {getSongs, spotifyAPI, youtubeAPI} = makeGetSongsHarness();
+    const result = [makeSong('Search result')];
+    youtubeAPI.search.mockResolvedValue(result);
+
+    await expect(getSongs.getSongs(query, 20, true)).resolves.toEqual([result, '']);
+    expect(youtubeAPI.search).toHaveBeenCalledWith(query, true);
+    expect(youtubeAPI.getVideo).not.toHaveBeenCalled();
+    expect(youtubeAPI.getPlaylist).not.toHaveBeenCalled();
+    expect(spotifyAPI.getTrack).not.toHaveBeenCalled();
+    expect(dependencyMocks.ffprobe).not.toHaveBeenCalled();
+  });
+
   it('routes a YouTube URL directly to the video provider', async () => {
     const {getSongs, youtubeAPI} = makeGetSongsHarness();
     const result = [makeSong('YouTube result', 'abcdefghijk')];
@@ -136,10 +152,12 @@ describe('GetSongs provider routing', () => {
     expect(youtubeAPI.search).not.toHaveBeenCalled();
   });
 
-  it('propagates an ffprobe rejection without searching the literal URL', async () => {
+  it.each([
+    'http://radio.example/live.m3u8',
+    'https://radio.example/live.m3u8',
+  ])('propagates an ffprobe rejection for %s without searching the literal URL', async url => {
     const {getSongs, youtubeAPI} = makeGetSongsHarness();
     const error = new Error('ffprobe failed');
-    const url = 'https://radio.example/live.m3u8';
     dependencyMocks.ffprobe.mockImplementation((_url, callback) => callback(error));
     youtubeAPI.search.mockResolvedValue([makeSong('Wrong fallback')]);
 

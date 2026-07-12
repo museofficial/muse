@@ -71,9 +71,27 @@ export default class FileCacheProvider {
     const finalPath = path.join(this.config.CACHE_DIR, hash);
 
     const stream = createWriteStream(tmpPath);
+    let finished = false;
+    let writeFailed = false;
+
+    const handleWriteError = (error: unknown) => {
+      writeFailed = true;
+      this.reportWriteError(error);
+    };
+
+    stream.once('finish', () => {
+      finished = true;
+    });
+    stream.once('error', handleWriteError);
 
     stream.once('close', () => {
-      void this.finalizeWrite(hash, tmpPath, finalPath)
+      stream.removeListener('error', handleWriteError);
+
+      const completion = finished && !writeFailed
+        ? this.finalizeWrite(hash, tmpPath, finalPath)
+        : this.removeTemporaryFile(tmpPath);
+
+      void completion
         .catch(error => {
           this.reportFinalizationError(stream, error);
         });
@@ -171,6 +189,12 @@ export default class FileCacheProvider {
     }
   }
 
+  private reportWriteError(error: unknown) {
+    const writeError = error instanceof Error ? error : new Error(String(error));
+    console.error('Failed to write cache temporary file:', writeError);
+    debug(`Failed to write cache temporary file: ${writeError.message}`);
+  }
+
   private async evictOldest() {
     debug('Evicting oldest files...');
 
@@ -211,6 +235,15 @@ export default class FileCacheProvider {
   }
 
   private async removeOrphans() {
+    const temporaryDirectory = path.join(this.config.CACHE_DIR, 'tmp');
+
+    for await (const dirent of await fs.opendir(temporaryDirectory)) {
+      if (dirent.isFile()) {
+        debug(`${dirent.name} was abandoned in the cache temporary directory. Removing from disk.`);
+        await fs.unlink(path.join(temporaryDirectory, dirent.name));
+      }
+    }
+
     // Check filesystem direction (do files exist on the disk but not in the database?)
     for await (const dirent of await fs.opendir(this.config.CACHE_DIR)) {
       if (dirent.isFile()) {

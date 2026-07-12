@@ -191,6 +191,21 @@ describe('YoutubeAPI chapter parsing', () => {
     await expect(api.getVideo(video.id, true)).resolves.toHaveLength(2);
   });
 
+  it.each(['0:00:00', '00:00:00'])('accepts an all-zero hour-form %s first chapter timestamp', async start => {
+    const video = makeVideo({
+      id: 'hours000001',
+      duration: 'PT2M',
+      title: 'Hour-form chapters',
+      description: `${start} Intro\n0:01:00 Main`,
+    });
+    const {api} = makeHarness({videos: [video]});
+
+    expect(chapterSummary(await api.getVideo(video.id, true))).toEqual([
+      {title: 'Intro (Hour-form chapters)', offset: 0, length: 60},
+      {title: 'Main (Hour-form chapters)', offset: 60, length: 60},
+    ]);
+  });
+
   it('does not treat 10:00 as a zero-start timestamp by substring', async () => {
     const video = makeVideo({
       id: 'notzero0001',

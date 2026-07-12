@@ -288,7 +288,7 @@ export default class {
       }
 
       if (!foundFirstTimestamp) {
-        if (timestamps[0][0] === '0:00' || timestamps[0][0] === '00:00') {
+        if (/^0+(?::0+)+$/u.test(timestamps[0][0])) {
           foundFirstTimestamp = true;
         } else {
           return null;

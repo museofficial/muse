@@ -316,6 +316,127 @@ describe('FileCacheProvider concurrent finalization', () => {
       process.off('unhandledRejection', captureUnhandled);
     }
   });
+
+  it('discards a nonzero write destroyed with an error before finish', async () => {
+    const {cacheDirectory, provider} = await makeProvider();
+    const failure = new Error('source stream failed');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const link = vi.spyOn(fs, 'link');
+    const stream = provider.createWriteStream('partial-hash');
+    const temporaryPath = String(stream.path);
+    const hasInternalErrorBoundary = stream.listenerCount('error') > 0;
+    let finished = false;
+    const uncaughtExceptions: Error[] = [];
+    const unhandledRejections: unknown[] = [];
+    const captureUncaught = (error: Error) => uncaughtExceptions.push(error);
+    const captureUnhandled = (reason: unknown) => unhandledRejections.push(reason);
+
+    // Keep the RED run deterministic instead of letting the missing production
+    // boundary terminate Vitest. GREEN exercises only the production listener.
+    if (!hasInternalErrorBoundary) {
+      stream.on('error', () => {});
+    }
+
+    stream.once('finish', () => {
+      finished = true;
+    });
+    process.on('uncaughtExceptionMonitor', captureUncaught);
+    process.on('unhandledRejection', captureUnhandled);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        stream.write('partial payload', error => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      });
+      expect((await fs.stat(temporaryPath)).size).toBeGreaterThan(0);
+
+      const closed = waitForClose(stream);
+      stream.destroy(failure);
+      await closed;
+
+      await vi.waitFor(async () => {
+        expect(await pathExists(temporaryPath)).toBe(false);
+      });
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(finished).toBe(false);
+      expect(hasInternalErrorBoundary).toBe(true);
+      expect(await pathExists(path.join(cacheDirectory, 'partial-hash'))).toBe(false);
+      expect(dependencyMocks.rows.has('partial-hash')).toBe(false);
+      expect(link).not.toHaveBeenCalled();
+      expect(dependencyMocks.fileCache.upsert).not.toHaveBeenCalled();
+      expect(dependencyMocks.fileCache.aggregate).not.toHaveBeenCalled();
+      expect(consoleError).toHaveBeenCalledWith('Failed to write cache temporary file:', failure);
+      expect(dependencyMocks.debug).toHaveBeenCalledWith('Failed to write cache temporary file: source stream failed');
+      expect(uncaughtExceptions).toEqual([]);
+      expect(unhandledRejections).toEqual([]);
+    } finally {
+      process.off('uncaughtExceptionMonitor', captureUncaught);
+      process.off('unhandledRejection', captureUnhandled);
+    }
+  });
+
+  it('discards a nonzero write destroyed without an error before finish', async () => {
+    const {cacheDirectory, provider} = await makeProvider();
+    const link = vi.spyOn(fs, 'link');
+    const stream = provider.createWriteStream('aborted-hash');
+    const temporaryPath = String(stream.path);
+    let finished = false;
+    stream.once('finish', () => {
+      finished = true;
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      stream.write('partial payload', error => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+    expect((await fs.stat(temporaryPath)).size).toBeGreaterThan(0);
+
+    const closed = waitForClose(stream);
+    stream.destroy();
+    await closed;
+
+    await vi.waitFor(async () => {
+      expect(await pathExists(temporaryPath)).toBe(false);
+    });
+
+    expect(finished).toBe(false);
+    expect(await pathExists(path.join(cacheDirectory, 'aborted-hash'))).toBe(false);
+    expect(dependencyMocks.rows.has('aborted-hash')).toBe(false);
+    expect(link).not.toHaveBeenCalled();
+    expect(dependencyMocks.fileCache.upsert).not.toHaveBeenCalled();
+    expect(dependencyMocks.fileCache.aggregate).not.toHaveBeenCalled();
+    expect(dependencyMocks.fileCache.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe('FileCacheProvider startup cleanup', () => {
+  it('removes regular temporary-file orphans and leaves directories alone', async () => {
+    const {cacheDirectory, provider} = await makeProvider();
+    const temporaryDirectory = path.join(cacheDirectory, 'tmp');
+    const orphanPath = path.join(temporaryDirectory, 'abandoned.123e4567-e89b-12d3-a456-426614174000');
+    const preservedDirectory = path.join(temporaryDirectory, 'preserved-directory');
+    const preservedFile = path.join(preservedDirectory, 'nested-file');
+    await fs.writeFile(orphanPath, 'partial');
+    await fs.mkdir(preservedDirectory);
+    await fs.writeFile(preservedFile, 'keep');
+
+    await provider.cleanup();
+
+    expect(await pathExists(orphanPath)).toBe(false);
+    expect(await pathExists(preservedDirectory)).toBe(true);
+    expect(await fs.readFile(preservedFile, 'utf8')).toBe('keep');
+  });
 });
 
 describe('FileCacheProvider eviction', () => {
