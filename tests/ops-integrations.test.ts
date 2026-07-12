@@ -647,6 +647,52 @@ describe('OPS-13 transient voice recovery', () => {
     oldRecovery.reject(new Error('old 4014 recovery timed out'));
     await recovery;
 
+    expect(oldConnection.destroy).toHaveBeenCalledOnce();
+    expect(replacement.rejoin).not.toHaveBeenCalled();
+    expect(replacement.destroy).not.toHaveBeenCalled();
+    expect(player.voiceConnection).toBe(replacement);
+  });
+
+  it('cleans up an old 4014 connection that recovers after it was replaced', async () => {
+    const oldRecovery = makeDeferred<void>();
+    dependencyMocks.entersState.mockReturnValue(oldRecovery.promise);
+    const {connection: oldConnection} = makeVoiceConnection({
+      state: {
+        status: 'disconnected',
+        reason: 'websocket-close',
+        closeCode: 4014,
+      },
+    });
+    const {connection: replacement} = makeVoiceConnection({
+      state: {status: 'disconnected'},
+    });
+    const player = new Player({} as never, GUILD_ID);
+    player.voiceConnection = oldConnection as never;
+
+    const recovery = getPrivatePlayer(player).onVoiceConnectionDisconnect(oldConnection);
+    await flushAsyncWork();
+    player.voiceConnection = replacement as never;
+    oldRecovery.resolve(undefined);
+    await recovery;
+
+    expect(oldConnection.destroy).toHaveBeenCalledOnce();
+    expect(replacement.rejoin).not.toHaveBeenCalled();
+    expect(replacement.destroy).not.toHaveBeenCalled();
+    expect(player.voiceConnection).toBe(replacement);
+  });
+
+  it('does not destroy an already Destroyed stale connection or touch its replacement', async () => {
+    const {connection: oldConnection} = makeVoiceConnection({
+      state: {status: 'destroyed'},
+    });
+    const {connection: replacement} = makeVoiceConnection({
+      state: {status: 'disconnected'},
+    });
+    const player = new Player({} as never, GUILD_ID);
+    player.voiceConnection = replacement as never;
+
+    await getPrivatePlayer(player).onVoiceConnectionDisconnect(oldConnection);
+
     expect(oldConnection.destroy).not.toHaveBeenCalled();
     expect(replacement.rejoin).not.toHaveBeenCalled();
     expect(replacement.destroy).not.toHaveBeenCalled();
@@ -695,6 +741,41 @@ describe('OPS-13 transient voice recovery', () => {
     expect(player.voiceConnection).toBe(connection);
   });
 
+  it('clears a current connection that becomes Destroyed during transient backoff without destroying it again', async () => {
+    const backoff = makeDeferred<void>();
+    dependencyMocks.sleep.mockReturnValue(backoff.promise);
+    const {connection} = makeVoiceConnection({
+      rejoinAttempts: 1,
+      state: {status: 'disconnected'},
+    });
+    const player = new Player({} as never, GUILD_ID);
+    const audioPlayer = {stop: vi.fn()};
+    player.voiceConnection = connection as never;
+    Object.assign(player, {
+      audioPlayer,
+      audioResource: {volume: {}},
+      currentChannel: {id: 'old-channel'},
+    });
+
+    const recovery = getPrivatePlayer(player).onVoiceConnectionDisconnect(connection);
+    connection.state.status = 'destroyed';
+    backoff.resolve(undefined);
+    await recovery;
+
+    const state = player as unknown as {
+      audioPlayer: object | null;
+      audioResource: object | null;
+      currentChannel?: object;
+    };
+    expect(connection.destroy).not.toHaveBeenCalled();
+    expect(connection.rejoin).not.toHaveBeenCalled();
+    expect(audioPlayer.stop).toHaveBeenCalledWith(true);
+    expect(player.voiceConnection).toBeNull();
+    expect(state.audioPlayer).toBeNull();
+    expect(state.audioResource).toBeNull();
+    expect(state.currentChannel).toBeUndefined();
+  });
+
   it('does not rejoin or destroy a replacement when an old transient backoff later releases', async () => {
     const backoff = makeDeferred<void>();
     dependencyMocks.sleep.mockReturnValue(backoff.promise);
@@ -716,10 +797,48 @@ describe('OPS-13 transient voice recovery', () => {
     await recovery;
 
     expect(oldConnection.rejoin).not.toHaveBeenCalled();
-    expect(oldConnection.destroy).not.toHaveBeenCalled();
+    expect(oldConnection.destroy).toHaveBeenCalledOnce();
     expect(replacement.rejoin).not.toHaveBeenCalled();
     expect(replacement.destroy).not.toHaveBeenCalled();
     expect(player.voiceConnection).toBe(replacement);
+  });
+
+  it('clears a current 4014 connection already Destroyed when its recovery wait rejects', async () => {
+    const oldRecovery = makeDeferred<void>();
+    dependencyMocks.entersState.mockReturnValue(oldRecovery.promise);
+    const {connection} = makeVoiceConnection({
+      state: {
+        status: 'disconnected',
+        reason: 'websocket-close',
+        closeCode: 4014,
+      },
+    });
+    const player = new Player({} as never, GUILD_ID);
+    const audioPlayer = {stop: vi.fn()};
+    player.voiceConnection = connection as never;
+    Object.assign(player, {
+      audioPlayer,
+      audioResource: {volume: {}},
+      currentChannel: {id: 'old-channel'},
+    });
+
+    const recovery = getPrivatePlayer(player).onVoiceConnectionDisconnect(connection);
+    await flushAsyncWork();
+    connection.state.status = 'destroyed';
+    oldRecovery.reject(new Error('4014 recovery ended after destruction'));
+    await recovery;
+
+    const state = player as unknown as {
+      audioPlayer: object | null;
+      audioResource: object | null;
+      currentChannel?: object;
+    };
+    expect(connection.destroy).not.toHaveBeenCalled();
+    expect(audioPlayer.stop).toHaveBeenCalledWith(true);
+    expect(player.voiceConnection).toBeNull();
+    expect(state.audioPlayer).toBeNull();
+    expect(state.audioResource).toBeNull();
+    expect(state.currentChannel).toBeUndefined();
   });
 
   it('destroys a still-disconnected connection when rejoin fails below five attempts', async () => {

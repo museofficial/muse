@@ -154,9 +154,7 @@ export default class {
       await this.waitForVoiceConnectionReady(voiceConnection);
     } catch {
       const {status} = voiceConnection.state;
-      if (status !== VoiceConnectionStatus.Destroyed) {
-        voiceConnection.destroy();
-      }
+      this.destroyVoiceConnection(voiceConnection);
 
       if (this.voiceConnection === voiceConnection) {
         this.voiceConnection = null;
@@ -176,7 +174,7 @@ export default class {
       }
 
       this.loopCurrentSong = false;
-      this.voiceConnection.destroy();
+      this.destroyVoiceConnection(this.voiceConnection);
       this.stopAudioPlayer(true);
 
       this.voiceConnection = null;
@@ -748,7 +746,16 @@ export default class {
   }
 
   private async onVoiceConnectionDisconnect(voiceConnection: VoiceConnection): Promise<void> {
-    if (this.voiceConnection !== voiceConnection || voiceConnection.state.status !== VoiceConnectionStatus.Disconnected) {
+    if (this.voiceConnection !== voiceConnection) {
+      this.destroyVoiceConnection(voiceConnection);
+      return;
+    }
+
+    if (voiceConnection.state.status !== VoiceConnectionStatus.Disconnected) {
+      if (voiceConnection.state.status === VoiceConnectionStatus.Destroyed) {
+        this.disconnect();
+      }
+
       return;
     }
 
@@ -759,10 +766,18 @@ export default class {
           entersState(voiceConnection, VoiceConnectionStatus.Connecting, 5_000),
           entersState(voiceConnection, VoiceConnectionStatus.Signalling, 5_000),
         ]);
+        if (this.voiceConnection !== voiceConnection) {
+          this.destroyVoiceConnection(voiceConnection);
+        } else if (this.getVoiceConnectionStatus(voiceConnection) === VoiceConnectionStatus.Destroyed) {
+          this.disconnect();
+        }
+
         return;
       } catch {
         if (this.voiceConnection === voiceConnection) {
           this.disconnect();
+        } else {
+          this.destroyVoiceConnection(voiceConnection);
         }
 
         return;
@@ -772,7 +787,17 @@ export default class {
     if (voiceConnection.rejoinAttempts < 5) {
       await sleep((voiceConnection.rejoinAttempts + 1) * 5_000);
 
-      if (this.voiceConnection !== voiceConnection || voiceConnection.state.status !== VoiceConnectionStatus.Disconnected) {
+      if (this.voiceConnection !== voiceConnection) {
+        this.destroyVoiceConnection(voiceConnection);
+        return;
+      }
+
+      const connectionStatus = this.getVoiceConnectionStatus(voiceConnection);
+      if (connectionStatus !== VoiceConnectionStatus.Disconnected) {
+        if (connectionStatus === VoiceConnectionStatus.Destroyed) {
+          this.disconnect();
+        }
+
         return;
       }
 
@@ -783,7 +808,19 @@ export default class {
 
     if (this.voiceConnection === voiceConnection) {
       this.disconnect();
+    } else {
+      this.destroyVoiceConnection(voiceConnection);
     }
+  }
+
+  private destroyVoiceConnection(voiceConnection: VoiceConnection): void {
+    if (voiceConnection.state.status !== VoiceConnectionStatus.Destroyed) {
+      voiceConnection.destroy();
+    }
+  }
+
+  private getVoiceConnectionStatus(voiceConnection: VoiceConnection): VoiceConnectionStatus {
+    return voiceConnection.state.status;
   }
 
   private async ensureVoiceConnectionReady(): Promise<VoiceConnection> {
