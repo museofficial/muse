@@ -66,7 +66,7 @@ const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: Spoti
     const numOfSpotifySuggestions = Math.min(maxSpotifySuggestions, totalSpotifyResults);
 
     const maxSpotifyAlbums = Math.floor(numOfSpotifySuggestions / 2);
-    const numOfSpotifyAlbums = Math.min(maxSpotifyAlbums, spotifyResponse.albums?.items.length ?? 0);
+    const numOfSpotifyAlbums = Math.min(maxSpotifyAlbums, spotifyAlbums.length);
     const maxSpotifyTracks = numOfSpotifySuggestions - numOfSpotifyAlbums;
 
     // Make room for spotify results
