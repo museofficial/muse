@@ -65,13 +65,32 @@ const installDatabaseFake = () => {
   fileCache.delete.mockImplementation(async ({where}: {where: {hash: string}}) => rows.delete(where.hash));
   fileCache.findFirst.mockImplementation(async () => [...rows.values()]
     .sort((first, second) => first.accessedAt.getTime() - second.accessedAt.getTime())[0] ?? null);
-  fileCache.findMany.mockImplementation(async ({where, take}: {
-    where?: {hash: {gt: string}};
+  fileCache.findMany.mockImplementation(async ({where, orderBy, take}: {
+    where?: {
+      hash?: {gt: string};
+      createdAt?: {gt: Date};
+    };
+    orderBy?: {
+      hash?: 'asc' | 'desc';
+      createdAt?: 'asc' | 'desc';
+    };
     take: number;
-  }) => [...rows.values()]
-    .filter(row => !where || row.hash > where.hash.gt)
-    .sort((first, second) => first.hash.localeCompare(second.hash))
-    .slice(0, take));
+  }) => {
+    const matchingRows = [...rows.values()].filter(row => (
+      (!where?.hash || row.hash > where.hash.gt)
+      && (!where?.createdAt || row.createdAt > where.createdAt.gt)
+    ));
+
+    if (orderBy?.hash) {
+      const direction = orderBy.hash === 'asc' ? 1 : -1;
+      matchingRows.sort((first, second) => direction * first.hash.localeCompare(second.hash));
+    } else if (orderBy?.createdAt) {
+      const direction = orderBy.createdAt === 'asc' ? 1 : -1;
+      matchingRows.sort((first, second) => direction * (first.createdAt.getTime() - second.createdAt.getTime()));
+    }
+
+    return matchingRows.slice(0, take);
+  });
   fileCache.findUnique.mockImplementation(async ({where}: {where: {hash: string}}) => rows.get(where.hash) ?? null);
   fileCache.update.mockImplementation(async ({where, data}: {where: {hash: string}; data: {accessedAt: Date}}) => {
     const row = rows.get(where.hash);
@@ -441,9 +460,12 @@ describe('FileCacheProvider startup cleanup', () => {
   it('removes every missing database row when more than one page shares a creation time', async () => {
     const {provider} = await makeProvider();
     const sharedCreatedAt = new Date('2026-01-01T00:00:00Z');
+    const hashes = Array.from(
+      {length: 51},
+      (_, index) => `missing-${String(index).padStart(2, '0')}`,
+    ).reverse();
 
-    for (let index = 0; index < 51; index++) {
-      const hash = `missing-${String(index).padStart(2, '0')}`;
+    for (const hash of hashes) {
       dependencyMocks.rows.set(hash, {
         ...makeRow(hash, 1),
         createdAt: sharedCreatedAt,
@@ -454,6 +476,12 @@ describe('FileCacheProvider startup cleanup', () => {
 
     expect(dependencyMocks.rows.size).toBe(0);
     expect(dependencyMocks.fileCache.delete).toHaveBeenCalledTimes(51);
+    expect(dependencyMocks.fileCache.findMany).toHaveBeenCalledTimes(3);
+    for (const [arguments_] of dependencyMocks.fileCache.findMany.mock.calls) {
+      expect(arguments_).toEqual(expect.objectContaining({
+        orderBy: {hash: 'asc'},
+      }));
+    }
   });
 });
 
