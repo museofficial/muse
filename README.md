@@ -14,6 +14,7 @@ Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that
 ## Features
 
 - 🎥 Livestreams
+- ☁️ SoundCloud tracks, share links, and playlists
 - ⏩ Seeking within a song/video
 - 💾 Local caching for better performance
 - 📋 No vote-to-skip - this is anarchy, not a democracy

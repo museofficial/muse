@@ -3,6 +3,7 @@ import type {Snowflake} from 'discord.js';
 export enum MediaSource {
   Youtube,
   HLS,
+  SoundCloud,
 }
 
 export interface QueuedPlaylist {

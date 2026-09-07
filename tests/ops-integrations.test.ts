@@ -104,7 +104,7 @@ import Player, {
 } from '../src/services/player.js';
 import ThirdParty from '../src/services/third-party.js';
 import prepareYtDlp from '../src/utils/prepare-yt-dlp.js';
-import {getExecutable, getYouTubeMediaSource, getYtDlpVersion, updateYtDlp} from '../src/utils/yt-dlp.js';
+import {getExecutable, getSoundCloudMetadata, getSoundCloudMediaSource, getYouTubeMediaSource, getYtDlpVersion, updateYtDlp, YtDlpMediaUnavailableError} from '../src/utils/yt-dlp.js';
 
 const GUILD_ID = 'guild-id';
 const ORIGINAL_ENV = {
@@ -442,6 +442,37 @@ describe('OPS-10 yt-dlp selection and update lifecycle', () => {
 });
 
 describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
+  it('bounds SoundCloud collection extraction and does not read YouTube cookies', async () => {
+    process.env.YT_DLP_COOKIES_PATH = '/missing/youtube-only-cookies';
+    const metadata = {title: 'Album', entries: [{title: 'Track', url: 'https://soundcloud.com/artist/track'}]};
+    dependencyMocks.execa.mockResolvedValue({stdout: JSON.stringify(metadata)});
+    await expect(getSoundCloudMetadata('https://soundcloud.com/artist/sets/album', 3)).resolves.toEqual(metadata);
+    const args = dependencyMocks.execa.mock.calls[0][1] as string[];
+    expect(args).toEqual(expect.arrayContaining(['--flat-playlist', '--playlist-end', '3']));
+    expect(args).not.toContain('--cookies');
+    expect(dependencyMocks.execa.mock.calls[0][2]).toEqual({timeout: 45_000});
+  });
+
+  it('rejects collection results when resolving an individual SoundCloud audio stream', async () => {
+    dependencyMocks.execa.mockResolvedValue({stdout: JSON.stringify({entries: [], url: 'https://soundcloud.com/artist'})});
+    await expect(getSoundCloudMediaSource('https://soundcloud.com/artist')).rejects.toThrow('playable media URL');
+  });
+
+  it.each([
+    'ERROR: [soundcloud] 123: This video is DRM protected',
+    'ERROR: [soundcloud] artist/removed: Unable to download JSON metadata: HTTP Error 404: Not Found',
+  ])('classifies permanent SoundCloud extraction failure as unplayable: %s', async stderr => {
+    dependencyMocks.execa.mockRejectedValue({stderr});
+    await expect(getSoundCloudMediaSource('https://soundcloud.com/artist/protected'))
+      .rejects.toBeInstanceOf(YtDlpMediaUnavailableError);
+  });
+
+  it('preserves temporary SoundCloud failures for retry', async () => {
+    dependencyMocks.execa.mockRejectedValue({stderr: 'ERROR: [soundcloud] 123: HTTP Error 429: Too Many Requests'});
+    await expect(getSoundCloudMediaSource('https://soundcloud.com/artist/track'))
+      .rejects.not.toBeInstanceOf(YtDlpMediaUnavailableError);
+  });
+
   it('uses the bounded single-video Node-runtime extraction contract and normalizes the selected download', async () => {
     process.env.YT_DLP_PATH = '/fake/yt-dlp';
 
@@ -471,7 +502,10 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
     });
   });
 
-  it('hands reconnect and CRLF-normalized headers to ffmpeg', async () => {
+  it.each([
+    [MediaSource.Youtube, 'abcdefghijk', 'https://www.youtube.com/watch?v=abcdefghijk'],
+    [MediaSource.SoundCloud, 'https://soundcloud.com/artist/track', 'https://soundcloud.com/artist/track'],
+  ])('hands fresh media and normalized headers to ffmpeg for source %s', async (source, url, extractionUrl) => {
     process.env.YT_DLP_PATH = '/fake/yt-dlp';
     const fileCache = {
       getEntryFor: vi.fn().mockResolvedValue(null),
@@ -480,13 +514,13 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
     const song: QueuedSong = {
       title: 'Long uncached track',
       artist: 'Artist',
-      url: 'abcdefghijk',
+      url: url as string,
       length: 3_600,
       offset: 0,
       playlist: null,
       isLive: false,
       thumbnailUrl: null,
-      source: MediaSource.Youtube,
+      source: source as MediaSource,
       addedInChannelId: 'text-channel-id',
       requestedBy: 'requester-id',
     };
@@ -497,6 +531,7 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
     const command = dependencyMocks.ffmpeg.mock.results[0].value as ReturnType<typeof makeFfmpegCommand>;
 
     expect(dependencyMocks.ffmpeg).toHaveBeenCalledWith('https://media.example/requested.webm');
+    expect(dependencyMocks.execa.mock.calls[0][1].at(-1)).toBe(extractionUrl);
     expect(command.inputOptions).toHaveBeenCalledWith([
       '-reconnect',
       '1',
