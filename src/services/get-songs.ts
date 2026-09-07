@@ -6,6 +6,8 @@ import ffmpeg from 'fluent-ffmpeg';
 import YoutubeAPI from './youtube-api.js';
 import SpotifyAPI, {SpotifyTrack} from './spotify-api.js';
 import {URL} from 'node:url';
+import {getSoundCloudMetadata, YtDlpMediaUnavailableError} from '../utils/yt-dlp.js';
+import pLimit from 'p-limit';
 
 @injectable()
 export default class {
@@ -67,6 +69,8 @@ export default class {
           throw new Error('that doesn\'t exist');
         }
       }
+    } else if (['soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com', 'on.soundcloud.com', 'snd.sc'].includes(url.host)) {
+      newSongs.push(...await this.soundCloudSource(url.href, playlistLimit));
     } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
       if (this.spotifyAPI === undefined) {
         throw new Error('Spotify is not enabled!');
@@ -171,6 +175,54 @@ export default class {
         });
       });
     });
+  }
+
+  private async soundCloudSource(url: string, playlistLimit: number): Promise<SongMetadata[]> {
+    const metadata = await getSoundCloudMetadata(url, playlistLimit);
+    const playlist = metadata.entries ? {title: metadata.title ?? 'SoundCloud playlist', source: url} : null;
+    const tracks = metadata.entries ?? [metadata];
+
+    const limit = pLimit(4);
+    const songs = await Promise.all(tracks.slice(0, playlistLimit).map(async track => limit(async () => {
+      if (!track) {
+        return [];
+      }
+
+      // Keep the page URL in the queue; signed audio URLs must be resolved at playback time.
+      const trackUrl = playlist ? track.webpage_url ?? track.url : url;
+      if (!trackUrl) {
+        return [];
+      }
+
+      // Flat SoundCloud playlist entries can contain only a URL, with no title or duration.
+      let details;
+      try {
+        details = playlist ? await getSoundCloudMetadata(trackUrl, 1) : track;
+      } catch (error: unknown) {
+        if (error instanceof YtDlpMediaUnavailableError) {
+          return [];
+        }
+
+        throw error;
+      }
+
+      if (details.entries || !details.title) {
+        return [];
+      }
+
+      return [{
+        url: trackUrl,
+        source: MediaSource.SoundCloud,
+        isLive: false,
+        title: details.title,
+        artist: details.artist ?? details.uploader ?? 'SoundCloud',
+        length: Math.max(0, details.duration ?? 0),
+        offset: 0,
+        playlist,
+        thumbnailUrl: details.thumbnail ?? null,
+      }];
+    })));
+    return songs.flat();
   }
 
   private async spotifyToYouTube(tracks: SpotifyTrack[], shouldSplitChapters: boolean, playlist?: QueuedPlaylist | undefined): Promise<[SongMetadata[], number, number]> {
