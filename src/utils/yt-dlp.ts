@@ -22,6 +22,17 @@ interface YtDlpResponse extends YtDlpMediaDownload {
   readonly requested_downloads?: readonly YtDlpMediaDownload[];
 }
 
+export interface SoundCloudMetadata {
+  readonly title?: string;
+  readonly uploader?: string;
+  readonly artist?: string;
+  readonly duration?: number;
+  readonly webpage_url?: string;
+  readonly url?: string;
+  readonly thumbnail?: string;
+  readonly entries?: ReadonlyArray<SoundCloudMetadata | null>;
+}
+
 export interface YtDlpMediaSource {
   readonly url: string;
   readonly headers: Record<string, string>;
@@ -60,6 +71,9 @@ const getMediaUnavailableReason = (detail: string): YtDlpMediaUnavailableReason 
     /private video/i,
     /video has been removed/i,
     /members-only content/i,
+    /this track is not available/i,
+    /DRM protected/i,
+    /\[soundcloud\][\s\S]*HTTP Error (404|410)\b/i,
   ].some(pattern => pattern.test(detail))
     ? 'unavailable'
     : null;
@@ -69,8 +83,8 @@ const firstNonEmpty = (...values: Array<string | undefined>) => values
   .map(value => value?.trim())
   .find((value): value is string => Boolean(value));
 
-const withTemporaryCookies = async <T>(operation: (cookiesPath?: string) => Promise<T>): Promise<T> => {
-  const configuredCookiesPath = firstNonEmpty(process.env.YT_DLP_COOKIES_PATH);
+const withTemporaryCookies = async <T>(operation: (cookiesPath?: string) => Promise<T>, enabled = true): Promise<T> => {
+  const configuredCookiesPath = enabled ? firstNonEmpty(process.env.YT_DLP_COOKIES_PATH) : undefined;
   if (!configuredCookiesPath) {
     return operation();
   }
@@ -294,12 +308,12 @@ export const updateYtDlp = async (): Promise<YtDlpUpdateResult> => {
   };
 };
 
-export const getYouTubeMediaSource = async (videoIdOrUrl: string): Promise<YtDlpMediaSource> => {
+const extractMedia = async (url: string, playlistLimit?: number, useYouTubeCookies = true): Promise<YtDlpResponse & SoundCloudMetadata> => {
   try {
     return await withTemporaryCookies(async cookiesPath => {
       const args = [
         '--dump-single-json',
-        '--no-playlist',
+        ...(playlistLimit === undefined ? ['--no-playlist'] : ['--flat-playlist', '--playlist-end', String(playlistLimit)]),
         '--skip-download',
         '--no-warnings',
         '--no-cache-dir',
@@ -315,25 +329,14 @@ export const getYouTubeMediaSource = async (videoIdOrUrl: string): Promise<YtDlp
         args.push('--cookies', cookiesPath);
       }
 
-      args.push(toYouTubeWatchUrl(videoIdOrUrl));
+      args.push(url);
 
       const {stdout} = await execa(getExecutable(), args, {
         timeout: YT_DLP_EXTRACT_TIMEOUT_MS,
       });
 
-      const response = JSON.parse(stdout) as YtDlpResponse;
-      const download = response.requested_downloads?.at(0) ?? response;
-
-      if (!download.url) {
-        throw new Error('yt-dlp did not return a playable media URL.');
-      }
-
-      return {
-        url: download.url,
-        headers: normalizeHeaders(download.http_headers ?? response.http_headers),
-        isLive: Boolean(response.is_live ?? (response.live_status === 'is_live')),
-      };
-    });
+      return JSON.parse(stdout) as YtDlpResponse & SoundCloudMetadata;
+    }, useYouTubeCookies);
   } catch (error: unknown) {
     if (isExecaError(error)) {
       const detail = error.stderr?.trim() ?? error.shortMessage ?? 'Unknown yt-dlp error';
@@ -354,3 +357,29 @@ export const getYouTubeMediaSource = async (videoIdOrUrl: string): Promise<YtDlp
     throw error;
   }
 };
+
+const toMediaSource = (response: YtDlpResponse): YtDlpMediaSource => {
+  const download = response.requested_downloads?.at(0) ?? response;
+
+  if (!download.url || 'entries' in response) {
+    throw new Error('yt-dlp did not return a playable media URL.');
+  }
+
+  return {
+    url: download.url,
+    headers: normalizeHeaders(download.http_headers ?? response.http_headers),
+    isLive: Boolean(response.is_live ?? (response.live_status === 'is_live')),
+  };
+};
+
+export const getYouTubeMediaSource = async (videoIdOrUrl: string): Promise<YtDlpMediaSource> => (
+  toMediaSource(await extractMedia(toYouTubeWatchUrl(videoIdOrUrl)))
+);
+
+export const getSoundCloudMetadata = async (url: string, playlistLimit: number): Promise<SoundCloudMetadata> => (
+  extractMedia(url, Math.max(1, Math.floor(playlistLimit)), false)
+);
+
+export const getSoundCloudMediaSource = async (url: string): Promise<YtDlpMediaSource> => (
+  toMediaSource(await extractMedia(url, undefined, false))
+);

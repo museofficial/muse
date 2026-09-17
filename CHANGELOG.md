@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Keep the initial `/play` response synchronized with playback and queue changes, and add reaction-based playback controls.
+- Resolve SoundCloud tracks, share links, and bounded playlists with yt-dlp instead of probing HTML pages as audio streams, and refresh media URLs when playback begins.
 
 ## [2.11.7] - 2026-08-20
 
