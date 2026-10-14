@@ -35,8 +35,8 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 
-The live `/play` response includes reusable rewind, pause/resume, fast-forward,
-and stop reactions. Existing bot roles must allow **View Channel**, **Send
+The live `/play` response includes reusable previous-track, rewind, pause/resume,
+fast-forward, next-track, stop, and shuffle reactions. Existing bot roles must allow **View Channel**, **Send
 Messages**, **Embed Links**, **Read Message History**, **Add Reactions**, and
 **Manage Messages**; the final permission lets Muse remove a user's reaction so
 the same control can be pressed again. The startup invite URL includes these
@@ -121,6 +121,15 @@ npm test
 Set `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS` to a positive whole number to
 control how often Muse refreshes the timer, progress rail, and current queue in
 the live `/play` response. It defaults to `5`; restart Muse after changing it.
+
+Only listeners in Muse's current voice channel can use the reaction controls.
+Rewind and fast-forward seek by ten seconds and are unavailable for livestreams.
+Ephemeral responses update through the interaction webhook while it remains
+valid and do not include reaction controls.
+
+Shuffling removes duplicate tracks from the upcoming queue, including repeats
+of the current track or playback history. Shuffling a newly added playlist
+removes duplicates only within that batch. Separate chapters are preserved.
 
 ### Cache
 

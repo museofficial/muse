@@ -4,7 +4,16 @@ export const DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS = 5;
 
 // These controls are added in playback order and intentionally use standard
 // Unicode emoji so they work without guild-specific emoji configuration.
-export const MUSIC_CONTROL_EMOJIS = ['⏪', '⏯️', '⏩', '⏹️'] as const;
+export const MUSIC_CONTROLS = {
+  'previous-track': '⏮️',
+  rewind: '⏪',
+  'pause-resume': '⏯️',
+  'fast-forward': '⏩',
+  'next-track': '⏭️',
+  stop: '⏹️',
+  shuffle: '🔀',
+} as const;
+export const MUSIC_CONTROL_EMOJIS = Object.values(MUSIC_CONTROLS);
 export const MUSIC_CONTROL_SEEK_SECONDS = 10;
 
 // In addition to voice access, reaction controls need Add Reactions, View

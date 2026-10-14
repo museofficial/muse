@@ -166,6 +166,34 @@ beforeEach(() => {
 });
 
 describe('AddQueryToQueue skip semantics', () => {
+  it('keeps ephemeral live responses on the interaction webhook without adding reactions', async () => {
+    dependencyMocks.getGuildSettings.mockResolvedValue({
+      playlistLimit: 50,
+      queueAddResponseEphemeral: true,
+      defaultQueuePageSize: 5,
+    });
+    const player = makePausedPlayer();
+    player.status = STATUS.IDLE;
+    vi.spyOn(player, 'play').mockResolvedValue(undefined);
+    const registerUpdater = vi.spyOn(player, 'setPlayingMessageUpdater');
+    const {service} = makeService({player});
+    const interaction = makeInteraction();
+
+    await addToQueue(service, interaction);
+    const update = registerUpdater.mock.calls[0][0];
+    await update();
+    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
+    expect(dependencyMocks.buildQueueEmbed).toHaveBeenLastCalledWith(player, 1, 5);
+    expect(interaction.editReply).toHaveBeenLastCalledWith({embeds: [{title: 'queue'}]});
+    expect(player.isPlayingMessage('playing-message-id')).toBe(false);
+
+    await update('stopped');
+    expect(interaction.editReply).toHaveBeenLastCalledWith({content: 'Playback stopped.', embeds: []});
+    expect(interaction.replyMessage.edit).not.toHaveBeenCalled();
+    expect(interaction.replyMessage.react).not.toHaveBeenCalled();
+    expect(interaction.replyMessage.reactions.removeAll).not.toHaveBeenCalled();
+  });
+
   it('keeps the newly requested song current on an empty player and does not claim a skip', async () => {
     const queue: QueuedSong[] = [];
     const player = {
@@ -198,10 +226,13 @@ describe('AddQueryToQueue skip semantics', () => {
     expect(player.setPlayingMessageUpdater).toHaveBeenCalledOnce();
     expect(player.setPlayingMessageUpdater).toHaveBeenCalledWith(expect.any(Function), 'playing-message-id');
     expect(interaction.replyMessage.react.mock.calls.map(([emoji]) => emoji)).toEqual([
+      '⏮️',
       '⏪',
       '⏯️',
       '⏩',
+      '⏭️',
       '⏹️',
+      '🔀',
     ]);
 
     const updatePlayingMessage = player.setPlayingMessageUpdater.mock.calls[0][0] as () => Promise<void>;
@@ -546,7 +577,10 @@ describe('AddQueryToQueue voice connection failures', () => {
     expect(player.getCurrent()).toBe(current);
     expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
     expect(play).toHaveBeenCalledOnce();
-    expect(interaction.editReply).toHaveBeenLastCalledWith('u betcha, **New song** added to the queue (resuming playback)');
+    expect(interaction.editReply).toHaveBeenLastCalledWith({
+      content: 'u betcha, **New song** added to the queue (resuming playback)',
+      embeds: [{title: 'queue'}],
+    });
   });
 });
 

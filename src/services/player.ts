@@ -5,6 +5,7 @@ import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import prismMedia from 'prism-media';
 import shuffle from 'array-shuffle';
+import uniqueSongs from '../utils/unique-songs.js';
 import {
   AudioPlayer,
   AudioPlayerState,
@@ -247,7 +248,8 @@ export default class {
 
   /** Returns whether a reaction belongs to this player's current response. */
   isPlayingMessage(messageId: string): boolean {
-    return this.playingMessageId === messageId;
+    // Retire controls as soon as playback ends, even if the final edit is pending.
+    return this.playingMessageTerminalState === undefined && this.playingMessageId === messageId;
   }
 
   /** Requests an immediate render after an externally initiated control. */
@@ -489,9 +491,10 @@ export default class {
   }
 
   shuffle(): void {
-    const shuffledSongs = shuffle(this.queue.slice(this.queuePosition + 1));
+    const historyAndCurrent = this.queue.slice(0, this.queuePosition + 1);
+    const shuffledSongs = shuffle(uniqueSongs(this.getQueue(), historyAndCurrent));
 
-    this.queue = [...this.queue.slice(0, this.queuePosition + 1), ...shuffledSongs];
+    this.queue = [...historyAndCurrent, ...shuffledSongs];
     this.requestPlayingMessageUpdate();
   }
 
@@ -993,7 +996,7 @@ export default class {
       })
       .catch(error => {
         if (this.playingMessageUpdater === updater) {
-          // Deleted or otherwise uneditable messages should not be retried every five seconds.
+          // Deleted or otherwise uneditable messages should not be retried on every tick.
           this.playingMessageUpdater = undefined;
           this.playingMessageId = undefined;
           this.playingMessageTerminalState = undefined;

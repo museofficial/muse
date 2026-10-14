@@ -8,17 +8,14 @@ import container from '../inversify.config.js';
 import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';
 import {TYPES} from '../types.js';
-import {MUSIC_CONTROL_EMOJIS, MUSIC_CONTROL_SEEK_SECONDS} from '../utils/constants.js';
+import {MUSIC_CONTROLS, MUSIC_CONTROL_SEEK_SECONDS} from '../utils/constants.js';
 
-type MusicControl = 'rewind' | 'pause-resume' | 'fast-forward' | 'stop';
+type MusicControl = keyof typeof MUSIC_CONTROLS;
 
 const normalizeEmoji = (emoji: string) => emoji.replace(/\uFE0F/g, '');
-const controls = new Map<string, MusicControl>([
-  [normalizeEmoji(MUSIC_CONTROL_EMOJIS[0]), 'rewind'],
-  [normalizeEmoji(MUSIC_CONTROL_EMOJIS[1]), 'pause-resume'],
-  [normalizeEmoji(MUSIC_CONTROL_EMOJIS[2]), 'fast-forward'],
-  [normalizeEmoji(MUSIC_CONTROL_EMOJIS[3]), 'stop'],
-]);
+const controls = new Map<string, MusicControl>(
+  Object.entries(MUSIC_CONTROLS).map(([control, emoji]) => [normalizeEmoji(emoji), control as MusicControl]),
+);
 
 // Discord does not await event listeners. Keep transport actions ordered per
 // guild so rapid reactions cannot race two FFmpeg seek/restart operations.
@@ -67,21 +64,56 @@ export default async (
 
   // Only listeners in the bot's current voice channel can control playback.
   // This prevents an unrelated text-channel reader from taking over a session.
-  const botVoiceChannelId = player.voiceConnection?.joinConfig.channelId;
-  const memberVoiceChannelId = guild.members.cache.get(user.id)?.voice.channelId;
-  if (!botVoiceChannelId || memberVoiceChannelId !== botVoiceChannelId) {
+  const canControlPlayback = () => {
+    const botVoiceChannelId = player.voiceConnection?.joinConfig.channelId;
+    return Boolean(botVoiceChannelId)
+      && guild.members.cache.get(user.id)?.voice.channelId === botVoiceChannelId
+      && player.isPlayingMessage(message.id);
+  };
+
+  if (!canControlPlayback()) {
     await completeReaction.users.remove(user.id).catch(() => undefined);
     return;
   }
 
-  // Remove the user's reaction so the same control can be pressed repeatedly.
-  // Manage Messages permission is required; action execution remains available
-  // if removal fails, but the user must then untick the reaction manually.
-  await completeReaction.users.remove(user.id).catch(() => undefined);
-
   await enqueueGuildAction(guild.id, async () => {
+    // Queue before removing the reaction so REST latency cannot reorder controls.
+    // Without Manage Messages, the listener must untick the reaction manually.
+    await completeReaction.users.remove(user.id).catch(() => undefined);
+
+    // A previous action or a channel change can invalidate a waiting control.
+    if (!canControlPlayback()) {
+      return;
+    }
+
+    if (control === 'previous-track') {
+      if (player.canGoBack()) {
+        await player.back();
+      }
+
+      return;
+    }
+
+    if (control === 'next-track') {
+      if (player.canGoForward(1)) {
+        await player.forward(1);
+      }
+
+      return;
+    }
+
     if (control === 'stop') {
       player.stop();
+      return;
+    }
+
+    if (control === 'shuffle') {
+      // Match /shuffle: only reorder songs that are still upcoming. Player
+      // requests a playing-message refresh after changing the queue.
+      if (!player.isQueueEmpty()) {
+        player.shuffle();
+      }
+
       return;
     }
 

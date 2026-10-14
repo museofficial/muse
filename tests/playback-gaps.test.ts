@@ -390,7 +390,7 @@ describe('PLAY-06 autocomplete preservation', () => {
 });
 
 describe('PLAY-09 shuffled additions preservation', () => {
-  it('shuffles only the resolved batch while existing history, current entry, and upcoming queue stay unchanged', async () => {
+  it.each([false, true])('shuffles only the resolved batch and removes duplicates (duplicate: %s)', async duplicate => {
     const player = new Player({} as never, GUILD_ID);
     player.add(makeQueuedSong('History'));
     player.add(makeQueuedSong('Current'));
@@ -399,7 +399,8 @@ describe('PLAY-09 shuffled additions preservation', () => {
     player.voiceConnection = {state: {status: 'ready'}} as never;
     player.status = STATUS.PLAYING;
     const resolvedSongs = [makeSong('New one'), makeSong('New two'), makeSong('New three')];
-    const getSongs = {getSongs: vi.fn().mockResolvedValue([resolvedSongs, ''])};
+    const inputSongs = duplicate ? [...resolvedSongs, {...resolvedSongs[0], title: 'Duplicate title'}] : resolvedSongs;
+    const getSongs = {getSongs: vi.fn().mockResolvedValue([inputSongs, ''])};
     const playerManager = {get: vi.fn(() => player)};
     const cache = {wrap: vi.fn()};
     const service = new AddQueryToQueue(

@@ -1,5 +1,6 @@
 import {Readable} from 'node:stream';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS} from '../src/utils/constants.js';
 
 const dependencyMocks = vi.hoisted(() => ({
   createAudioPlayer: vi.fn(),
@@ -555,6 +556,40 @@ describe('Player queue-finish timer state', () => {
 });
 
 describe('Player playing-message updates', () => {
+  it('disables controls immediately and serializes the terminal edit after a pending refresh', async () => {
+    const player = new Player({} as never, GUILD_ID);
+    const pendingEdit = makeDeferred<void>();
+    const update = vi.fn().mockImplementationOnce(() => pendingEdit.promise).mockResolvedValue(undefined);
+    player.setPlayingMessageUpdater(update, 'message-id');
+    player.refreshPlayingMessage();
+    player.refreshPlayingMessage();
+    player.stop();
+
+    expect(player.isPlayingMessage('message-id')).toBe(false);
+    expect(update).toHaveBeenCalledOnce();
+    pendingEdit.resolve(undefined);
+    await vi.runAllTimersAsync();
+
+    expect(update.mock.calls).toEqual([[undefined], ['stopped']]);
+    player.refreshPlayingMessage();
+    expect(update).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a new response active when an older response edit fails', async () => {
+    const player = new Player({} as never, GUILD_ID);
+    const pendingEdit = makeDeferred<void>();
+    player.setPlayingMessageUpdater(() => pendingEdit.promise, 'old-message');
+    player.refreshPlayingMessage();
+    const update = vi.fn().mockResolvedValue(undefined);
+    player.setPlayingMessageUpdater(update, 'new-message');
+    player.refreshPlayingMessage();
+    pendingEdit.reject(new Error('Old message deleted'));
+    await vi.runAllTimersAsync();
+
+    expect(player.isPlayingMessage('new-message')).toBe(true);
+    expect(update).toHaveBeenCalledOnce();
+  });
+
   it('tracks the current public response and retires it after a terminal update', async () => {
     const player = new Player({} as never, GUILD_ID);
     const updatePlayingMessage = vi.fn().mockResolvedValue(undefined);
@@ -621,6 +656,47 @@ describe('Player playing-message updates', () => {
     expect(player.getCurrent()).toBe(upcoming);
     expect(player.getQueue()).toEqual([]);
     expect(updatePlayingMessage).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('Player shuffle deduplication', () => {
+  it('removes repeat tracks without changing history, the current entry, or distinct chapters and sources', () => {
+    const player = new Player({} as never, GUILD_ID);
+    const history = makeSong('History');
+    const current = makeSong('Current');
+    const upcoming = makeSong('Upcoming');
+    const chapter = {...upcoming, offset: 30};
+    const firstChapter = {...upcoming, length: 30};
+    const otherSource = {...upcoming, source: MediaSource.HLS};
+    for (const song of [history, current, {...history}, {...current}, upcoming,
+      {...upcoming, title: 'Different title', requestedBy: 'another-user'}, chapter, firstChapter, otherSource]) {
+      player.add(song);
+    }
+
+    player.manualForward(1);
+    const entryId = player.getCurrentQueueEntryId();
+    player.shuffle();
+
+    expect(player.getCurrent()).toBe(current);
+    expect(player.getCurrentQueueEntryId()).toBe(entryId);
+    expect(player.getQueue()).toHaveLength(4);
+    expect(player.getQueue()).toEqual(expect.arrayContaining([upcoming, chapter, firstChapter, otherSource]));
+    expect((player as unknown as {queue: QueuedSong[]}).queue.slice(0, 2)).toEqual([history, current]);
+
+    player.shuffle();
+    expect(player.getQueue()).toHaveLength(4);
+  });
+
+  it('allows the upcoming queue to become empty when every track is a repeat', () => {
+    const player = new Player({} as never, GUILD_ID);
+    const current = makeSong('Current');
+    player.add(current);
+    player.add({...current});
+
+    player.shuffle();
+
+    expect(player.getCurrent()).toBe(current);
+    expect(player.getQueue()).toEqual([]);
   });
 });
 
@@ -850,10 +926,13 @@ describe('graphical progress bar', () => {
     expect(getProgressBar(5, 0.4)).toBe(`~~${joiner}${railUnit.repeat(2)}${joiner}~~🔘~~${joiner}${railUnit.repeat(2)}${joiner}~~`);
   });
 
-  it('advances on every five-second refresh for a typical song', () => {
+  it('advances on every default refresh interval for a typical song', () => {
     const duration = 7.5 * 60;
-    for (let position = 0; position < duration; position += 5) {
-      expect(getProgressBar(91, (position + 5) / duration)).not.toBe(getProgressBar(91, position / duration));
+    const interval = DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS;
+
+    for (let position = 0; position < duration; position += interval) {
+      expect(getProgressBar(91, (position + interval) / duration))
+        .not.toBe(getProgressBar(91, position / duration));
     }
   });
 });

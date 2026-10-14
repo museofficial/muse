@@ -1,9 +1,10 @@
 import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import shuffle from 'array-shuffle';
+import uniqueSongs from '../utils/unique-songs.js';
 import {TYPES} from '../types.js';
 import GetSongs from '../services/get-songs.js';
-import {MediaSource, type PlayingMessageTerminalState, SongMetadata, STATUS} from './player.js';
+import Player, {MediaSource, type PlayingMessageTerminalState, SongMetadata, STATUS} from './player.js';
 import PlayerManager from '../managers/player.js';
 import {buildQueueEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
@@ -76,7 +77,7 @@ export default class AddQueryToQueue {
     }
 
     if (shuffleAdditions) {
-      newSongs = shuffle(newSongs);
+      newSongs = shuffle(uniqueSongs(newSongs));
     }
 
     if (this.config.ENABLE_SPONSORBLOCK) {
@@ -137,15 +138,7 @@ export default class AddQueryToQueue {
       }
     }
 
-    // Build response message
-    if (statusMsg !== '') {
-      if (extraMsg === '') {
-        extraMsg = statusMsg;
-      } else {
-        extraMsg = `${statusMsg}, ${extraMsg}`;
-      }
-    }
-
+    extraMsg = [statusMsg, extraMsg].filter(Boolean).join(', ');
     if (extraMsg !== '') {
       extraMsg = ` (${extraMsg})`;
     }
@@ -159,35 +152,53 @@ export default class AddQueryToQueue {
       return;
     }
 
+    await this.sendPlayingMessage({
+      interaction,
+      player,
+      content: responseContent,
+      pageSize: defaultQueuePageSize,
+      ephemeral: queueAddResponseEphemeral,
+    });
+  }
+
+  /** Attach a single live response to the session, using the appropriate Discord edit API. */
+  private async sendPlayingMessage({interaction, player, content, pageSize, ephemeral}: {
+    interaction: ChatInputCommandInteraction;
+    player: Player;
+    content: string;
+    pageSize: number;
+    ephemeral: boolean;
+  }): Promise<void> {
+    const guildId = interaction.guild!.id;
     // The queue embed supplies both the progress timer and the upcoming list
     // for the live response associated with this playback session.
     const response = await interaction.editReply({
-      content: responseContent,
-      embeds: [buildQueueEmbed(player, 1, defaultQueuePageSize)],
+      content,
+      embeds: [buildQueueEmbed(player, 1, pageSize)],
     });
     player.setPlayingMessageUpdater(async (terminalState?: PlayingMessageTerminalState) => {
       const update = terminalState
         ? {content: terminalState === 'stopped' ? 'Playback stopped.' : 'Playback finished.', embeds: []}
-        : {embeds: [buildQueueEmbed(player, 1, defaultQueuePageSize)]};
+        : {embeds: [buildQueueEmbed(player, 1, pageSize)]};
 
       // Public interaction responses become regular channel messages and can
       // use Message.edit. Ephemeral responses must remain on the interaction webhook.
-      if (queueAddResponseEphemeral) {
+      if (ephemeral) {
         await interaction.editReply(update);
       } else {
         await response.edit(update);
       }
 
-      if (terminalState && !queueAddResponseEphemeral) {
+      if (terminalState && !ephemeral) {
         // Controls have no useful action after playback ends. Removing all
         // reactions also prevents a stale response from looking interactive.
         await response.reactions.removeAll().catch(error => {
           console.warn(`Could not remove music controls for guild ${guildId}:`, error);
         });
       }
-    }, queueAddResponseEphemeral ? undefined : response.id);
+    }, ephemeral ? undefined : response.id);
 
-    if (!queueAddResponseEphemeral) {
+    if (!ephemeral) {
       // Add controls sequentially so Discord displays them in transport order.
       for (const emoji of MUSIC_CONTROL_EMOJIS) {
         try {

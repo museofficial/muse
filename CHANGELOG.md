@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Keep the initial `/play` response synchronized with playback and queue changes, and add reaction-based playback controls.
+- Remove duplicate tracks when shuffling the queue or newly added playlists, while preserving separate chapters.
+- Keep the initial `/play` response synchronized with playback and queue changes, and add previous/next track, seek, pause/resume, stop, and shuffle reactions.
 
 ## [2.11.8] - 2026-09-20
 
