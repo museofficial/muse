@@ -8,9 +8,23 @@ import container from '../inversify.config.js';
 import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';
 import {TYPES} from '../types.js';
+import canUsePlaybackCommand from '../utils/can-use-playback-command.js';
 import {MUSIC_CONTROLS, MUSIC_CONTROL_SEEK_SECONDS} from '../utils/constants.js';
 
 type MusicControl = keyof typeof MUSIC_CONTROLS;
+
+const commandForControl = (control: MusicControl, status: STATUS): string => {
+  const commands = {
+    'previous-track': 'unskip',
+    'next-track': 'next',
+    rewind: 'seek',
+    'fast-forward': 'fseek',
+    stop: 'stop',
+    shuffle: 'shuffle',
+    'pause-resume': status === STATUS.PAUSED ? 'resume' : 'pause',
+  };
+  return commands[control];
+};
 
 const normalizeEmoji = (emoji: string) => emoji.replace(/\uFE0F/g, '');
 const controls = new Map<string, MusicControl>(
@@ -76,13 +90,28 @@ export default async (
     return;
   }
 
+  const isAuthorized = async (): Promise<boolean> => {
+    // A previous action or a channel change can invalidate a waiting control.
+    if (!canControlPlayback()) {
+      return false;
+    }
+
+    const command = commandForControl(control, player.status);
+    if (!await canUsePlaybackCommand(message, user.id, command)) {
+      return false;
+    }
+
+    // Permission requests yield to other events and slash commands. Do not
+    // apply a stale action or turn an authorized pause into an unchecked resume.
+    return canControlPlayback() && command === commandForControl(control, player.status);
+  };
+
   await enqueueGuildAction(guild.id, async () => {
     // Queue before removing the reaction so REST latency cannot reorder controls.
     // Without Manage Messages, the listener must untick the reaction manually.
     await completeReaction.users.remove(user.id).catch(() => undefined);
 
-    // A previous action or a channel change can invalidate a waiting control.
-    if (!canControlPlayback()) {
+    if (!await isAuthorized()) {
       return;
     }
 

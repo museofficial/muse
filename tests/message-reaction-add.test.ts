@@ -4,10 +4,15 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   containerGet: vi.fn(),
+  canUsePlaybackCommand: vi.fn(),
 }));
 
 vi.mock('../src/inversify.config.js', () => ({
   default: {get: mocks.containerGet},
+}));
+
+vi.mock('../src/utils/can-use-playback-command.js', () => ({
+  default: mocks.canUsePlaybackCommand,
 }));
 
 import handleMessageReactionAdd from '../src/events/message-reaction-add.js';
@@ -58,9 +63,70 @@ const user = {bot: false, id: 'user-id'};
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.canUsePlaybackCommand.mockReset().mockResolvedValue(true);
 });
 
 describe('playback-message reaction controls', () => {
+  it.each([
+    ['⏮️', 'unskip', STATUS.PLAYING],
+    ['⏭️', 'next', STATUS.PLAYING],
+    ['⏪', 'seek', STATUS.PLAYING],
+    ['⏩', 'fseek', STATUS.PLAYING],
+    ['⏹️', 'stop', STATUS.PLAYING],
+    ['🔀', 'shuffle', STATUS.PLAYING],
+    ['⏯️', 'pause', STATUS.PLAYING],
+    ['⏯️', 'resume', STATUS.PAUSED],
+  ] as const)('checks /%s permissions before %s in state %s', async (emoji, command, status) => {
+    const player = makePlayer({status});
+    const {reaction, remove} = makeReaction(emoji, player);
+    mocks.canUsePlaybackCommand.mockResolvedValue(false);
+
+    await handleMessageReactionAdd(reaction as never, user as never);
+
+    expect(mocks.canUsePlaybackCommand).toHaveBeenCalledExactlyOnceWith(reaction.message, user.id, command);
+    expect(remove).toHaveBeenCalledWith(user.id);
+    for (const action of [player.back, player.forward, player.seek, player.stop, player.shuffle, player.pause, player.play]) {
+      expect(action).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each(['message replaced', 'listener left', 'pause became resume'])(
+    'rechecks the action after permission lookup when %s', async change => {
+      const player = makePlayer();
+      const {reaction} = makeReaction('⏯️', player);
+      mocks.canUsePlaybackCommand.mockImplementation(async () => {
+        if (change === 'message replaced') {
+          player.isPlayingMessage.mockReturnValue(false);
+        } else if (change === 'listener left') {
+          reaction.message.guild.members.cache.get(user.id)!.voice.channelId = 'other-voice-id';
+        } else {
+          player.status = STATUS.PAUSED;
+        }
+        return true;
+      });
+
+      await handleMessageReactionAdd(reaction as never, user as never);
+
+      expect(player.pause).not.toHaveBeenCalled();
+      expect(player.play).not.toHaveBeenCalled();
+    },
+  );
+
+  it('checks permissions again for a queued reaction after access is revoked', async () => {
+    const player = makePlayer();
+    const first = makeReaction('⏹️', player);
+    const second = makeReaction('⏹️', player);
+    mocks.canUsePlaybackCommand.mockResolvedValueOnce(true).mockResolvedValue(false);
+
+    await Promise.all([
+      handleMessageReactionAdd(first.reaction as never, user as never),
+      handleMessageReactionAdd(second.reaction as never, user as never),
+    ]);
+
+    expect(mocks.canUsePlaybackCommand).toHaveBeenCalledTimes(2);
+    expect(player.stop).toHaveBeenCalledOnce();
+  });
+
   it.each(['message replaced', 'listener left'])('rechecks access after reaction removal when %s', async change => {
     const player = makePlayer();
     const {reaction, remove} = makeReaction('⏩', player);

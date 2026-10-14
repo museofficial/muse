@@ -35,12 +35,12 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 
-The live `/play` response includes reusable previous-track, rewind, pause/resume,
-fast-forward, next-track, stop, and shuffle reactions. Existing bot roles must allow **View Channel**, **Send
-Messages**, **Embed Links**, **Read Message History**, **Add Reactions**, and
-**Manage Messages**; the final permission lets Muse remove a user's reaction so
-the same control can be pressed again. The startup invite URL includes these
-permissions for new installations.
+The `/play` message has emoji controls for previous track, rewind, pause/resume,
+fast-forward, next track, stop, and shuffle. If Muse is already in your server,
+make sure its role has **View Channel**, **Send Messages**, **Embed Links**,
+**Read Message History**, **Add Reactions**, and **Manage Messages** permissions.
+**Manage Messages** lets Muse clear your reaction so you can click the same
+control again. The invite link includes these permissions for new installations.
 
 A 64-bit OS is required to run Muse.
 
@@ -116,20 +116,39 @@ npm test
 
 ## ⚙️ Additional configuration (advanced)
 
-### Live playback response
+### Playback display and controls
 
-Set `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS` to a positive whole number to
-control how often Muse refreshes the timer, progress rail, and current queue in
-the live `/play` response. It defaults to `5`; restart Muse after changing it.
+The `/play` message shows the current song, progress bar, and upcoming songs
+with nearly real-time updates (configurable). The timer updates every five
+seconds by default. To change this, set `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS`
+in your `.env` file to a whole number of seconds greater than zero, then restart
+Muse.
 
-Only listeners in Muse's current voice channel can use the reaction controls.
-Rewind and fast-forward seek by ten seconds and are unavailable for livestreams.
-Ephemeral responses update through the interaction webhook while it remains
-valid and do not include reaction controls.
+To use the emoji controls, you must be in the same voice channel as Muse and
+be allowed to use the matching command in the text channel containing the
+message. Being a listener does not grant extra permissions. You can change who
+can use commands and where under **Server Settings > Integrations > Muse**.
+Muse checks permissions each time you click a control. If it cannot check them,
+it ignores the click.
 
-Shuffling removes duplicate tracks from the upcoming queue, including repeats
-of the current track or playback history. Shuffling a newly added playlist
-removes duplicates only within that batch. Separate chapters are preserved.
+| Control | Command you need permission to use |
+| --- | --- |
+| Previous Track | `/unskip` |
+| Next Track | `/next` |
+| Rewind | `/seek` |
+| Fast-forward | `/fseek` |
+| Pause / Resume | `/pause` while playing; `/resume` while paused |
+| Stop | `/stop` |
+| Shuffle | `/shuffle` |
+
+Rewind and fast-forward move ten seconds within a song and do not work on
+livestreams. Private messages that only you can see keep updating for as long
+as Discord allows, but do not have emoji controls.
+
+Shuffling removes repeated songs from the upcoming queue, including songs
+that are playing now or have already played. When you add a playlist with
+shuffle enabled, Muse removes repeats within that playlist. Different chapters
+of the same track stay separate.
 
 ### Cache
 
