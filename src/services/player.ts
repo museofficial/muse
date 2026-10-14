@@ -13,6 +13,7 @@ import {
   createAudioResource, DiscordGatewayAdapterCreator,
   entersState,
   joinVoiceChannel,
+  NetworkingStatusCode,
   StreamType,
   VoiceConnection,
   VoiceConnectionStatus,
@@ -41,6 +42,8 @@ export {DEFAULT_VOLUME, MediaSource, STATUS};
 export type {AgeRestrictedFallbackResolver, PlayerEvents, QueuedPlaylist, QueuedSong, SongMetadata};
 
 const FFMPEG_STARTUP_TIMEOUT_MS = 20_000;
+const VOICE_CONNECTION_ATTEMPTS = 3;
+const VOICE_CONNECTION_ATTEMPT_TIMEOUT_MS = 20_000;
 
 const sanitizeFfmpegError = (error: unknown) => {
   const detail = error instanceof Error ? error.message : String(error);
@@ -101,6 +104,8 @@ export default class {
   public loopCurrentSong = false;
   public loopCurrentQueue = false;
   private currentChannel: VoiceChannel | undefined;
+  private voiceConnectionGeneration = 0;
+  private pendingConnection?: {channelId: string; promise: Promise<void>};
   private queue: QueuedSong[] = [];
   private queuePosition = 0;
   private audioPlayer: AudioPlayer | null = null;
@@ -150,68 +155,45 @@ export default class {
   }
 
   async connect(channel: VoiceChannel): Promise<void> {
-    if (this.voiceConnection) {
-      this.disconnect();
+    if (this.pendingConnection?.channelId === channel.id) {
+      return this.pendingConnection.promise;
     }
 
-    // Always get freshest default volume setting value
-    const settings = await getGuildSettings(this.guildId);
-    const {defaultVolume = DEFAULT_VOLUME} = settings;
-    this.defaultVolume = defaultVolume;
-
-    const voiceConnection = joinVoiceChannel({
-      channelId: channel.id,
-      guildId: channel.guild.id,
-      selfDeaf: false,
-      adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
-    });
-
-    this.voiceConnection = voiceConnection;
-    this.currentChannel = channel;
-    this.hasRegisteredVoiceActivityListener = false;
-
-    voiceConnection.on('error', error => {
-      console.error(`Voice connection error for guild ${this.guildId}:`, error);
-    });
-
-    const guildSettings = await getGuildSettings(this.guildId);
-    const stateTransitions = [voiceConnection.state.status];
-    voiceConnection.on('stateChange', (oldState, newState) => {
-      stateTransitions.push(newState.status);
-      if (stateTransitions.length > 10) {
-        stateTransitions.shift();
-      }
-
-      debug(`Voice connection state changed: ${oldState.status} -> ${newState.status}`);
-
-      if (this.voiceConnection === voiceConnection
-        && newState.status === VoiceConnectionStatus.Ready
-        && !this.hasRegisteredVoiceActivityListener) {
-        this.registerVoiceActivityListener(guildSettings);
-        this.hasRegisteredVoiceActivityListener = true;
-      }
-    });
-
-    voiceConnection.on(
-      VoiceConnectionStatus.Disconnected,
-      this.onVoiceConnectionDisconnect.bind(this, voiceConnection),
-    );
+    this.disconnect();
+    const promise = this.connectWithRetries(channel, this.voiceConnectionGeneration);
+    this.pendingConnection = {channelId: channel.id, promise};
 
     try {
-      await this.waitForVoiceConnectionReady(voiceConnection);
-    } catch {
-      const {status} = voiceConnection.state;
-      destroyVoiceConnection(voiceConnection);
-
-      if (this.voiceConnection === voiceConnection) {
-        this.voiceConnection = null;
+      await promise;
+    } finally {
+      if (this.pendingConnection?.promise === promise) {
+        this.pendingConnection = undefined;
       }
-
-      throw new Error(`Failed to connect to the voice channel (last state: ${status}, rejoin attempts: ${voiceConnection.rejoinAttempts}, recent states: ${stateTransitions.join(' -> ')}).`);
     }
   }
 
+  async ensureVoiceConnectionReady(): Promise<VoiceConnection> {
+    // An initial join may replace a timed-out connection before it succeeds.
+    if (this.pendingConnection) {
+      await this.pendingConnection.promise;
+    }
+
+    const {voiceConnection} = this;
+    if (voiceConnection === null) {
+      throw new Error('Not connected to a voice channel.');
+    }
+
+    await this.waitForVoiceConnectionReady(voiceConnection);
+    if (this.voiceConnection !== voiceConnection) {
+      throw new Error('Voice connection changed while waiting for it to become ready.');
+    }
+
+    return voiceConnection;
+  }
+
   disconnect(): void {
+    this.voiceConnectionGeneration++;
+    this.pendingConnection = undefined;
     this.playbackAttempts.invalidate();
     this.voiceActivitySessionGeneration++;
 
@@ -585,6 +567,89 @@ export default class {
     return this.voiceActivityVolumeTarget ?? this.volume ?? this.defaultVolume;
   }
 
+  private async connectWithRetries(channel: VoiceChannel, generation: number): Promise<void> {
+    const settings = await getGuildSettings(this.guildId);
+    if (generation !== this.voiceConnectionGeneration) {
+      throw new Error('Voice connection attempt was cancelled.');
+    }
+
+    this.defaultVolume = settings.defaultVolume ?? DEFAULT_VOLUME;
+
+    for (let attempt = 1; attempt <= VOICE_CONNECTION_ATTEMPTS; attempt++) {
+      const voiceConnection = joinVoiceChannel({
+        channelId: channel.id,
+        guildId: channel.guild.id,
+        selfDeaf: false,
+        adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
+      });
+
+      this.voiceConnection = voiceConnection;
+      this.currentChannel = channel;
+      this.hasRegisteredVoiceActivityListener = false;
+
+      voiceConnection.on('error', error => {
+        console.error(`Voice connection error for guild ${this.guildId}:`, error);
+      });
+
+      const stateTransitions = [voiceConnection.state.status];
+      voiceConnection.on('stateChange', (oldState, newState) => {
+        stateTransitions.push(newState.status);
+        if (stateTransitions.length > 10) {
+          stateTransitions.shift();
+        }
+
+        debug(`Voice connection state changed: ${oldState.status} -> ${newState.status}`);
+
+        if (this.voiceConnection === voiceConnection
+          && newState.status === VoiceConnectionStatus.Ready
+          && !this.hasRegisteredVoiceActivityListener) {
+          this.registerVoiceActivityListener(settings);
+          this.hasRegisteredVoiceActivityListener = true;
+        }
+      });
+
+      voiceConnection.on(
+        VoiceConnectionStatus.Disconnected,
+        this.onVoiceConnectionDisconnect.bind(this, voiceConnection),
+      );
+
+      try {
+        // Handshakes must run sequentially so only one connection owns the guild.
+        // eslint-disable-next-line no-await-in-loop
+        await entersState(voiceConnection, VoiceConnectionStatus.Ready, VOICE_CONNECTION_ATTEMPT_TIMEOUT_MS);
+        if (generation !== this.voiceConnectionGeneration || this.voiceConnection !== voiceConnection) {
+          throw new Error('Voice connection attempt was cancelled.');
+        }
+
+        return;
+      } catch {
+        const {state, rejoinAttempts} = voiceConnection;
+        const networking = 'networking' in state ? state.networking : undefined;
+        // Only log the enum, never the networking object: it contains voice credentials.
+        const networkState = networking ? NetworkingStatusCode[networking.state.code] : 'unavailable';
+        const diagnostics = `last state: ${state.status}, network state: ${networkState}, attempt: ${attempt}/${VOICE_CONNECTION_ATTEMPTS}, rejoin attempts: ${rejoinAttempts}, recent states: ${stateTransitions.join(' -> ')}`;
+        const shouldRetry = generation === this.voiceConnectionGeneration
+          && this.voiceConnection === voiceConnection
+          && (state.status === VoiceConnectionStatus.Connecting || state.status === VoiceConnectionStatus.Signalling)
+          && attempt < VOICE_CONNECTION_ATTEMPTS;
+
+        destroyVoiceConnection(voiceConnection);
+        if (this.voiceConnection === voiceConnection) {
+          this.voiceConnection = null;
+          this.currentChannel = undefined;
+          this.hasRegisteredVoiceActivityListener = false;
+        }
+
+        if (!shouldRetry) {
+          throw new Error(`Failed to connect to the voice channel (${diagnostics}).`);
+        }
+
+        // A fresh join requests new voice-server/session data; rejoin alone can reuse a stalled handshake.
+        console.warn(`Retrying voice connection for guild ${this.guildId} (${diagnostics}).`);
+      }
+    }
+  }
+
   private async seekWithAttempt(positionSeconds: number, attempt: PlaybackAttemptToken): Promise<void> {
     this.status = STATUS.PAUSED;
 
@@ -653,8 +718,8 @@ export default class {
       },
     });
     voiceConnection.subscribe(this.audioPlayer);
-    this.playAudioPlayerResource(this.createAudioStream(stream));
     this.attachListeners();
+    this.playAudioPlayerResource(this.createAudioStream(stream));
     this.startTrackingPosition(positionSeconds);
 
     this.status = STATUS.PLAYING;
@@ -735,9 +800,8 @@ export default class {
         },
       });
       voiceConnection.subscribe(this.audioPlayer);
-      this.playAudioPlayerResource(this.createAudioStream(stream));
-
       this.attachListeners();
+      this.playAudioPlayerResource(this.createAudioStream(stream));
 
       this.status = STATUS.PLAYING;
       this.nowPlaying = currentSong;
@@ -817,7 +881,10 @@ export default class {
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
-    const cacheHash = this.getHashForCache(song.url);
+    // Cached audio starts at zero but may end at a chapter or SponsorBlock boundary.
+    // Version the key to avoid reusing legacy URL-only entries with unknown bounds.
+    const cacheKey = JSON.stringify(['audio-v2', song.source, song.url, options.to ?? null]);
+    const cacheHash = this.getHashForCache(cacheKey);
     const cachedEntry = await this.fileCache.getEntryFor(cacheHash);
     ffmpegInput = cachedEntry?.path ?? null;
 
@@ -857,7 +924,7 @@ export default class {
     try {
       return await this.createReadStream({
         url: ffmpegInput,
-        cacheKey: song.url,
+        cacheKey,
         ffmpegInputOptions,
         cache: shouldCacheVideo,
       });
@@ -959,6 +1026,14 @@ export default class {
     }
 
     const {audioPlayer} = this;
+    if (audioPlayer.listeners('error').length === 0) {
+      audioPlayer.on('error', error => {
+        // The voice library transitions failed resources to Idle after emitting
+        // this event. Let the existing Idle handler advance the queue once.
+        console.error(`Audio player failed for guild ${this.guildId}: ${sanitizeFfmpegError(error)}`);
+      });
+    }
+
     const queueEntryVersion = this.currentQueueEntryVersion;
     if (audioPlayer.listeners(AudioPlayerStatus.Idle).length === 0) {
       audioPlayer.on(AudioPlayerStatus.Idle, (oldState, newState) => {
@@ -986,16 +1061,6 @@ export default class {
         }
       },
     });
-  }
-
-  private async ensureVoiceConnectionReady(): Promise<VoiceConnection> {
-    if (this.voiceConnection === null) {
-      throw new Error('Not connected to a voice channel.');
-    }
-
-    await this.waitForVoiceConnectionReady(this.voiceConnection);
-
-    return this.voiceConnection;
   }
 
   private async waitForVoiceConnectionReady(voiceConnection: VoiceConnection): Promise<void> {

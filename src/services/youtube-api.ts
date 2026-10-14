@@ -202,10 +202,14 @@ export default class {
       // Start fetching extra details about videos
       // PlaylistItem misses some details, eg. if the video is a livestream
       if (items.length > 0) {
-        videoDetailsPromises.push((async () => {
+        const detailsPromise = (async () => {
           const videoDetailItems = await this.getVideosByID(items.map(item => item.contentDetails.videoId));
           videoDetails.push(...videoDetailItems);
-        })());
+        })();
+        // Handle rejection immediately while pagination is still awaiting I/O.
+        // Promise.all below still propagates the original failure to the caller.
+        void detailsPromise.catch(() => undefined);
+        videoDetailsPromises.push(detailsPromise);
       }
     } while (nextToken && !requestedPageTokens.has(nextToken));
 

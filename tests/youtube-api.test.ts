@@ -110,6 +110,37 @@ const chapterSummary = (songs: Awaited<ReturnType<YoutubeAPI['getVideo']>>) => s
 }));
 
 describe('YoutubeAPI playlist pagination', () => {
+  it.each([false, true])('handles an early detail rejection while another page is pending (page fails: %s)', async pageFails => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => {unhandled.push(reason);};
+    process.on('unhandledRejection', onUnhandled);
+    const detailsError = new Error('Video details unavailable');
+    const pageError = new Error('Playlist page unavailable');
+    const cache = {
+      wrap: async (_fetch: unknown, {searchParams}: {searchParams: Record<string, string>}) => {
+        if (searchParams.playlistId) {
+          if (!searchParams.pageToken) {
+            return {items: [makePlaylistItem('first-video')], nextPageToken: 'page-2'};
+          }
+          await new Promise(resolve => setTimeout(resolve, 20));
+          if (pageFails) {throw pageError;}
+          return {items: []};
+        }
+        if (searchParams.id === PLAYLIST_ID) {
+          return {items: [{id: PLAYLIST_ID, snippet: {title: 'Playlist'}}]};
+        }
+        throw detailsError;
+      },
+    };
+    try {
+      const api = new YoutubeAPI({YOUTUBE_API_KEY: 'test-key'} as never, cache as never);
+      await expect(api.getPlaylist(PLAYLIST_ID, false)).rejects.toBe(pageFails ? pageError : detailsError);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.removeListener('unhandledRejection', onUnhandled);
+    }
+  });
+
   it('retains all fetched details across pages and stops when the final page has no token', async () => {
     const firstVideo = makeVideo({id: 'video-first', title: 'First'});
     const secondVideo = makeVideo({id: 'video-second', title: 'Second'});

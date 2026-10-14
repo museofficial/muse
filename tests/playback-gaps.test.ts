@@ -396,7 +396,7 @@ describe('PLAY-09 shuffled additions preservation', () => {
     player.add(makeQueuedSong('Current'));
     player.add(makeQueuedSong('Existing upcoming'));
     player.manualForward(1);
-    player.voiceConnection = {} as never;
+    player.voiceConnection = {state: {status: 'ready'}} as never;
     player.status = STATUS.PLAYING;
     const resolvedSongs = [makeSong('New one'), makeSong('New two'), makeSong('New three')];
     const getSongs = {getSongs: vi.fn().mockResolvedValue([resolvedSongs, ''])};

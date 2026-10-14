@@ -305,3 +305,22 @@ describe('voice-state listener departure behavior', () => {
     expect(player.disconnect).not.toHaveBeenCalled();
   });
 });
+
+describe('stale listener departure events', () => {
+  it.each(['replace', 'move', 'disconnect'] as const)('does not disconnect a session after it changes during settings lookup: %s', async change => {
+    const {player, voiceConnection} = installVoiceEventPlayer();
+    let resolveSettings!: (settings: object) => void;
+    mocks.getGuildSettings.mockReturnValue(new Promise(resolve => {resolveSettings = resolve;}));
+    const event = handleVoiceStateUpdate(makeVoiceEventState(VOICE_CHANNEL_ID, makeMembers(true)), makeVoiceEventState(null, makeMembers(true)));
+    if (change === 'replace') {
+      player.voiceConnection = makeVoiceConnection();
+    } else if (change === 'move') {
+      voiceConnection.joinConfig.channelId = 'new-channel';
+    } else {
+      voiceConnection.state.status = 'disconnected';
+    }
+    resolveSettings({leaveIfNoListeners: true});
+    await event;
+    expect(player.disconnect).not.toHaveBeenCalled();
+  });
+});

@@ -66,7 +66,7 @@ const makeInteraction = () => {
 const makePausedPlayer = (...songs: QueuedSong[]) => {
   const player = new Player({} as never, GUILD_ID);
   songs.forEach(song => player.add(song));
-  player.voiceConnection = {} as never;
+  player.voiceConnection = {state: {status: 'ready'}} as never;
   player.status = STATUS.PAUSED;
   return player;
 };
@@ -175,7 +175,7 @@ describe('AddQueryToQueue skip semantics', () => {
       getCurrentQueueEntryId: vi.fn(() => queue.length === 0 ? null : 1),
       add: vi.fn((song: QueuedSong) => queue.push(song)),
       connect: vi.fn(async () => {
-        player.voiceConnection = {};
+        player.voiceConnection = {state: {status: 'ready'}};
       }),
       play: vi.fn().mockResolvedValue(undefined),
       forward: vi.fn().mockResolvedValue(undefined),
@@ -328,7 +328,7 @@ describe('AddQueryToQueue skip semantics', () => {
 describe('AddQueryToQueue immediate batch insertion', () => {
   it('keeps the first song current and preserves the rest of an immediate batch on an empty player', async () => {
     const player = new Player({} as never, GUILD_ID);
-    player.voiceConnection = {} as never;
+    player.voiceConnection = {state: {status: 'ready'}} as never;
     player.status = STATUS.PLAYING;
     const songs = [
       makeSong('First requested'),
@@ -350,7 +350,7 @@ describe('AddQueryToQueue immediate batch insertion', () => {
     const player = new Player({} as never, GUILD_ID);
     player.add(makeQueuedSong('Current'));
     player.add(makeQueuedSong('Old upcoming'));
-    player.voiceConnection = {} as never;
+    player.voiceConnection = {state: {status: 'ready'}} as never;
     player.status = STATUS.PLAYING;
     const playlist = {title: 'Playlist', source: 'playlist-id'};
     const songs = [
@@ -372,7 +372,7 @@ describe('AddQueryToQueue immediate batch insertion', () => {
     const player = new Player({} as never, GUILD_ID);
     player.add(makeQueuedSong('Current'));
     player.add(makeQueuedSong('Old upcoming'));
-    player.voiceConnection = {} as never;
+    player.voiceConnection = {state: {status: 'ready'}} as never;
     player.status = STATUS.PLAYING;
     const songs = [
       makeSong('Chapter one', {url: 'split-video', offset: 0, length: 30}),
@@ -393,6 +393,25 @@ describe('AddQueryToQueue immediate batch insertion', () => {
 });
 
 describe('AddQueryToQueue SponsorBlock trimming', () => {
+  it.each([
+    {name: 'a later chapter with a video outro', offset: 120, length: 60,
+      segments: [{startTime: 0, endTime: 10}, {startTime: 170, endTime: 180}], expected: {offset: 120, length: 50}},
+    {name: 'an earlier chapter before the video outro', offset: 0, length: 60,
+      segments: [{startTime: 170, endTime: 180}], expected: {offset: 0, length: 60}},
+    {name: 'a middle chapter outside the video intro and outro', offset: 60, length: 60,
+      segments: [{startTime: 0, endTime: 10}, {startTime: 170, endTime: 180}], expected: {offset: 60, length: 60}},
+    {name: 'segments crossing both chapter boundaries', offset: 60, length: 60,
+      segments: [{startTime: 55, endTime: 65}, {startTime: 115, endTime: 125}], expected: {offset: 65, length: 50}},
+    {name: 'a segment covering the whole chapter', offset: 60, length: 60,
+      segments: [{startTime: 55, endTime: 125}], expected: {offset: 120, length: 0}},
+  ])('respects source timestamps for $name', async ({offset, length, segments, expected}) => {
+    const {service} = makeService({player: {}});
+    setSponsorBlock(service, vi.fn().mockResolvedValue(segments));
+    const song = makeSong('Chapter', {offset, length});
+
+    await expect(skipNonMusicSegments(service, song)).resolves.toMatchObject(expected);
+  });
+
   it('keeps the maximum end when an overlapping segment is contained by the previous one', async () => {
     const player = {};
     const {service} = makeService({player});
@@ -469,4 +488,98 @@ describe('AddQueryToQueue SponsorBlock trimming', () => {
     expect(getSegments).toHaveBeenCalledTimes(1);
     warning.mockRestore();
   });
+});
+
+
+describe('AddQueryToQueue voice connection failures', () => {
+  it.each([false, true])('does not enqueue failed requests with immediate=%s or disturb the saved queue', async immediate => {
+    const player = new Player({} as never, GUILD_ID);
+    const current = makeQueuedSong('Saved current');
+    const upcoming = makeQueuedSong('Saved next');
+    player.add(current);
+    player.add(upcoming);
+    vi.spyOn(player, 'connect').mockRejectedValue(new Error('voice join timed out'));
+    const play = vi.spyOn(player, 'play').mockResolvedValue(undefined);
+    const {service} = makeService({player});
+    const interaction = makeInteraction();
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await expect(addToQueue(service, interaction, {immediate})).rejects.toThrow('voice join timed out');
+    }
+
+    expect(player.getCurrent()).toBe(current);
+    expect(player.getQueue()).toEqual([upcoming]);
+    expect(play).not.toHaveBeenCalled();
+    expect(interaction.editReply).not.toHaveBeenCalled();
+  });
+
+  it('waits for an already pending handshake before adding a concurrent request', async () => {
+    const player = new Player({} as never, GUILD_ID);
+    player.voiceConnection = {state: {status: 'connecting'}} as never;
+    const barrier = makePromiseBarrier();
+    vi.spyOn(player, 'ensureVoiceConnectionReady').mockImplementation(async () => {
+      await barrier.wait();
+      throw new Error('shared join failed');
+    });
+    const {service} = makeService({player});
+    const interaction = makeInteraction();
+    const pending = addToQueue(service, interaction);
+    await barrier.entered;
+    expect(player.getCurrent()).toBeNull();
+    barrier.release();
+    await expect(pending).rejects.toThrow('shared join failed');
+    expect(player.getCurrent()).toBeNull();
+    expect(interaction.editReply).not.toHaveBeenCalled();
+  });
+
+  it('still resumes a saved queue after a successful connection', async () => {
+    const player = new Player({} as never, GUILD_ID);
+    const current = makeQueuedSong('Saved current');
+    player.add(current);
+    vi.spyOn(player, 'connect').mockResolvedValue(undefined);
+    const play = vi.spyOn(player, 'play').mockResolvedValue(undefined);
+    const {service} = makeService({player});
+    const interaction = makeInteraction();
+
+    await addToQueue(service, interaction);
+
+    expect(player.getCurrent()).toBe(current);
+    expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
+    expect(play).toHaveBeenCalledOnce();
+    expect(interaction.editReply).toHaveBeenLastCalledWith('u betcha, **New song** added to the queue (resuming playback)');
+  });
+});
+
+
+it.each([STATUS.PAUSED, STATUS.PLAYING])('preserves an established %s session while it recovers during a queue add', async status => {
+  const player = new Player({} as never, GUILD_ID);
+  const existingConnection = {state: {status: 'connecting'}, joinConfig: {channelId: 'original-channel'}};
+  player.voiceConnection = existingConnection as never;
+  player.status = status;
+  player.loopCurrentSong = true;
+  player.add(makeQueuedSong('Existing song'));
+  const barrier = makePromiseBarrier();
+  const connect = vi.spyOn(player, 'connect');
+  const play = vi.spyOn(player, 'play');
+  vi.spyOn(player, 'ensureVoiceConnectionReady').mockImplementation(async () => {
+    await barrier.wait();
+    existingConnection.state.status = 'ready';
+    return existingConnection as never;
+  });
+  const {service} = makeService({player});
+  const interaction = makeInteraction();
+  const request = addToQueue(service, interaction);
+  await barrier.entered;
+  expect(player.getQueue()).toEqual([]);
+  barrier.release();
+  await request;
+
+  expect(player.voiceConnection).toBe(existingConnection);
+  expect(player.voiceConnection?.joinConfig.channelId).toBe('original-channel');
+  expect(player.status).toBe(status);
+  expect(player.loopCurrentSong).toBe(true);
+  expect(connect).not.toHaveBeenCalled();
+  expect(play).not.toHaveBeenCalled();
+  expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
+  expect(interaction.editReply).toHaveBeenLastCalledWith('u betcha, **New song** added to the queue');
 });
