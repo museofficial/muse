@@ -97,6 +97,14 @@ const getFfmpegStartupError = (error: unknown) => {
 type PlayerPlaybackAttemptContext = PlaybackAttemptContext<QueuedSong, VoiceConnection>;
 export type PlayingMessageTerminalState = 'finished' | 'stopped';
 type PlayingMessageUpdater = (terminalState?: PlayingMessageTerminalState) => Promise<void>;
+type PlayingMessageState = {
+  updater: PlayingMessageUpdater;
+  id?: string;
+  terminalState?: PlayingMessageTerminalState;
+  updateInFlight: boolean;
+  updateQueued: boolean;
+  retired: boolean;
+};
 
 export default class {
   public voiceConnection: VoiceConnection | null = null;
@@ -119,11 +127,7 @@ export default class {
   private readonly playbackAttempts: PlaybackAttemptTracker<QueuedSong, VoiceConnection>;
   private readonly programmaticallyStoppedAudioPlayers = new WeakSet<AudioPlayer>();
   private playPositionInterval: NodeJS.Timeout | undefined;
-  private playingMessageUpdater?: PlayingMessageUpdater;
-  private playingMessageId?: string;
-  private playingMessageTerminalState?: PlayingMessageTerminalState;
-  private playingMessageUpdateInFlight = false;
-  private playingMessageUpdateQueued = false;
+  private playingMessage?: PlayingMessageState;
   private secondsSincePlayingMessageUpdate = 0;
   private readonly playingMessageUpdateIntervalSeconds: number;
 
@@ -218,10 +222,11 @@ export default class {
     }
   }
 
-  async seek(positionSeconds: number): Promise<void> {
+  async seek(positionSeconds: number, {preservePausedState = false} = {}): Promise<void> {
     const attempt = this.playbackAttempts.begin();
+    const stayPaused = preservePausedState && this.status === STATUS.PAUSED;
     try {
-      await this.seekWithAttempt(positionSeconds, attempt);
+      await this.seekWithAttempt(positionSeconds, attempt, stayPaused);
     } finally {
       this.requestPlayingMessageUpdate();
     }
@@ -237,19 +242,34 @@ export default class {
 
   /**
    * Registers the renderer for the live response created when /play starts a
-   * playback session. A player keeps only the most recent response updater.
+   * playback session. Older responses can still finish their terminal edits.
    */
   setPlayingMessageUpdater(updater: PlayingMessageUpdater, messageId?: string): void {
-    this.playingMessageUpdater = updater;
-    this.playingMessageId = messageId;
-    this.playingMessageTerminalState = undefined;
+    this.playingMessage = {
+      updater,
+      id: messageId,
+      updateInFlight: false,
+      updateQueued: false,
+      retired: false,
+    };
     this.secondsSincePlayingMessageUpdate = 0;
+  }
+
+  /** Binds a published response only while its renderer still owns the session. */
+  setPlayingMessageId(updater: PlayingMessageUpdater, messageId: string): boolean {
+    const message = this.playingMessage;
+    if (!message || message.updater !== updater || message.terminalState !== undefined) {
+      return false;
+    }
+
+    message.id = messageId;
+    return true;
   }
 
   /** Returns whether a reaction belongs to this player's current response. */
   isPlayingMessage(messageId: string): boolean {
     // Retire controls as soon as playback ends, even if the final edit is pending.
-    return this.playingMessageTerminalState === undefined && this.playingMessageId === messageId;
+    return this.playingMessage?.terminalState === undefined && this.playingMessage?.id === messageId;
   }
 
   /** Requests an immediate render after an externally initiated control. */
@@ -538,7 +558,10 @@ export default class {
     this.queue = [];
     this.currentQueueEntryVersion++;
     // Serialize a terminal edit behind any progress edit already in flight.
-    this.playingMessageTerminalState = 'stopped';
+    if (this.playingMessage) {
+      this.playingMessage.terminalState = 'stopped';
+    }
+
     this.requestPlayingMessageUpdate();
   }
 
@@ -653,7 +676,7 @@ export default class {
     }
   }
 
-  private async seekWithAttempt(positionSeconds: number, attempt: PlaybackAttemptToken): Promise<void> {
+  private async seekWithAttempt(positionSeconds: number, attempt: PlaybackAttemptToken, stayPaused = false): Promise<void> {
     this.status = STATUS.PAUSED;
 
     const currentSong = this.getCurrent();
@@ -684,6 +707,20 @@ export default class {
 
     if (positionSeconds > currentSong.length) {
       throw new Error('Seek position is outside the range of the song.');
+    }
+
+    if (stayPaused) {
+      // A buffering AudioPlayer cannot be paused. Keep only the new resume
+      // position and let play() recreate the resource when playback is wanted.
+      // Ownership was checked above, before retiring the current resource.
+      this.stopTrackingPosition();
+      this.stopAudioPlayer(true);
+      this.audioPlayer = null;
+      this.audioResource = null;
+      this.positionInSeconds = positionSeconds;
+      this.nowPlaying = currentSong;
+      this.nowPlayingQueueEntryVersion = currentQueueEntryVersion;
+      return;
     }
 
     let realPositionSeconds = positionSeconds;
@@ -964,50 +1001,51 @@ export default class {
   }
 
   /**
-   * Refreshes the live /play response without allowing Discord edits to
-   * overlap. Any requests received during an edit collapse into one trailing
-   * refresh, which renders the newest player state.
+   * Serializes edits for each response. Replaced responses may finish their
+   * terminal update, but must not render progress from the new session.
    */
-  private requestPlayingMessageUpdate(): void {
-    const updater = this.playingMessageUpdater;
-    if (!updater) {
+  private requestPlayingMessageUpdate(message = this.playingMessage): void {
+    if (!message || message.retired
+      || (message !== this.playingMessage && message.terminalState === undefined)) {
       return;
     }
 
-    this.secondsSincePlayingMessageUpdate = 0;
+    if (message === this.playingMessage) {
+      this.secondsSincePlayingMessageUpdate = 0;
+    }
 
-    if (this.playingMessageUpdateInFlight) {
-      this.playingMessageUpdateQueued = true;
+    if (message.updateInFlight) {
+      message.updateQueued = true;
       return;
     }
 
-    this.playingMessageUpdateInFlight = true;
-    const terminalState = this.playingMessageTerminalState;
-    void updater(terminalState)
+    message.updateInFlight = true;
+    const {terminalState} = message;
+    void message.updater(terminalState)
       .then(() => {
-        if (terminalState
-          && this.playingMessageUpdater === updater
-          && this.playingMessageTerminalState === terminalState) {
+        if (terminalState && message.terminalState === terminalState) {
           // Terminal responses no longer receive timer edits or controls.
-          this.playingMessageUpdater = undefined;
-          this.playingMessageId = undefined;
-          this.playingMessageTerminalState = undefined;
+          message.retired = true;
+          if (this.playingMessage === message) {
+            this.playingMessage = undefined;
+          }
         }
       })
-      .catch(error => {
-        if (this.playingMessageUpdater === updater) {
-          // Deleted or otherwise uneditable messages should not be retried on every tick.
-          this.playingMessageUpdater = undefined;
-          this.playingMessageId = undefined;
-          this.playingMessageTerminalState = undefined;
-          console.warn(`Could not update playing message for guild ${this.guildId}:`, error);
+      .catch((error: unknown) => {
+        // A failed old response must not retire the new session's response.
+        message.retired = true;
+        if (this.playingMessage === message) {
+          this.playingMessage = undefined;
         }
+
+        const detail = error instanceof Error ? `${error.name}: ${error.message}` : error;
+        console.warn(`Could not update playing message for guild ${this.guildId}: ${sanitizeFfmpegError(detail)}`);
       })
       .finally(() => {
-        this.playingMessageUpdateInFlight = false;
-        if (this.playingMessageUpdateQueued) {
-          this.playingMessageUpdateQueued = false;
-          this.requestPlayingMessageUpdate();
+        message.updateInFlight = false;
+        if (message.updateQueued) {
+          message.updateQueued = false;
+          this.requestPlayingMessageUpdate(message);
         }
       });
   }
@@ -1187,7 +1225,10 @@ export default class {
     this.status = STATUS.IDLE;
     this.stopAudioPlayer(true);
     // Allow the updater to replace the now-empty queue with a finished state.
-    this.playingMessageTerminalState = 'finished';
+    if (this.playingMessage) {
+      this.playingMessage.terminalState = 'finished';
+    }
+
     this.requestPlayingMessageUpdate();
 
     const settings = await getGuildSettings(this.guildId);

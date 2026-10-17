@@ -40,7 +40,9 @@ fast-forward, next track, stop, and shuffle. If Muse is already in your server,
 make sure its role has **View Channel**, **Send Messages**, **Embed Links**,
 **Read Message History**, **Add Reactions**, and **Manage Messages** permissions.
 **Manage Messages** lets Muse clear your reaction so you can click the same
-control again. The invite link includes these permissions for new installations.
+control again. Without it, remove your own reaction before clicking that control
+again. Check the text channel's permission overrides too. The invite link includes
+these permissions for new installations.
 
 A 64-bit OS is required to run Muse.
 

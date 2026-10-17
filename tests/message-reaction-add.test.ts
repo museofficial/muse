@@ -160,7 +160,7 @@ describe('playback-message reaction controls', () => {
     await Promise.all([firstAction, secondAction]);
 
     expect(callsWhileBlocked).toBe(0);
-    expect(player.seek.mock.calls).toEqual([[40], [20]]);
+    expect(player.seek.mock.calls).toEqual([[40, {preservePausedState: true}], [20, {preservePausedState: true}]]);
   });
 
   it.each(['⏭️', '⏭'])('skips to the next track with %s, including livestreams', async emoji => {
@@ -206,26 +206,34 @@ describe('playback-message reaction controls', () => {
     const player = makePlayer();
 
     await handleMessageReactionAdd(makeReaction('⏩', player).reaction as never, user as never);
-    expect(player.seek).toHaveBeenLastCalledWith(40);
+    expect(player.seek).toHaveBeenLastCalledWith(40, {preservePausedState: true});
 
     await handleMessageReactionAdd(makeReaction('⏪', player).reaction as never, user as never);
-    expect(player.seek).toHaveBeenLastCalledWith(20);
+    expect(player.seek).toHaveBeenLastCalledWith(20, {preservePausedState: true});
   });
 
-  it('clamps seeks at track boundaries and preserves a paused state', async () => {
+  it('clamps seeks and lets the player preserve pause within the seek attempt', async () => {
     const player = makePlayer({
       getPosition: vi.fn(() => 5),
       pause: vi.fn(),
       status: STATUS.PAUSED,
     });
+    await handleMessageReactionAdd(makeReaction('⏪', player).reaction as never, user as never);
+
+    expect(player.seek).toHaveBeenCalledWith(0, {preservePausedState: true});
+    expect(player.pause).not.toHaveBeenCalled();
+  });
+
+  it('does not pause newer playback after a paused seek finishes', async () => {
+    const player = makePlayer({status: STATUS.PAUSED});
     player.seek.mockImplementation(async () => {
+      // Another command can replace this attempt while it waits for voice readiness.
       player.status = STATUS.PLAYING;
     });
 
-    await handleMessageReactionAdd(makeReaction('⏪', player).reaction as never, user as never);
+    await handleMessageReactionAdd(makeReaction('⏩', player).reaction as never, user as never);
 
-    expect(player.seek).toHaveBeenCalledWith(0);
-    expect(player.pause).toHaveBeenCalledOnce();
+    expect(player.pause).not.toHaveBeenCalled();
   });
 
   it('toggles pause/resume and stops playback', async () => {
