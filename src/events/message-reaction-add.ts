@@ -169,12 +169,6 @@ export default async (
       return;
     }
 
-    // A seek recreates the audio stream. Restore a paused session afterward
-    // so rewinding does not unexpectedly start playback.
-    const wasPaused = player.status === STATUS.PAUSED;
-    await player.seek(target);
-    if (wasPaused && player.status === STATUS.PLAYING) {
-      player.pause();
-    }
+    await player.seek(target, {preservePausedState: true});
   });
 };

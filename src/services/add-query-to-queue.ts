@@ -172,14 +172,20 @@ export default class AddQueryToQueue {
     const guildId = interaction.guild!.id;
     // The queue embed supplies both the progress timer and the upcoming list
     // for the live response associated with this playback session.
-    const response = await interaction.editReply({
+    const responsePromise = interaction.editReply({
       content,
       embeds: [buildQueueEmbed(player, 1, pageSize)],
     });
-    player.setPlayingMessageUpdater(async (terminalState?: PlayingMessageTerminalState) => {
+    let finishControls!: () => void;
+    const controlsFinished = new Promise<void>(resolve => {
+      finishControls = resolve;
+    });
+    const updatePlayingMessage = async (terminalState?: PlayingMessageTerminalState) => {
+      // Capture before yielding: stop() can clear the queue while Discord is pending.
       const update = terminalState
         ? {content: terminalState === 'stopped' ? 'Playback stopped.' : 'Playback finished.', embeds: []}
         : {embeds: [buildQueueEmbed(player, 1, pageSize)]};
+      const response = await responsePromise;
 
       // Public interaction responses become regular channel messages and can
       // use Message.edit. Ephemeral responses must remain on the interaction webhook.
@@ -192,15 +198,29 @@ export default class AddQueryToQueue {
       if (terminalState && !ephemeral) {
         // Controls have no useful action after playback ends. Removing all
         // reactions also prevents a stale response from looking interactive.
+        // Wait for any pending addition, without delaying the terminal text.
+        await controlsFinished;
         await response.reactions.removeAll().catch(error => {
           console.warn(`Could not remove music controls for guild ${guildId}:`, error);
         });
       }
-    }, ephemeral ? undefined : response.id);
+    };
 
-    if (!ephemeral) {
+    // Register before Discord publishes the response so stop/finish cannot be lost.
+    player.setPlayingMessageUpdater(updatePlayingMessage);
+
+    try {
+      const response = await responsePromise;
+      if (ephemeral || !player.setPlayingMessageId(updatePlayingMessage, response.id)) {
+        return;
+      }
+
       // Add controls sequentially so Discord displays them in transport order.
       for (const emoji of MUSIC_CONTROL_EMOJIS) {
+        if (!player.isPlayingMessage(response.id)) {
+          break;
+        }
+
         try {
           // Reaction order is part of the transport-control layout.
           // eslint-disable-next-line no-await-in-loop
@@ -209,6 +229,8 @@ export default class AddQueryToQueue {
           console.warn(`Could not add music control ${emoji} for guild ${guildId}:`, error);
         }
       }
+    } finally {
+      finishControls();
     }
   }
 
