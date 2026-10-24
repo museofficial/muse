@@ -1,5 +1,6 @@
 import 'reflect-metadata';
-import {ActivityType, ChannelType, Collection} from 'discord.js';
+import {ActivityType, ChannelType, Client, Collection} from 'discord.js';
+import {WebSocketShard} from '@discordjs/ws';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const mocks = vi.hoisted(() => {
@@ -176,6 +177,7 @@ const makeClient = (guildIds: string[] = []) => {
   const handlers = new Map<string, Handler>();
   const setPresence = vi.fn();
   const client = {
+    options: {},
     guilds: {
       cache: new Collection(guildIds.map(id => [id, {id}])),
     },
@@ -257,6 +259,58 @@ beforeEach(() => {
 });
 
 describe('Discord command registration and ready lifecycle', () => {
+  it('preserves configured presence on each gateway identification without registering commands twice', async () => {
+    const client = new Client({intents: []});
+    client.token = 'synthetic-test-token';
+    const connect = vi.spyOn(client.ws, 'connect').mockResolvedValue(undefined);
+    const config = {...makeConfig(true, 'https://example.test/stream'), BOT_STATUS: 'dnd' as const};
+    mocks.containerGetAll.mockReturnValue([]);
+
+    await new Bot(client, config as never).register();
+
+    expect(connect).toHaveBeenCalledOnce();
+    expect(mocks.restPut).not.toHaveBeenCalled();
+    const send = vi.fn().mockResolvedValue(undefined);
+    const shard = {
+      id: 0,
+      strategy: {
+        waitForIdentify: vi.fn().mockResolvedValue(undefined),
+        options: {
+          initialPresence: client.options.ws!.presence,
+          token: client.token,
+          shardCount: 1,
+          intents: 0,
+          identifyProperties: {},
+        },
+      },
+      send,
+      debug: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      waitForEvent: vi.fn().mockResolvedValue(undefined),
+    };
+    // Use the pinned gateway client's real Identify serializer, with no network.
+    const identify = (WebSocketShard.prototype as unknown as {identify: () => Promise<void>}).identify;
+    await identify.call(shard);
+    await identify.call(shard);
+
+    expect(send).toHaveBeenCalledTimes(2);
+    for (const [packet] of send.mock.calls) {
+      expect(packet).toMatchObject({op: 2, d: {presence: {
+        status: 'dnd',
+        activities: [{name: 'preservation music', type: ActivityType.Streaming, url: 'https://example.test/stream'}],
+      }}});
+    }
+
+    client.user = {id: 'application-id', setPresence: vi.fn()} as never;
+    client.emit('ready', client as never);
+    await vi.waitFor(() => expect(mocks.spinner.succeed).toHaveBeenCalledOnce());
+    client.emit('ready', client as never);
+    expect(mocks.restPut).toHaveBeenCalledOnce();
+    expect(client.user!.setPresence).toHaveBeenCalledOnce();
+    client.removeAllListeners();
+  });
+
   it('replaces global commands with the full command set in bot registration mode', async () => {
     const {commands, handlers, setPresence} = await registerBot(true, makeCommandSet(), ['guild-a', 'guild-b']);
 

@@ -73,6 +73,8 @@ export default class {
       }
     }
 
+    this.commandsByName.get('help')?.setCommands?.([...this.commandsByName.values()]);
+
     // Register event handlers
     // eslint-disable-next-line complexity
     this.client.on('interactionCreate', async interaction => {
@@ -143,6 +145,15 @@ export default class {
 
     const spinner = ora('📡 connecting to Discord...').start();
 
+    const presence = {
+      activities: [{
+        name: this.config.BOT_ACTIVITY,
+        type: this.config.BOT_ACTIVITY_TYPE,
+        url: this.config.BOT_ACTIVITY_URL === '' ? undefined : this.config.BOT_ACTIVITY_URL,
+      }],
+      status: this.config.BOT_STATUS,
+    };
+
     this.client.once('ready', async () => {
       debug(generateDependencyReport());
 
@@ -172,16 +183,7 @@ export default class {
         );
       }
 
-      this.client.user!.setPresence({
-        activities: [
-          {
-            name: this.config.BOT_ACTIVITY,
-            type: this.config.BOT_ACTIVITY_TYPE,
-            url: this.config.BOT_ACTIVITY_URL === '' ? undefined : this.config.BOT_ACTIVITY_URL,
-          },
-        ],
-        status: this.config.BOT_STATUS,
-      });
+      this.client.user!.setPresence(presence);
 
       spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=${BOT_INVITE_PERMISSIONS}`);
     });
@@ -198,6 +200,8 @@ export default class {
         console.error(`Music reaction control failed: ${sanitizeErrorForLog(error)}`);
       }
     });
+    // Discord reuses login presence when a reconnect requires a new Identify.
+    this.client.options.presence = presence;
     await this.client.login();
   }
 }

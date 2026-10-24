@@ -129,6 +129,8 @@ Muse.
 When the queue finishes, Muse removes the card and controls and keeps the
 original queue acknowledgment. Stopping playback shows "Playback stopped."
 Volume and loop changes update the card immediately, including while paused.
+Long titles, source labels, and stream URLs are shortened for display when needed
+to fit Discord messages; playback uses the full URL.
 
 To use the emoji controls, you must be in the same voice channel as Muse and
 be allowed to use the matching command in the text channel containing the
@@ -156,12 +158,39 @@ that are playing now or have already played. When you add a playlist with
 shuffle enabled, Muse removes repeats within that playlist. Different chapters
 of the same track stay separate.
 
+YouTube playlist imports stop once they have enough playable tracks for
+`/config set-playlist-limit`. Private and deleted entries do not count toward
+that limit; each split chapter counts as one track. Video-detail requests are
+limited to three at a time across imports and lookups. This reduces request
+bursts, but your YouTube API project's daily quota still applies.
+
 ### Favorites
+
+A favorite is a named search or track/playlist URL saved for this server. It
+stores the input you would give `/play`, not audio or a copy of the current
+queue. Anyone in the server who can use `/favorites use` can queue that saved
+input again.
+
+For example, create one with `/favorites create name:lofi query:lofi hip hop`,
+then use `/favorites use name:lofi` to play it. Use `/favorites list` to see the
+server's favorites and `/favorites remove name:lofi` to remove one you created.
+The server owner can also remove other users' favorites.
 
 Favorite names must contain 1–100 characters. `/favorites list` may shorten long
 names and queries for display; the saved query is still used in full. Existing
 names longer than 100 characters can still be entered manually with
 `/favorites use` or `/favorites remove`.
+
+### Leaving voice when the queue ends
+
+`/config set-wait-after-queue-empties` takes a whole number of **seconds**.
+For example, `delay:60` makes Muse wait 60 seconds after the queue ends before
+leaving voice. Set `delay:0` to never leave because the queue is empty.
+The separate `/config set-leave-if-no-listeners` setting can still make Muse
+leave when everyone else leaves the channel.
+
+Use `/help` in Discord for the command list and these usage examples. Its reply
+is visible only to you.
 
 ### Cache
 
@@ -186,7 +215,10 @@ Being a community project, the server may be down or overloaded. When it happen,
 
 ### Custom Bot Status
 
-In the default state, Muse has the status "Online" and the text "Listening to Music". You can change the status through environment variables:
+In the default state, Muse has the status "Online" and the text "Listening to Music".
+The configured status and activity are restored when Discord reconnects.
+
+You can change them with these environment variables:
 
 - `BOT_STATUS`:
   - `online` (Online)

@@ -8,4 +8,5 @@ export default interface Command {
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
   handleButtonInteraction?: (interaction: ButtonInteraction) => Promise<void>;
   handleAutocompleteInteraction?: (interaction: AutocompleteInteraction) => Promise<void>;
+  setCommands?: (commands: Command[]) => void;
 }

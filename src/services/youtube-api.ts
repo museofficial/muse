@@ -1,6 +1,7 @@
 import {inject, injectable} from 'inversify';
 import {toSeconds, parse} from 'iso8601-duration';
 import got, {Got} from 'got';
+import pLimit from 'p-limit';
 import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
@@ -69,6 +70,7 @@ export default class {
   private readonly youtubeKey: string;
   private readonly cache: KeyValueCacheProvider;
   private readonly got: Got;
+  private readonly videoDetailsLimit = pLimit(3);
 
   constructor(@inject(TYPES.Config) config: Config, @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
     this.youtubeKey = config.YOUTUBE_API_KEY;
@@ -145,7 +147,11 @@ export default class {
     return this.getMetadataFromVideo({video, shouldSplitChapters});
   }
 
-  async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+  async getPlaylist(listId: string, shouldSplitChapters: boolean, playlistLimit = Number.POSITIVE_INFINITY): Promise<SongMetadata[]> {
+    if (playlistLimit < 1) {
+      return [];
+    }
+
     const playlistParams = {
       searchParams: {
         part: 'id, snippet, contentDetails',
@@ -166,9 +172,8 @@ export default class {
       throw new Error('Playlist could not be found.');
     }
 
-    const playlistVideos: PlaylistItem[] = [];
-    const videoDetailsPromises: Array<Promise<void>> = [];
-    const videoDetails: VideoDetailsResponse[] = [];
+    const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
+    const songsToReturn: SongMetadata[] = [];
     const requestedPageTokens = new Set<string>();
 
     let nextToken: string | undefined;
@@ -182,7 +187,7 @@ export default class {
         searchParams: {
           part: 'id, contentDetails',
           playlistId: listId,
-          maxResults: '50',
+          maxResults: String(Math.min(50, Math.max(1, Math.floor(playlistLimit - songsToReturn.length)))),
           pageToken: nextToken,
         },
       };
@@ -197,40 +202,31 @@ export default class {
       );
 
       nextToken = nextPageToken;
-      playlistVideos.push(...items);
+      if (items.length === 0) {
+        continue;
+      }
 
-      // Start fetching extra details about videos
-      // PlaylistItem misses some details, eg. if the video is a livestream
-      if (items.length > 0) {
-        const detailsPromise = (async () => {
-          const videoDetailItems = await this.getVideosByID(items.map(item => item.contentDetails.videoId));
-          videoDetails.push(...videoDetailItems);
-        })();
-        // Handle rejection immediately while pagination is still awaiting I/O.
-        // Promise.all below still propagates the original failure to the caller.
-        void detailsPromise.catch(() => undefined);
-        videoDetailsPromises.push(detailsPromise);
+      // Finish this page before fetching another: unavailable videos do not count
+      // toward the limit, while each split chapter does.
+      // eslint-disable-next-line no-await-in-loop
+      const videoDetails = await this.getVideosByID(items.map(item => item.contentDetails.videoId));
+      for (const video of items) {
+        try {
+          const tracks = this.getMetadataFromVideo({
+            video: videoDetails.find(item => item.id === video.contentDetails.videoId)!,
+            queuedPlaylist,
+            shouldSplitChapters,
+          });
+          songsToReturn.push(...tracks.slice(0, playlistLimit - songsToReturn.length));
+        } catch (_: unknown) {
+          // Private and deleted videos can be missing metadata or a duration.
+        }
+
+        if (songsToReturn.length >= playlistLimit) {
+          return songsToReturn;
+        }
       }
     } while (nextToken && !requestedPageTokens.has(nextToken));
-
-    await Promise.all(videoDetailsPromises);
-
-    const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};
-
-    const songsToReturn: SongMetadata[] = [];
-
-    for (const video of playlistVideos) {
-      try {
-        songsToReturn.push(...this.getMetadataFromVideo({
-          video: videoDetails.find((i: {id: string}) => i.id === video.contentDetails.videoId)!,
-          queuedPlaylist,
-          shouldSplitChapters,
-        }));
-      } catch (_: unknown) {
-        // Private and deleted videos are sometimes in playlists, duration of these
-        // is not returned and they should not be added to the queue.
-      }
-    }
 
     return songsToReturn;
   }
@@ -363,7 +359,7 @@ export default class {
     };
 
     const {items: videos} = await this.cache.wrap(
-      async () => this.got('videos', p).json() as Promise<{items: VideoDetailsResponse[]}>,
+      async () => this.videoDetailsLimit(async () => this.got('videos', p).json() as Promise<{items: VideoDetailsResponse[]}>),
       p,
       {
         expiresIn: ONE_HOUR_IN_SECONDS,

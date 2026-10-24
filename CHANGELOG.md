@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Keep configured bot status and activity when Discord reconnects.
+- Keep long search suggestions within Discord autocomplete limits.
+- Keep long stream URLs and metadata from breaking playback cards and queue replies.
+- Stop loading YouTube playlist pages once enough playable tracks have been found, counting split chapters toward the playlist limit.
+- Limit concurrent YouTube video-detail requests to three across imports and lookups. Keep the HTTP client's built-in retries for temporary failures; daily API quota limits still apply.
+- Add a private `/help` command listing the available commands, with examples for favorites and the queue-empty delay.
+- Explain that favorites save named searches or URLs for the server and that the queue-empty delay uses seconds, with 0 disabling that timeout.
+
 - Keep the retained song available when the queue is cleared during a failed next or previous track request.
 - Allow queue looping to be turned off after the upcoming songs are cleared or removed.
 - Refresh volume and loop indicators immediately, including while playback is paused.
