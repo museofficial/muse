@@ -65,7 +65,7 @@ it('does not start buffering replacement audio for a paused seek', async () => {
     const audioPlayer = (player as unknown as {audioPlayer: AudioPlayer}).audioPlayer;
     expect(audioPlayer.state.status).toBe(AudioPlayerStatus.Buffering);
     expect(audioPlayer.pause()).toBe(false);
-    expect(getStream).toHaveBeenCalledWith(player.getCurrent(), {seek: 25, to: 100});
+    expect(getStream).toHaveBeenCalledWith(player.getCurrent(), {seek: 25, to: 100}, expect.objectContaining({song: player.getCurrent()}));
     const playing = once(audioPlayer, AudioPlayerStatus.Playing);
     stream.write(Buffer.from([0xf8, 0xff, 0xfe]));
     await playing;
