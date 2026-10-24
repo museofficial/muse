@@ -20,7 +20,7 @@ export default class implements Command {
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-wait-after-queue-empties')
-      .setDescription('set the time to wait before leaving the voice channel when queue empties')
+      .setDescription('set seconds to wait before leaving voice when the queue empties (0 to never leave)')
       .addIntegerOption(option => option
         .setName('delay')
         .setDescription('delay in seconds (set to 0 to never leave)')

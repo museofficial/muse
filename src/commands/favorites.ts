@@ -14,10 +14,10 @@ const MAX_NAME_LENGTH = 100;
 export default class implements Command {
   public readonly slashCommand = new SlashCommandBuilder()
     .setName('favorites')
-    .setDescription('add a song to your favorites')
+    .setDescription('save and reuse named searches or URLs for this server')
     .addSubcommand(subcommand => subcommand
       .setName('use')
-      .setDescription('use a favorite')
+      .setDescription('play a saved search or URL')
       .addStringOption(option => option
         .setName('name')
         .setDescription('name of favorite')
@@ -40,7 +40,7 @@ export default class implements Command {
       .setDescription('list all favorites'))
     .addSubcommand(subcommand => subcommand
       .setName('create')
-      .setDescription('create a new favorite')
+      .setDescription('save a named search or URL for this server')
       .addStringOption(option => option
         .setName('name')
         .setDescription('you\'ll type this when using this favorite')
