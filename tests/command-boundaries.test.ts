@@ -380,18 +380,19 @@ describe('/remove', () => {
 });
 
 describe('queue navigation error boundaries', () => {
-  it('publishes a successful /skip response after privately deferring failures', async () => {
+  it.each([false, true])('confirms /skip privately when a current song remains=%s', async hasCurrent => {
     const player = {
       forward: vi.fn().mockResolvedValue(undefined),
-      getCurrent: vi.fn(() => null),
+      getCurrent: vi.fn(() => hasCurrent ? {title: 'Next song'} : null),
     };
-    const {interaction, deferReply, deleteReply, followUp} = makeInteraction();
+    const {interaction, deferReply, editReply, deleteReply, followUp} = makeInteraction();
 
     await new Skip(managerFor(player) as never).execute(interaction);
 
     expect(deferReply).toHaveBeenCalledWith({ephemeral: true});
-    expect(followUp).toHaveBeenCalledWith({content: 'keep \'er movin\'', embeds: []});
-    expect(deleteReply).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledWith(hasCurrent ? 'Skipped.' : 'Queue complete.');
+    expect(followUp).not.toHaveBeenCalled();
+    expect(deleteReply).not.toHaveBeenCalled();
   });
 
   it('defers /skip and preserves playback startup errors', async () => {
@@ -650,7 +651,7 @@ describe('/loop', () => {
 });
 
 describe('/config get', () => {
-  it('shows requester-only responses and the voice reduction target from their own settings', async () => {
+  it('shows the voice reduction target and omits the obsolete response visibility setting', async () => {
     mocks.getGuildSettings.mockResolvedValue({
       playlistLimit: 20,
       secondsToWaitAfterQueueEmpties: 30,
@@ -668,7 +669,10 @@ describe('/config get', () => {
 
     const response = reply.mock.calls[0][0] as {embeds: Array<{toJSON: () => {description?: string}}>};
     const description = response.embeds[0].toJSON().description;
-    expect(description).toContain('**Add to queue reponses show for requester only**: yes');
+    expect(description).not.toContain('requester only');
+    expect(description).not.toContain('queueAddResponseEphemeral');
+    const subcommands = new Config().slashCommand.toJSON().options!.map(option => option.name);
+    expect(subcommands).not.toContain('set-queue-add-response-hidden');
     expect(description).toContain('**Reduce volume when people speak target**: 23');
   });
 });

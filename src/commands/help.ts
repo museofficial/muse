@@ -21,6 +21,10 @@ export default class implements Command {
       .join('\n');
 
     const usage = [
+      '**Listening sessions**',
+      'Add music with `/play`. Your confirmation is private; the shared card shows playback and controls.',
+      'When the queue ends, the card keeps the songs that played. Use **View full history** for the complete list.',
+      '',
       '**Favorites**',
       'A favorite saves a named search or track/playlist URL for this server, not audio or a copy of the queue.',
       'Create one with `/favorites create name:lofi query:lofi hip hop`, then play it with `/favorites use name:lofi`.',

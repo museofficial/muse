@@ -43,6 +43,6 @@ export default class implements Command {
       pageSize,
     );
 
-    await interaction.reply({embeds: [embed]});
+    await interaction.reply({embeds: [embed], ephemeral: true});
   }
 }

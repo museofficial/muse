@@ -1,10 +1,10 @@
-import {ChatInputCommandInteraction} from 'discord.js';
+import {ChatInputCommandInteraction, GuildTextBasedChannel} from 'discord.js';
 import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import SessionPlayer from '../services/session-player.js';
 
 @injectable()
 export default class implements Command {
@@ -14,19 +14,20 @@ export default class implements Command {
 
   private readonly playerManager: PlayerManager;
 
-  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager,
+    @inject(TYPES.Services.SessionPlayer) private readonly sessionPlayer: SessionPlayer) {
     this.playerManager = playerManager;
   }
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const player = this.playerManager.get(interaction.guild!.id);
 
-    if (!player.getCurrent()) {
+    if (!player.listeningSession?.snapshot()) {
       throw new Error('nothing is currently playing');
     }
 
-    await interaction.reply({
-      embeds: [buildPlayingMessageEmbed(player)],
-    });
+    await interaction.deferReply({ephemeral: true});
+    const url = await this.sessionPlayer.ensureMessage(player, interaction.channel as GuildTextBasedChannel);
+    await interaction.editReply({content: `[Go to player](${url})`, allowedMentions: {parse: []}});
   }
 }

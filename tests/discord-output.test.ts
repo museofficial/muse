@@ -108,7 +108,6 @@ const makeQueueRequest = (ephemeral: boolean, existingSong: boolean) => {
   }
 
   vi.spyOn(player, 'play').mockImplementation(async () => { player.status = STATUS.PLAYING; });
-  const updater = vi.spyOn(player, 'setPlayingMessageUpdater');
   mocks.settings.mockResolvedValue({playlistLimit: 20, queueAddResponseEphemeral: ephemeral, defaultQueuePageSize: 10});
   const message = {
     id: 'message', edit: vi.fn().mockResolvedValue(undefined), react: vi.fn().mockResolvedValue(undefined),
@@ -118,12 +117,18 @@ const makeQueueRequest = (ephemeral: boolean, existingSong: boolean) => {
     guild: {id: 'guild'}, member: {user: {id: 'requester'}}, channel: {id: 'channel'},
     deferReply: vi.fn().mockResolvedValue(undefined), editReply: vi.fn().mockResolvedValue(message),
   };
-  const service = new AddQueryToQueue(new GetSongs({} as never), {get: () => player} as never, {ENABLE_SPONSORBLOCK: false} as never, {} as never);
+  const service = new AddQueryToQueue(
+    new GetSongs({} as never),
+    {get: () => player} as never,
+    {ENABLE_SPONSORBLOCK: false} as never,
+    {} as never,
+    {ensureMessage: vi.fn().mockResolvedValue('https://discord.com/channels/guild/channel/session')} as never,
+  );
   const request = () => service.addToQueue({
     query: streamUrl, addToFrontOfQueue: false, shuffleAdditions: false,
     shouldSplitChapters: false, skipCurrentTrack: false, interaction: interaction as never,
   });
-  return {player, interaction, message, request, updater};
+  return {player, interaction, message, request};
 };
 
 describe('queue acknowledgment output limits', () => {
@@ -132,24 +137,25 @@ describe('queue acknowledgment output limits', () => {
 
     await request();
 
-    const content = interaction.editReply.mock.calls[0][0] as string;
+    const {content} = interaction.editReply.mock.calls[0][0] as {content: string};
     expect(content.length).toBeLessThanOrEqual(2000);
-    expect(content).toMatch(/^u betcha, \*\*https:\/\/radio\.example\//);
-    expect(content).toMatch(/\*\* added to the queue$/);
+    expect(content).toMatch(/^Added \*\*https:\/\/radio\.example\//);
+    expect(content).toContain('#1');
+    expect(content).toContain('https://discord.com/channels/guild/channel/session');
     expect(player.getQueue()[0].url).toBe(streamUrl);
   });
 
-  it.each([false, true])('publishes a bounded initial and finished response for a long stream URL (ephemeral=%s)', async ephemeral => {
-    const {player, interaction, message, request, updater} = makeQueueRequest(ephemeral, false);
+  it.each([false, true])('keeps a long stream confirmation private with legacy hidden=%s', async ephemeral => {
+    const {player, interaction, message, request} = makeQueueRequest(ephemeral, false);
 
     await request();
 
     const initial = interaction.editReply.mock.calls[0][0];
     expect(initial.content.length).toBeLessThanOrEqual(2000);
-    expectValidEmbed(initial.embeds[0]);
+    expect(initial.content).toContain('https://discord.com/channels/guild/channel/session');
+    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
     expect(player.getCurrent()!.url).toBe(streamUrl);
-    await updater.mock.calls[0][0]('finished');
-    expect(ephemeral ? interaction.editReply : message.edit).toHaveBeenLastCalledWith({content: initial.content, embeds: []});
+    expect(message.react).not.toHaveBeenCalled();
   });
 
   it('bounds /move confirmation without changing the moved entry', async () => {

@@ -33,7 +33,7 @@ export default class implements Command {
     }
 
     await Promise.all([
-      player.seek(0),
+      player.replay(),
       interaction.deferReply(),
     ]);
 

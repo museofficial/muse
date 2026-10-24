@@ -4,6 +4,8 @@ import Player from '../services/player.js';
 import FileCacheProvider from '../services/file-cache.js';
 import type YoutubeAPI from '../services/youtube-api.js';
 import Config from '../services/config.js';
+import ListeningSession from '../services/listening-session.js';
+import SessionHistoryStore from '../services/session-history-store.js';
 
 @injectable()
 export default class {
@@ -14,7 +16,8 @@ export default class {
 
   constructor(@inject(TYPES.FileCache) fileCache: FileCacheProvider,
     @inject(TYPES.Services.YoutubeAPI) youtubeAPI: YoutubeAPI,
-    @inject(TYPES.Config) config: Config) {
+    @inject(TYPES.Config) config: Config,
+    @inject(TYPES.Services.SessionHistoryStore) private readonly sessionHistoryStore?: SessionHistoryStore) {
     this.guildPlayers = new Map();
     this.fileCache = fileCache;
     this.youtubeAPI = youtubeAPI;
@@ -30,6 +33,7 @@ export default class {
         guildId,
         async song => this.youtubeAPI.findAudioFallback(song),
         this.config.PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
+        this.sessionHistoryStore ? new ListeningSession(guildId, this.sessionHistoryStore) : undefined,
       );
 
       this.guildPlayers.set(guildId, player);

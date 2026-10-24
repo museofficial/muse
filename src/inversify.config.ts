@@ -13,6 +13,8 @@ import AddQueryToQueue from './services/add-query-to-queue.js';
 import GetSongs from './services/get-songs.js';
 import YoutubeAPI from './services/youtube-api.js';
 import SpotifyAPI from './services/spotify-api.js';
+import SessionHistoryStore from './services/session-history-store.js';
+import SessionPlayer from './services/session-player.js';
 
 // Commands
 import Command from './commands/index.js';
@@ -48,7 +50,6 @@ const container = new Container();
 // Intents
 const intents: GatewayIntentBits[] = [];
 intents.push(GatewayIntentBits.Guilds); // To listen for guildCreate event
-intents.push(GatewayIntentBits.GuildMessageReactions); // To listen for message reactions (messageReactionAdd event)
 intents.push(GatewayIntentBits.GuildVoiceStates); // To listen for voice state changes (voiceStateUpdate event)
 
 // Bot
@@ -65,6 +66,8 @@ container.bind(TYPES.Config).toConstantValue(new ConfigProvider());
 container.bind<GetSongs>(TYPES.Services.GetSongs).to(GetSongs).inSingletonScope();
 container.bind<AddQueryToQueue>(TYPES.Services.AddQueryToQueue).to(AddQueryToQueue).inSingletonScope();
 container.bind<YoutubeAPI>(TYPES.Services.YoutubeAPI).to(YoutubeAPI).inSingletonScope();
+container.bind<SessionHistoryStore>(TYPES.Services.SessionHistoryStore).toConstantValue(new SessionHistoryStore());
+container.bind<SessionPlayer>(TYPES.Services.SessionPlayer).to(SessionPlayer).inSingletonScope();
 
 // Only instanciate spotify dependencies if the Spotify client ID and secret are set
 const config = container.get<ConfigProvider>(TYPES.Config);

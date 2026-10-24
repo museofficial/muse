@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => {
     }>,
     restPut: vi.fn(),
     restSetToken: vi.fn(),
-    reactionHandler: vi.fn(),
+    sessionPlayer: {prepareRecovery: vi.fn(), recover: vi.fn(), handleButton: vi.fn()},
     settingUpsert: vi.fn(),
     spinner,
     voiceStateHandler: vi.fn(),
@@ -73,9 +73,6 @@ vi.mock('../src/events/voice-state-update.js', () => ({
   default: mocks.voiceStateHandler,
 }));
 
-vi.mock('../src/events/message-reaction-add.js', () => ({
-  default: mocks.reactionHandler,
-}));
 
 vi.mock('../src/services/player.js', () => ({
   default: class {
@@ -225,6 +222,10 @@ const registerBot = async (registerCommandsOnBot: boolean, commands = makeComman
 
   mocks.containerGetAll.mockReturnValue(commands);
   mocks.containerGet.mockImplementation(type => {
+    if (type === TYPES.Services.SessionPlayer) {
+      return mocks.sessionPlayer;
+    }
+
     if (type === TYPES.Config) {
       return config;
     }
@@ -250,6 +251,9 @@ const invoke = async (handlers: Map<string, Handler>, event: string, ...args: un
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.containerGet.mockImplementation(type => type === TYPES.Services.SessionPlayer ? mocks.sessionPlayer : undefined);
+  mocks.sessionPlayer.prepareRecovery.mockResolvedValue(undefined);
+  mocks.sessionPlayer.recover.mockResolvedValue(undefined);
   mocks.login.mockResolvedValue(undefined);
   mocks.restPut.mockResolvedValue(undefined);
   mocks.settingUpsert.mockResolvedValue({guildId: 'guild-new'});
@@ -354,7 +358,7 @@ describe('Discord command registration and ready lifecycle', () => {
       status: 'idle',
     });
     expect(mocks.spinner.succeed).toHaveBeenCalledAfter(setPresence);
-    expect(mocks.spinner.succeed).toHaveBeenCalledWith('Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=application-id&scope=bot%20applications.commands&permissions=36793408');
+    expect(mocks.spinner.succeed).toHaveBeenCalledWith('Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=application-id&scope=bot%20applications.commands&permissions=36785152');
   });
 
   it('omits an empty activity URL from presence', async () => {
@@ -384,14 +388,18 @@ describe('Discord command registration and ready lifecycle', () => {
     consoleError.mockRestore();
   });
 
-  it('routes message reactions through the music-control boundary', async () => {
+  it('recovers persisted sessions before login and removes the old reaction listener', async () => {
     const {handlers} = await registerBot(true);
-    const reaction = {emoji: {name: '⏯️'}};
-    const user = {bot: false, id: 'member-id'};
+    expect(mocks.sessionPlayer.prepareRecovery).toHaveBeenCalledBefore(mocks.login);
+    await invoke(handlers, 'ready');
+    expect(mocks.sessionPlayer.recover).toHaveBeenCalledOnce();
+    expect(handlers.has('messageReactionAdd')).toBe(false);
+  });
 
-    await invoke(handlers, 'messageReactionAdd', reaction, user);
-
-    expect(mocks.reactionHandler).toHaveBeenCalledWith(reaction, user);
+  it('does not log in when session recovery cannot persist interrupted history', async () => {
+    mocks.sessionPlayer.prepareRecovery.mockRejectedValue(new Error('database unavailable'));
+    await expect(registerBot(true)).rejects.toThrow('database unavailable');
+    expect(mocks.login).not.toHaveBeenCalled();
   });
 });
 
@@ -436,6 +444,17 @@ describe('guild onboarding', () => {
 });
 
 describe('interaction boundaries', () => {
+  it('routes durable session buttons before command-owned buttons', async () => {
+    const {handlers} = await registerBot(true);
+    const interaction = makeInteraction('play', {
+      isButton: () => true,
+      isCommand: () => false,
+      customId: 'muse-session:session-id:history:0',
+    } as never);
+    await invoke(handlers, 'interactionCreate', interaction);
+    expect(mocks.sessionPlayer.handleButton).toHaveBeenCalledWith(interaction);
+  });
+
   it('rejects chat-input commands used outside a guild', async () => {
     const command = makeCommand('play');
     const {handlers} = await registerBot(true, [command]);

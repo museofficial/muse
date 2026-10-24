@@ -4,9 +4,9 @@ import Command from './index.js';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import {STATUS} from '../services/player.js';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import SessionPlayer from '../services/session-player.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
-import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
+import {ChatInputCommandInteraction, GuildMember, GuildTextBasedChannel} from 'discord.js';
 
 @injectable()
 export default class implements Command {
@@ -18,7 +18,8 @@ export default class implements Command {
 
   private readonly playerManager: PlayerManager;
 
-  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager) {
+  constructor(@inject(TYPES.Managers.Player) playerManager: PlayerManager,
+    @inject(TYPES.Services.SessionPlayer) private readonly sessionPlayer: SessionPlayer) {
     this.playerManager = playerManager;
   }
 
@@ -35,16 +36,18 @@ export default class implements Command {
     }
 
     await interaction.deferReply({ephemeral: true});
-    await player.connect(targetVoiceChannel);
+    if (player.voiceConnection) {
+      await player.ensureVoiceConnectionReady();
+    } else {
+      await player.connect(targetVoiceChannel);
+    }
+
     await player.play();
     if (!player.getCurrent()) {
       throw new Error('no playable songs found');
     }
 
-    await interaction.followUp({
-      content: 'the stop-and-go light is now green',
-      embeds: [buildPlayingMessageEmbed(player)],
-    });
-    await interaction.deleteReply().catch(() => undefined);
+    const url = await this.sessionPlayer.ensureMessage(player, interaction.channel as GuildTextBasedChannel);
+    await interaction.editReply({content: `Playback resumed. [Go to player](${url})`, allowedMentions: {parse: []}});
   }
 }

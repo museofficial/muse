@@ -7,6 +7,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import prismMedia from 'prism-media';
 import shuffle from 'array-shuffle';
 import uniqueSongs from '../utils/unique-songs.js';
+import type ListeningSession from './listening-session.js';
 import {
   AudioPlayer,
   AudioPlayerState,
@@ -102,7 +103,7 @@ const getFfmpegStartupError = (error: unknown) => {
 };
 
 type PlayerPlaybackAttemptContext = PlaybackAttemptContext<QueuedSong, VoiceConnection>;
-export type PlayingMessageTerminalState = 'finished' | 'stopped';
+export type PlayingMessageTerminalState = 'finished' | 'stopped' | 'disconnected';
 type PlayingMessageUpdater = (terminalState?: PlayingMessageTerminalState) => Promise<void>;
 type PlayingMessageState = {
   updater: PlayingMessageUpdater;
@@ -111,6 +112,7 @@ type PlayingMessageState = {
   updateInFlight: boolean;
   updateQueued: boolean;
   retired: boolean;
+  keepAfterFinish: boolean;
 };
 
 export default class {
@@ -155,6 +157,7 @@ export default class {
     guildId: string,
     ageRestrictedFallbackResolver?: AgeRestrictedFallbackResolver,
     playingMessageUpdateIntervalSeconds = DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
+    public readonly listeningSession?: ListeningSession,
   ) {
     this.fileCache = fileCache;
     this.guildId = guildId;
@@ -204,7 +207,7 @@ export default class {
     return voiceConnection;
   }
 
-  disconnect(): void {
+  disconnect(reason: 'disconnected' | 'stopped' = 'disconnected'): void {
     this.voiceConnectionGeneration++;
     this.pendingConnection = undefined;
     this.prefetchedMedia = undefined;
@@ -228,6 +231,12 @@ export default class {
       this.volumeBeforeVoiceActivity = undefined;
       this.voiceActivityVolumeTarget = undefined;
       this.hasRegisteredVoiceActivityListener = false;
+    }
+
+    this.listeningSession?.finish(reason);
+    if (this.playingMessage?.keepAfterFinish) {
+      this.playingMessage.terminalState = reason;
+      this.requestPlayingMessageUpdate();
     }
   }
 
@@ -253,13 +262,14 @@ export default class {
    * Registers the renderer for the live response created when /play starts a
    * playback session. Older responses can still finish their terminal edits.
    */
-  setPlayingMessageUpdater(updater: PlayingMessageUpdater, messageId?: string): void {
+  setPlayingMessageUpdater(updater: PlayingMessageUpdater, messageId?: string, {keepAfterFinish = false} = {}): void {
     this.playingMessage = {
       updater,
       id: messageId,
       updateInFlight: false,
       updateQueued: false,
       retired: false,
+      keepAfterFinish,
     };
     this.secondsSincePlayingMessageUpdate = 0;
   }
@@ -267,7 +277,8 @@ export default class {
   /** Binds a published response only while its renderer still owns the session. */
   setPlayingMessageId(updater: PlayingMessageUpdater, messageId: string): boolean {
     const message = this.playingMessage;
-    if (!message || message.updater !== updater || message.terminalState !== undefined) {
+    if (!message || message.updater !== updater
+      || (message.terminalState !== undefined && !(message.keepAfterFinish && message.terminalState === 'finished'))) {
       return false;
     }
 
@@ -281,6 +292,10 @@ export default class {
     return this.playingMessage?.terminalState === undefined && this.playingMessage?.id === messageId;
   }
 
+  getPlayingMessageId(): string | undefined {
+    return this.playingMessage?.retired ? undefined : this.playingMessage?.id;
+  }
+
   /** Requests an immediate render after an externally initiated control. */
   refreshPlayingMessage(): void {
     this.requestPlayingMessageUpdate();
@@ -289,6 +304,11 @@ export default class {
   async play(allowAgeRestrictedFallback = true): Promise<void> {
     const attempt = this.playbackAttempts.begin();
     await this.playWithAttempt(attempt, allowAgeRestrictedFallback);
+  }
+
+  async replay(): Promise<void> {
+    this.listeningSession?.endTrack('skipped');
+    await this.seek(0);
   }
 
   pause(): void {
@@ -424,6 +444,7 @@ export default class {
 
   manualForward(skip: number): void {
     if (this.canGoForward(skip)) {
+      this.listeningSession?.endTrack('skipped');
       this.queuePosition += skip;
       this.currentQueueEntryVersion++;
       this.positionInSeconds = 0;
@@ -441,6 +462,8 @@ export default class {
     if (!this.canGoBack()) {
       throw new Error('No songs in queue to go back to.');
     }
+
+    this.listeningSession?.endTrack('skipped');
 
     const originalPosition = this.positionInSeconds;
     const originalQueuePosition = this.queuePosition;
@@ -556,6 +579,7 @@ export default class {
   }
 
   removeCurrent(): void {
+    this.listeningSession?.endTrack('skipped');
     this.queue = [...this.queue.slice(0, this.queuePosition), ...this.queue.slice(this.queuePosition + 1)];
     this.currentQueueEntryVersion++;
     this.requestPlayingMessageUpdate();
@@ -570,7 +594,7 @@ export default class {
   }
 
   stop(): void {
-    this.disconnect();
+    this.disconnect('stopped');
     this.queuePosition = 0;
     this.queue = [];
     this.currentQueueEntryVersion++;
@@ -1071,6 +1095,13 @@ export default class {
     }, 1000);
   }
 
+  private recordStartedTrack(song: QueuedSong, queueEntryId: number, connection: VoiceConnection): void {
+    this.listeningSession?.startTrack(song, connection.joinConfig.channelId!, queueEntryId);
+    if (this.playingMessage?.keepAfterFinish && this.playingMessage.terminalState === 'finished') {
+      this.playingMessage.terminalState = undefined;
+    }
+  }
+
   /**
    * Serializes edits for each response. Replaced responses may finish their
    * terminal update, but must not render progress from the new session.
@@ -1094,7 +1125,8 @@ export default class {
     const {terminalState} = message;
     void message.updater(terminalState)
       .then(() => {
-        if (terminalState && message.terminalState === terminalState) {
+        if (terminalState && message.terminalState === terminalState
+          && !(terminalState === 'finished' && message.keepAfterFinish)) {
           // Terminal responses no longer receive timer edits or controls.
           message.retired = true;
           if (this.playingMessage === message) {
@@ -1174,7 +1206,7 @@ export default class {
       return;
     }
 
-    const {audioPlayer} = this;
+    const {audioPlayer, voiceConnection} = this;
     if (audioPlayer.listeners('error').length === 0) {
       audioPlayer.on('error', error => {
         // The voice library transitions failed resources to Idle after emitting
@@ -1184,6 +1216,24 @@ export default class {
     }
 
     const queueEntryVersion = this.currentQueueEntryVersion;
+    const song = this.getCurrent();
+    if (this.listeningSession && song) {
+      this.listeningSession.prepare(voiceConnection.joinConfig.channelId!, song.addedInChannelId);
+      audioPlayer.on(AudioPlayerStatus.Playing, (_oldState, newState) => {
+        // Playback may only enter Buffering. Count the owned resource once it
+        // actually plays, and ignore late events from stopped/replaced audio.
+        if (this.programmaticallyStoppedAudioPlayers.has(audioPlayer)
+          || this.audioPlayer !== audioPlayer || this.voiceConnection !== voiceConnection
+          || this.currentQueueEntryVersion !== queueEntryVersion || this.getCurrent() !== song
+          || newState.resource !== this.audioResource) {
+          return;
+        }
+
+        this.recordStartedTrack(song, queueEntryVersion, voiceConnection);
+        this.requestPlayingMessageUpdate();
+      });
+    }
+
     if (audioPlayer.listeners(AudioPlayerStatus.Idle).length === 0) {
       audioPlayer.on(AudioPlayerStatus.Idle, (oldState, newState) => {
         if (this.programmaticallyStoppedAudioPlayers.has(audioPlayer)
@@ -1287,6 +1337,10 @@ export default class {
   }
 
   private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
+    if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
+      this.listeningSession?.endTrack('completed');
+    }
+
     // Automatically advance queued song at end
     if (this.loopCurrentSong && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.seek(0);

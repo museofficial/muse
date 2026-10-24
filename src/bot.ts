@@ -7,7 +7,6 @@ import Command from './commands/index.js';
 import debug from './utils/debug.js';
 import handleGuildCreate from './events/guild-create.js';
 import handleVoiceStateUpdate from './events/voice-state-update.js';
-import handleMessageReactionAdd from './events/message-reaction-add.js';
 import errorMsg from './utils/error-msg.js';
 import {isUserInVoice} from './utils/channels.js';
 import Config from './services/config.js';
@@ -16,6 +15,8 @@ import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v10';
 import registerCommandsOnGuild from './utils/register-commands-on-guild.js';
 import {BOT_INVITE_PERMISSIONS} from './utils/constants.js';
+import type SessionPlayer from './services/session-player.js';
+import {SESSION_BUTTON_PREFIX} from './utils/build-session-message.js';
 
 const sanitizeErrorDetail = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
@@ -52,6 +53,8 @@ export default class {
   }
 
   public async register(): Promise<void> {
+    // Close persisted sessions before login, before Discord can deliver /play.
+    await container.get<SessionPlayer>(TYPES.Services.SessionPlayer).prepareRecovery();
     // Load in commands
     for (const command of container.getAll<Command>(TYPES.Command)) {
       // Make sure we can serialize to JSON without errors
@@ -101,6 +104,11 @@ export default class {
             await command.execute(interaction);
           }
         } else if (interaction.isButton()) {
+          if (interaction.customId.startsWith(SESSION_BUTTON_PREFIX)) {
+            await container.get<SessionPlayer>(TYPES.Services.SessionPlayer).handleButton(interaction);
+            return;
+          }
+
           const command = this.commandsByButtonId.get(interaction.customId);
 
           if (!command) {
@@ -157,6 +165,14 @@ export default class {
     this.client.once('ready', async () => {
       debug(generateDependencyReport());
 
+      try {
+        await container.get<SessionPlayer>(TYPES.Services.SessionPlayer).recover(this.client);
+      } catch (error: unknown) {
+        console.error(`Listening-session recovery failed: ${sanitizeErrorForLog(error)}`);
+        this.client.destroy();
+        return;
+      }
+
       // Update commands
       const rest = new REST({version: '10'}).setToken(this.config.DISCORD_TOKEN);
       if (this.shouldRegisterCommandsOnBot) {
@@ -193,13 +209,6 @@ export default class {
 
     this.client.on('guildCreate', handleGuildCreate);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
-    this.client.on('messageReactionAdd', async (reaction, user) => {
-      try {
-        await handleMessageReactionAdd(reaction, user);
-      } catch (error: unknown) {
-        console.error(`Music reaction control failed: ${sanitizeErrorForLog(error)}`);
-      }
-    });
     // Discord reuses login presence when a reconnect requires a new Identify.
     this.client.options.presence = presence;
     await this.client.login();

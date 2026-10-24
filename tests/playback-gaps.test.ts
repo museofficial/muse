@@ -408,6 +408,7 @@ describe('PLAY-09 shuffled additions preservation', () => {
       playerManager as never,
       {ENABLE_SPONSORBLOCK: false, SPONSORBLOCK_TIMEOUT: 5} as never,
       cache as never,
+      {ensureMessage: vi.fn().mockResolvedValue('https://discord.com/channels/guild/channel/session')} as never,
     );
     const interaction = makeQueueInteraction();
     dependencyMocks.arrayShuffle.mockImplementation((items: unknown[]) => [...items].reverse());
