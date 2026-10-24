@@ -158,10 +158,31 @@ of the same track stay separate.
 
 ### Favorites
 
+A favorite is a named search or track/playlist URL saved for this server. It
+stores the input you would give `/play`, not audio or a copy of the current
+queue. Anyone in the server who can use `/favorites use` can queue that saved
+input again.
+
+For example, create one with `/favorites create name:lofi query:lofi hip hop`,
+then use `/favorites use name:lofi` to play it. Use `/favorites list` to see the
+server's favorites and `/favorites remove name:lofi` to remove one you created.
+The server owner can also remove other users' favorites.
+
 Favorite names must contain 1–100 characters. `/favorites list` may shorten long
 names and queries for display; the saved query is still used in full. Existing
 names longer than 100 characters can still be entered manually with
 `/favorites use` or `/favorites remove`.
+
+### Leaving voice when the queue ends
+
+`/config set-wait-after-queue-empties` takes a whole number of **seconds**.
+For example, `delay:60` makes Muse wait 60 seconds after the queue ends before
+leaving voice. Set `delay:0` to never leave because the queue is empty.
+The separate `/config set-leave-if-no-listeners` setting can still make Muse
+leave when everyone else leaves the channel.
+
+Use `/help` in Discord for the command list and these usage examples. Its reply
+is visible only to you.
 
 ### Cache
 

@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Add /help command to list all available commands.
+- Add a private `/help` command listing the available commands, with examples for favorites and the queue-empty delay.
+- Explain that favorites save named searches or URLs for the server and that the queue-empty delay uses seconds, with 0 disabling that timeout.
 
 - Keep the retained song available when the queue is cleared during a failed next or previous track request.
 - Allow queue looping to be turned off after the upcoming songs are cleared or removed.
