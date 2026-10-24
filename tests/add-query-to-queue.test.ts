@@ -250,7 +250,7 @@ describe('AddQueryToQueue skip semantics', () => {
     await (updatePlayingMessage as (state: 'finished') => Promise<void>)('finished');
 
     expect(interaction.replyMessage.edit).toHaveBeenLastCalledWith({
-      content: 'Playback finished.',
+      content: 'u betcha, **New song** added to the queue',
       embeds: [],
     });
     expect(interaction.replyMessage.reactions.removeAll).toHaveBeenCalledOnce();
@@ -361,11 +361,26 @@ describe('AddQueryToQueue skip semantics', () => {
 });
 
 describe('AddQueryToQueue live response publication', () => {
-  const publish = (player: Player, interaction: ReturnType<typeof makeInteraction>, ephemeral = false) => {
+  const acknowledgment = 'u betcha, **Final song** added to the queue';
+
+  const finishNaturally = async (player: Player) => (player as unknown as {
+    onAudioPlayerIdle(previous: object, current: {status: string}): Promise<void>;
+  }).onAudioPlayerIdle({}, {status: 'idle'});
+
+  const useRealQueueEmbed = async () => {
+    const {buildQueueEmbed} = await vi.importActual<typeof import('../src/utils/build-embed.js')>('../src/utils/build-embed.js');
+    dependencyMocks.buildQueueEmbed.mockImplementation(buildQueueEmbed as never);
+  };
+
+  const expectFinishedAcknowledgment = (edit: ReturnType<typeof vi.fn>, content = acknowledgment) => {
+    expect(edit).toHaveBeenLastCalledWith({content, embeds: []});
+  };
+
+  const publish = (player: Player, interaction: ReturnType<typeof makeInteraction>, ephemeral = false, content = acknowledgment) => {
     const {service} = makeService({player});
     return (service as unknown as {
       sendPlayingMessage(options: object): Promise<void>;
-    }).sendPlayingMessage({interaction, player, content: 'playing', pageSize: 10, ephemeral});
+    }).sendPlayingMessage({interaction, player, content, pageSize: 10, ephemeral});
   };
 
   it.each([false, true])('renders the stopped state after disconnect clears a real queue (publication pending=%s)', async pendingPublication => {
@@ -406,7 +421,10 @@ describe('AddQueryToQueue live response publication', () => {
     {terminal: 'stopped', ephemeral: true},
     {terminal: 'finished', ephemeral: true},
   ])('preserves $terminal while the initial response is pending (ephemeral=$ephemeral)', async ({terminal, ephemeral}) => {
-    const player = new Player({} as never, GUILD_ID);
+    await useRealQueueEmbed();
+    const player = makePausedPlayer(makeQueuedSong('Final song'));
+    player.status = STATUS.PLAYING;
+    Object.assign(player.voiceConnection!, {destroy: vi.fn()});
     const interaction = makeInteraction();
     const barrier = makePromiseBarrier();
     interaction.editReply.mockImplementationOnce(async () => {
@@ -419,16 +437,18 @@ describe('AddQueryToQueue live response publication', () => {
     if (terminal === 'stopped') {
       player.stop();
     } else {
-      await (player as unknown as {finishQueue(): Promise<void>}).finishQueue();
+      await finishNaturally(player);
+      expect(player.getCurrent()).toBeNull();
     }
 
     barrier.release();
     await pending;
     const edit = ephemeral ? interaction.editReply : interaction.replyMessage.edit;
-    await vi.waitFor(() => expect(edit).toHaveBeenLastCalledWith({
-      content: `Playback ${terminal}.`,
-      embeds: [],
-    }));
+    if (terminal === 'stopped') {
+      await vi.waitFor(() => expect(edit).toHaveBeenLastCalledWith({content: 'Playback stopped.', embeds: []}));
+    } else {
+      await vi.waitFor(() => expectFinishedAcknowledgment(edit));
+    }
     expect(player.isPlayingMessage(interaction.replyMessage.id)).toBe(false);
     expect(interaction.replyMessage.react).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(interaction.replyMessage.reactions.removeAll).toHaveBeenCalledTimes(ephemeral ? 0 : 1));
@@ -497,7 +517,8 @@ describe('AddQueryToQueue live response publication', () => {
     player.status = STATUS.PLAYING;
     Object.assign(player.voiceConnection!, {destroy: vi.fn()});
     const oldInteraction = makeInteraction();
-    await publish(player, oldInteraction);
+    const oldAcknowledgment = 'u betcha, **Old session** added to the queue';
+    await publish(player, oldInteraction, false, oldAcknowledgment);
     const progress = makePromiseBarrier();
     oldInteraction.replyMessage.edit.mockImplementationOnce(() => progress.wait());
     player.refreshPlayingMessage();
@@ -506,26 +527,32 @@ describe('AddQueryToQueue live response publication', () => {
     if (terminal === 'stopped') {
       player.stop();
     } else {
-      await (player as unknown as {finishQueue(): Promise<void>}).finishQueue();
+      await finishNaturally(player);
+      expect(player.getCurrent()).toBeNull();
     }
 
     player.add(makeQueuedSong('New session'));
     player.status = STATUS.PLAYING;
     const newInteraction = makeInteraction();
+    const newAcknowledgment = 'u betcha, **New session** added to the queue';
     newInteraction.replyMessage.id = 'newer-message';
     const publication = makePromiseBarrier();
     newInteraction.editReply.mockImplementationOnce(async () => {
       await publication.wait();
       return newInteraction.replyMessage;
     });
-    const pending = publish(player, newInteraction);
+    const pending = publish(player, newInteraction, false, newAcknowledgment);
     await publication.entered;
     progress.release();
 
     try {
-      await vi.waitFor(() => expect(oldInteraction.replyMessage.edit).toHaveBeenLastCalledWith({
-        content: `Playback ${terminal}.`, embeds: [],
-      }));
+      if (terminal === 'stopped') {
+        await vi.waitFor(() => expect(oldInteraction.replyMessage.edit).toHaveBeenLastCalledWith({
+          content: 'Playback stopped.', embeds: [],
+        }));
+      } else {
+        await vi.waitFor(() => expectFinishedAcknowledgment(oldInteraction.replyMessage.edit, oldAcknowledgment));
+      }
       await vi.waitFor(() => expect(oldInteraction.replyMessage.reactions.removeAll).toHaveBeenCalledOnce());
       expect(player.isPlayingMessage(oldInteraction.replyMessage.id)).toBe(false);
     } finally {
@@ -534,8 +561,74 @@ describe('AddQueryToQueue live response publication', () => {
     }
 
     expect(player.isPlayingMessage(newInteraction.replyMessage.id)).toBe(true);
+    expect(newInteraction.editReply).toHaveBeenCalledWith(expect.objectContaining({content: newAcknowledgment}));
     expect(newInteraction.replyMessage.reactions.removeAll).not.toHaveBeenCalled();
     expect(newInteraction.replyMessage.react).toHaveBeenCalledTimes(7);
+  });
+
+  it('restores the original queue acknowledgment after a short final track ends during a progress edit', async () => {
+    await useRealQueueEmbed();
+    const player = makePausedPlayer(makeQueuedSong('First song'), makeQueuedSong('Short final song'));
+    player.status = STATUS.PLAYING;
+    vi.spyOn(player, 'play').mockResolvedValue(undefined);
+    const interaction = makeInteraction();
+    const originalAcknowledgment = 'u betcha, **First song** and 1 other songs were added to the queue';
+    await publish(player, interaction, false, originalAcknowledgment);
+    const progress = makePromiseBarrier();
+    interaction.replyMessage.edit.mockImplementationOnce(() => progress.wait());
+    player.refreshPlayingMessage();
+    await progress.entered;
+
+    await player.forward(1);
+    Object.assign(player, {positionInSeconds: 2});
+    await finishNaturally(player);
+    expect(player.getCurrent()).toBeNull();
+    progress.release();
+
+    await vi.waitFor(() => expectFinishedAcknowledgment(interaction.replyMessage.edit, originalAcknowledgment));
+    await vi.waitFor(() => expect(interaction.replyMessage.reactions.removeAll).toHaveBeenCalledOnce());
+    expect(player.isPlayingMessage(interaction.replyMessage.id)).toBe(false);
+    const edits = interaction.replyMessage.edit.mock.calls.length;
+    player.refreshPlayingMessage();
+    expect(interaction.replyMessage.edit).toHaveBeenCalledTimes(edits);
+  });
+
+  it('clears finished controls after a pending reaction even if the final edit fails', async () => {
+    await useRealQueueEmbed();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const player = makePausedPlayer(makeQueuedSong('Final song'));
+    player.status = STATUS.PLAYING;
+    const interaction = makeInteraction();
+    const reaction = makePromiseBarrier();
+    interaction.replyMessage.react.mockImplementationOnce(() => reaction.wait());
+    interaction.replyMessage.edit.mockRejectedValue(new Error('Discord unavailable'));
+    const pending = publish(player, interaction);
+    await reaction.entered;
+
+    await finishNaturally(player);
+    await vi.waitFor(() => expectFinishedAcknowledgment(interaction.replyMessage.edit));
+    expect(interaction.replyMessage.reactions.removeAll).not.toHaveBeenCalled();
+    reaction.release();
+    await pending;
+
+    await vi.waitFor(() => expect(interaction.replyMessage.reactions.removeAll).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(warn).toHaveBeenCalled());
+    expect(interaction.replyMessage.react).toHaveBeenCalledOnce();
+    expect(player.isPlayingMessage(interaction.replyMessage.id)).toBe(false);
+    warn.mockRestore();
+  });
+
+  it('restores the queue acknowledgment when an unplayable final entry empties the queue', async () => {
+    await useRealQueueEmbed();
+    const player = makePausedPlayer(makeQueuedSong('Unavailable final song'));
+    const interaction = makeInteraction();
+    await publish(player, interaction);
+
+    await (player as unknown as {advancePastUnplayableTrack(): Promise<void>}).advancePastUnplayableTrack();
+
+    expect(player.getCurrent()).toBeNull();
+    await vi.waitFor(() => expectFinishedAcknowledgment(interaction.replyMessage.edit));
+    await vi.waitFor(() => expect(interaction.replyMessage.reactions.removeAll).toHaveBeenCalledOnce());
   });
 });
 

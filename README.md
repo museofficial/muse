@@ -126,6 +126,9 @@ seconds by default. To change this, set `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS
 in your `.env` file to a whole number of seconds greater than zero, then restart
 Muse.
 
+When the queue finishes, Muse removes the card and controls and keeps the
+original queue acknowledgment. Stopping playback shows "Playback stopped."
+
 To use the emoji controls, you must be in the same voice channel as Muse and
 be allowed to use the matching command in the text channel containing the
 message. Being a listener does not grant extra permissions. You can change who

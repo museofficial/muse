@@ -314,6 +314,8 @@ const extractMedia = async (url: string, playlistLimit?: number, useYouTubeCooki
       const args = [
         '--dump-single-json',
         ...(playlistLimit === undefined ? ['--no-playlist'] : ['--flat-playlist', '--playlist-end', String(playlistLimit)]),
+        // Listed media formats can still return 403; validate playback URLs before handing them to FFmpeg.
+        ...(playlistLimit === undefined ? ['--check-formats'] : []),
         '--skip-download',
         '--no-warnings',
         '--no-cache-dir',
@@ -331,9 +333,25 @@ const extractMedia = async (url: string, playlistLimit?: number, useYouTubeCooki
 
       args.push(url);
 
-      const {stdout} = await execa(getExecutable(), args, {
-        timeout: YT_DLP_EXTRACT_TIMEOUT_MS,
-      });
+      let stdout: string;
+      try {
+        ({stdout} = await execa(getExecutable(), args, {
+          timeout: YT_DLP_EXTRACT_TIMEOUT_MS,
+        }));
+      } catch (error: unknown) {
+        if (playlistLimit !== undefined
+          || !isExecaError(error)
+          || !/Requested format is not available/i.test(error.stderr ?? '')) {
+          throw error;
+        }
+
+        // Format probes discard the underlying HTTP status. Resolve once without
+        // probing so FFmpeg can still distinguish deleted media from a temporary failure.
+        const fallbackArgs = args.map(arg => arg === '--check-formats' ? '--no-check-formats' : arg);
+        ({stdout} = await execa(getExecutable(), fallbackArgs, {
+          timeout: YT_DLP_EXTRACT_TIMEOUT_MS,
+        }));
+      }
 
       return JSON.parse(stdout) as YtDlpResponse & SoundCloudMetadata;
     }, useYouTubeCookies);

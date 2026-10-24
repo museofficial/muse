@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Remove playback controls even when the final message edit fails.
+- Validate extracted media formats before starting FFmpeg to avoid URLs that immediately return HTTP 403.
+
 - Show the current song and upcoming songs in the original `/play` message with nearly real-time updates (configurable).
 - Update the timer every five seconds by default, and pause it when the music is paused. Change the update interval with `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS` in `.env`, then restart Muse.
 - Make the progress bar move in smaller steps so it is easier to see how far a song has played.
@@ -15,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Require listeners to be in the same voice channel as Muse and have permission to use the matching command. Keep role, member, and channel restrictions in place. If Muse cannot check permissions, it ignores the click.
 - Handle quick clicks in order, and ignore clicks on old playback messages or from listeners who have left the voice channel.
 - Keep music paused when seeking while audio is still buffering, and prevent an older seek from pausing newer playback.
-- Show "Playback stopped." or "Playback finished." when the music ends, and remove the emoji controls. Keep message updates in order and stop updating a message if an edit fails.
+- Keep the original queue acknowledgment when playback finishes, or show "Playback stopped." after a stop command, and remove the card and emoji controls. Keep message updates in order and stop updating a message if an edit fails.
 - Preserve the stopped or finished display if playback ends while the first `/play` response is being sent.
 - Keep private `/play` messages that only you can see updated for as long as Discord allows, without emoji controls.
 - Redact interaction webhook tokens from playback message error logs.
