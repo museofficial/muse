@@ -27,7 +27,7 @@ export default class implements Command {
       throw new Error('no songs to loop!');
     }
 
-    if (player.queueSize() < 1) {
+    if (!player.loopCurrentQueue && player.queueSize() < 1) {
       throw new Error('not enough songs to loop a queue!');
     }
 
@@ -36,6 +36,7 @@ export default class implements Command {
     }
 
     player.loopCurrentQueue = !player.loopCurrentQueue;
+    player.refreshPlayingMessage();
 
     await interaction.reply((player.loopCurrentQueue ? 'looped queue :)' : 'stopped looping queue :('));
   }

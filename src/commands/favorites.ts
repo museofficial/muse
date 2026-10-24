@@ -6,6 +6,9 @@ import AddQueryToQueue from '../services/add-query-to-queue.js';
 import {TYPES} from '../types.js';
 import {prisma} from '../utils/db.js';
 import {Pagination} from 'pagination.djs';
+import {truncate} from '../utils/string.js';
+
+const MAX_NAME_LENGTH = 100;
 
 @injectable()
 export default class implements Command {
@@ -41,10 +44,13 @@ export default class implements Command {
       .addStringOption(option => option
         .setName('name')
         .setDescription('you\'ll type this when using this favorite')
+        .setMinLength(1)
+        .setMaxLength(MAX_NAME_LENGTH)
         .setRequired(true))
       .addStringOption(option => option
         .setName('query')
         .setDescription('any input you\'d normally give to the play command')
+        .setMinLength(1)
         .setRequired(true),
       ))
     .addSubcommand(subcommand => subcommand
@@ -92,7 +98,9 @@ export default class implements Command {
       },
     });
 
-    let results = query === '' ? favorites : favorites.filter(f => f.name.toLowerCase().startsWith(query.toLowerCase()));
+    // Legacy names outside the choice limits can still be typed in full.
+    let results = favorites.filter(f => f.name.length > 0 && f.name.length <= MAX_NAME_LENGTH
+      && f.name.toLowerCase().startsWith(query.toLowerCase()));
 
     if (subcommand === 'remove') {
       // Only show favorites that user is allowed to remove
@@ -146,16 +154,22 @@ export default class implements Command {
     const fields = new Array<APIEmbedField>(favorites.length);
     for (let index = 0; index < favorites.length; index++) {
       const favorite = favorites[index];
+      const attribution = ` (<@${favorite.authorId}>)`;
       fields[index] = {
         inline: false,
-        name: favorite.name,
-        value: `${favorite.query} (<@${favorite.authorId}>)`,
+        name: truncate(favorite.name || '(unnamed favorite)', 256),
+        value: `${truncate(favorite.query, 1024 - attribution.length)}${attribution}`,
       };
     }
 
+    // Reserve enough room for the paginator's footer even on the last page.
+    const footerLength = `Pages: ${favorites.length}/${favorites.length}`.length;
+    const largestField = fields.reduce((largest, field) => Math.max(largest, field.name.length + field.value.length), 0);
+    const pageSize = Math.min(25, Math.floor((6000 - footerLength) / largestField));
+
     await new Pagination(
       interaction as ChatInputCommandInteraction<'cached'>,
-      {ephemeral: true, limit: 25})
+      {ephemeral: true, limit: pageSize})
       .setFields(fields)
       .paginateFields(true)
       .render();
@@ -164,6 +178,14 @@ export default class implements Command {
   private async create(interaction: ChatInputCommandInteraction) {
     const name = interaction.options.getString('name')!.trim();
     const query = interaction.options.getString('query')!.trim();
+
+    if (name.length === 0 || name.length > MAX_NAME_LENGTH) {
+      throw new Error(`favorite name must be between 1 and ${MAX_NAME_LENGTH} characters`);
+    }
+
+    if (query.length === 0) {
+      throw new Error('favorite query must not be empty');
+    }
 
     const existingFavorite = await prisma.favoriteQuery.findFirst({where: {
       guildId: interaction.guild!.id,

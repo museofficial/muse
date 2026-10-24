@@ -581,12 +581,13 @@ describe('seek parsing', () => {
 });
 
 describe('/loop-queue', () => {
-  it('accepts current plus one upcoming song', async () => {
+  it('accepts current plus one upcoming song and refreshes the paused playback card', async () => {
     const player = {
       status: STATUS.PAUSED,
       queueSize: () => 1,
       loopCurrentSong: true,
       loopCurrentQueue: false,
+      refreshPlayingMessage: vi.fn(),
     };
     const {interaction, reply} = makeInteraction();
 
@@ -594,7 +595,25 @@ describe('/loop-queue', () => {
 
     expect(player.loopCurrentSong).toBe(false);
     expect(player.loopCurrentQueue).toBe(true);
+    expect(player.refreshPlayingMessage).toHaveBeenCalledOnce();
     expect(reply).toHaveBeenCalledWith('looped queue :)');
+  });
+
+  it('can disable queue looping after clearing the upcoming songs', async () => {
+    const player = {
+      status: STATUS.PAUSED,
+      queueSize: () => 0,
+      loopCurrentSong: false,
+      loopCurrentQueue: true,
+      refreshPlayingMessage: vi.fn(),
+    };
+    const {interaction, reply} = makeInteraction();
+
+    await new LoopQueue(managerFor(player) as never).execute(interaction);
+
+    expect(player.loopCurrentQueue).toBe(false);
+    expect(player.refreshPlayingMessage).toHaveBeenCalledOnce();
+    expect(reply).toHaveBeenCalledWith('stopped looping queue :(');
   });
 
   it('rejects when there is no upcoming song', async () => {
@@ -608,6 +627,25 @@ describe('/loop-queue', () => {
 
     await expect(new LoopQueue(managerFor(player) as never).execute(interaction)).rejects.toThrow('not enough songs to loop a queue!');
     expect(reply).not.toHaveBeenCalled();
+  });
+});
+
+describe('/loop', () => {
+  it.each([false, true])('refreshes the paused playback card when toggling song looping from %s', async loopCurrentSong => {
+    const player = {
+      status: STATUS.PAUSED,
+      loopCurrentSong,
+      loopCurrentQueue: !loopCurrentSong,
+      refreshPlayingMessage: vi.fn(),
+    };
+    const {interaction, reply} = makeInteraction();
+
+    await new Loop(managerFor(player) as never).execute(interaction);
+
+    expect(player.loopCurrentSong).toBe(!loopCurrentSong);
+    expect(player.loopCurrentQueue).toBe(false);
+    expect(player.refreshPlayingMessage).toHaveBeenCalledOnce();
+    expect(reply).toHaveBeenCalledWith(loopCurrentSong ? 'stopped looping :(' : 'looped :)');
   });
 });
 
