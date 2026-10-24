@@ -73,13 +73,16 @@ export default class implements Command {
       return;
     }
 
+    let queryProtocol: string | undefined;
     try {
-      // Don't return suggestions for URLs
-      // eslint-disable-next-line no-new
-      new URL(query);
+      queryProtocol = new URL(query).protocol;
+    } catch {}
+
+    // Don't return suggestions for supported provider URLs
+    if (queryProtocol && ['http:', 'https:', 'spotify:'].includes(queryProtocol)) {
       await interaction.respond([]);
       return;
-    } catch {}
+    }
 
     let suggestions;
 

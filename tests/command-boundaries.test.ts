@@ -1,0 +1,674 @@
+import 'reflect-metadata';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {PermissionFlagsBits} from 'discord.js';
+import type {ChatInputCommandInteraction} from 'discord.js';
+
+const mocks = vi.hoisted(() => ({
+  getGuildSettings: vi.fn(),
+  settingUpdate: vi.fn(),
+}));
+
+vi.mock('../src/utils/get-guild-settings.js', () => ({
+  getGuildSettings: mocks.getGuildSettings,
+}));
+
+vi.mock('../src/utils/db.js', () => ({
+  prisma: {
+    setting: {update: mocks.settingUpdate},
+    favoriteQuery: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+    },
+  },
+}));
+
+vi.mock('../src/services/player.js', () => ({
+  default: class {},
+  STATUS: {PLAYING: 0, PAUSED: 1, IDLE: 2},
+  MediaSource: {Youtube: 0, HLS: 1, SoundCloud: 2},
+  DEFAULT_VOLUME: 100,
+}));
+
+import Clear from '../src/commands/clear.js';
+import Config from '../src/commands/config.js';
+import Disconnect from '../src/commands/disconnect.js';
+import Favorites from '../src/commands/favorites.js';
+import ForwardSeek from '../src/commands/fseek.js';
+import LoopQueue from '../src/commands/loop-queue.js';
+import Loop from '../src/commands/loop.js';
+import Move from '../src/commands/move.js';
+import Next from '../src/commands/next.js';
+import NowPlaying from '../src/commands/now-playing.js';
+import Pause from '../src/commands/pause.js';
+import Play from '../src/commands/play.js';
+import Queue from '../src/commands/queue.js';
+import Remove from '../src/commands/remove.js';
+import Replay from '../src/commands/replay.js';
+import Resume from '../src/commands/resume.js';
+import Seek from '../src/commands/seek.js';
+import Shuffle from '../src/commands/shuffle.js';
+import Skip from '../src/commands/skip.js';
+import Stop from '../src/commands/stop.js';
+import Unskip from '../src/commands/unskip.js';
+import Volume from '../src/commands/volume.js';
+import {buildPlayingMessageEmbed, buildQueueEmbed} from '../src/utils/build-embed.js';
+import durationStringToSeconds from '../src/utils/duration-string-to-seconds.js';
+
+const STATUS = {PLAYING: 0, PAUSED: 1, IDLE: 2} as const;
+
+const makeSong = (index: number) => ({
+  title: `Song ${index}`,
+  artist: 'Artist',
+  url: `video${String(index).padStart(6, '0')}`,
+  length: 120,
+  offset: 0,
+  playlist: null,
+  isLive: false,
+  thumbnailUrl: null,
+  source: 0,
+  addedInChannelId: 'channel',
+  requestedBy: 'requester',
+});
+
+const makeQueuePlayer = (upcomingCount: number) => {
+  const upcoming = Array.from({length: upcomingCount}, (_, index) => makeSong(index + 2));
+
+  return {
+    status: STATUS.PAUSED,
+    loopCurrentSong: false,
+    loopCurrentQueue: false,
+    getCurrent: () => makeSong(1),
+    getQueue: () => upcoming,
+    queueSize: () => upcoming.length,
+    getPosition: () => 0,
+    getVolume: () => 100,
+  };
+};
+
+const makeInteraction = (options: {
+  integers?: Record<string, number | null>;
+  strings?: Record<string, string | null>;
+  subcommand?: string;
+} = {}) => {
+  const reply = vi.fn().mockResolvedValue(undefined);
+  const deferReply = vi.fn().mockResolvedValue(undefined);
+  const editReply = vi.fn().mockResolvedValue(undefined);
+  const deleteReply = vi.fn().mockResolvedValue(undefined);
+  const followUp = vi.fn().mockResolvedValue(undefined);
+
+  const interaction = {
+    guild: {id: 'guild'},
+    options: {
+      getInteger: vi.fn((name: string) => options.integers?.[name] ?? null),
+      getString: vi.fn((name: string) => options.strings?.[name] ?? null),
+      getBoolean: vi.fn(() => null),
+      getSubcommand: vi.fn(() => options.subcommand ?? ''),
+    },
+    reply,
+    deferReply,
+    editReply,
+    deleteReply,
+    followUp,
+  } as unknown as ChatInputCommandInteraction;
+
+  return {interaction, reply, deferReply, editReply, deleteReply, followUp};
+};
+
+const managerFor = (player: object) => ({get: () => player});
+
+const COMMAND_NAMES = [
+  'clear',
+  'config',
+  'disconnect',
+  'favorites',
+  'fseek',
+  'loop-queue',
+  'loop',
+  'move',
+  'next',
+  'now-playing',
+  'pause',
+  'play',
+  'queue',
+  'remove',
+  'replay',
+  'resume',
+  'seek',
+  'shuffle',
+  'skip',
+  'stop',
+  'unskip',
+  'volume',
+] as const;
+
+const makeCommands = () => {
+  const playerManager = {} as never;
+  const addQueryToQueue = {} as never;
+
+  return [
+    new Clear(playerManager),
+    new Config(),
+    new Disconnect(playerManager),
+    new Favorites(addQueryToQueue),
+    new ForwardSeek(playerManager),
+    new LoopQueue(playerManager),
+    new Loop(playerManager),
+    new Move(playerManager),
+    new Next(playerManager),
+    new NowPlaying(playerManager),
+    new Pause(playerManager),
+    new Play(undefined as never, {} as never, addQueryToQueue),
+    new Queue(playerManager),
+    new Remove(playerManager),
+    new Replay(playerManager),
+    new Resume(playerManager),
+    new Seek(playerManager),
+    new Shuffle(playerManager),
+    new Skip(playerManager),
+    new Stop(playerManager),
+    new Unskip(playerManager),
+    new Volume(playerManager),
+  ];
+};
+
+interface SerializedOption {
+  max_value?: number;
+  min_value?: number;
+  name: string;
+  options?: SerializedOption[];
+}
+
+const findOption = (command: {options?: SerializedOption[]}, ...path: string[]): SerializedOption => {
+  let options = command.options;
+  let result: SerializedOption | undefined;
+
+  for (const name of path) {
+    result = options?.find(option => option.name === name);
+    expect(result, `missing command option ${path.join(' > ')}`).toBeDefined();
+    options = result?.options;
+  }
+
+  return result!;
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('command metadata', () => {
+  it('publishes the exact 22 unique command names', () => {
+    const serialized = makeCommands().map(command => command.slashCommand.toJSON());
+    const names = serialized.map(command => command.name);
+
+    expect(serialized).toHaveLength(22);
+    expect(new Set(names)).toHaveLength(22);
+    expect([...names].sort()).toEqual([...COMMAND_NAMES].sort());
+  });
+
+  it('preserves the audited voice-channel requirement matrix', () => {
+    const commandsByName = new Map(makeCommands().map(command => [
+      command.slashCommand.toJSON().name,
+      command as {requiresVC?: boolean | ((interaction: ChatInputCommandInteraction) => boolean)},
+    ]));
+    const alwaysRequiresVoice = [
+      'clear',
+      'disconnect',
+      'fseek',
+      'loop-queue',
+      'loop',
+      'next',
+      'pause',
+      'play',
+      'replay',
+      'resume',
+      'seek',
+      'shuffle',
+      'skip',
+      'stop',
+      'unskip',
+      'volume',
+    ];
+    const neverRequiresVoice = ['config', 'move', 'now-playing', 'queue', 'remove'];
+
+    for (const name of alwaysRequiresVoice) {
+      expect(commandsByName.get(name)?.requiresVC, `/${name}`).toBe(true);
+    }
+
+    for (const name of neverRequiresVoice) {
+      expect(commandsByName.get(name)?.requiresVC, `/${name}`).toBeUndefined();
+    }
+
+    const favoritesGuard = commandsByName.get('favorites')?.requiresVC;
+    expect(favoritesGuard).toBeTypeOf('function');
+    const interactionFor = (subcommand: string) => ({
+      options: {getSubcommand: () => subcommand},
+    }) as unknown as ChatInputCommandInteraction;
+    expect((favoritesGuard as (interaction: ChatInputCommandInteraction) => boolean)(interactionFor('use'))).toBe(true);
+    expect((favoritesGuard as (interaction: ChatInputCommandInteraction) => boolean)(interactionFor('list'))).toBe(false);
+    expect((favoritesGuard as (interaction: ChatInputCommandInteraction) => boolean)(interactionFor('create'))).toBe(false);
+    expect((favoritesGuard as (interaction: ChatInputCommandInteraction) => boolean)(interactionFor('remove'))).toBe(false);
+  });
+
+  it('publishes the existing audited integer option bounds', () => {
+    const serialized = new Map(makeCommands().map(command => {
+      const json = command.slashCommand.toJSON();
+      return [json.name, json as unknown as {options?: SerializedOption[]}];
+    }));
+
+    expect(findOption(serialized.get('queue')!, 'page')).toMatchObject({min_value: 1});
+    expect(findOption(serialized.get('queue')!, 'page-size')).toMatchObject({min_value: 1, max_value: 30});
+    expect(findOption(serialized.get('remove')!, 'position')).toMatchObject({min_value: 1});
+    expect(findOption(serialized.get('remove')!, 'range')).toMatchObject({min_value: 1});
+    expect(findOption(serialized.get('volume')!, 'level')).toMatchObject({min_value: 0, max_value: 100});
+    expect(findOption(serialized.get('config')!, 'set-wait-after-queue-empties', 'delay')).toMatchObject({min_value: 0});
+    expect(findOption(serialized.get('config')!, 'set-reduce-vol-when-voice-target', 'volume')).toMatchObject({min_value: 0, max_value: 100});
+    expect(findOption(serialized.get('config')!, 'set-default-volume', 'level')).toMatchObject({min_value: 0, max_value: 100});
+    expect(findOption(serialized.get('config')!, 'set-default-queue-page-size', 'page-size')).toMatchObject({min_value: 1, max_value: 30});
+  });
+
+  it('limits /config to members with Manage Guild by default', () => {
+    const config = new Config().slashCommand.toJSON();
+
+    expect(config.default_member_permissions).toBe(PermissionFlagsBits.ManageGuild.toString());
+  });
+});
+
+describe('/queue', () => {
+  it('links SoundCloud tracks to SoundCloud and shows their finite duration', () => {
+    const song = {...makeSong(1), source: 2, url: 'https://soundcloud.com/artist/track'};
+    const player = {...makeQueuePlayer(0), getCurrent: () => song};
+    const embed = buildQueueEmbed(player as never, 1, 10).toJSON();
+    expect(embed.description).toContain('[Song 1](https://soundcloud.com/artist/track)');
+    expect(embed.description).toContain('[00:00/02:00]');
+    expect(embed.description).not.toContain('youtube.com');
+  });
+
+  it('bounds a full queue page containing long SoundCloud titles and URLs', () => {
+    const player = {...makeQueuePlayer(30), getQueue: () => Array.from({length: 30}, (_, i) => ({
+      ...makeSong(i + 2), source: 2, title: 'x'.repeat(100),
+      url: `https://soundcloud.com/artist/${'long-track-slug-'.repeat(15)}${i}`,
+    }))};
+    const embed = buildQueueEmbed(player as never, 1, 30).toJSON();
+    expect(embed.description!.length).toBeLessThanOrEqual(4096);
+    expect(embed.description).not.toContain('x'.repeat(100));
+    expect(embed.description).toContain('use a smaller page-size');
+  });
+
+  it('keeps current-track embeds valid for oversized SoundCloud share URLs', () => {
+    const song = {...makeSong(1), source: 2, length: 59.9,
+      url: `https://soundcloud.com/artist/track?tracking=${'x'.repeat(5000)}`};
+    const player = {...makeQueuePlayer(0), getCurrent: () => song};
+    for (const embed of [buildQueueEmbed(player as never, 1, 10), buildPlayingMessageEmbed(player as never)]) {
+      const {description} = embed.toJSON();
+      expect(description!.length).toBeLessThanOrEqual(4096);
+      expect(description).toContain('Song 1');
+      expect(description).not.toContain('tracking=');
+      expect(description).toContain('[00:00/00:59]');
+    }
+    expect(song.length).toBe(59.9);
+  });
+
+  it('shows page 1 for a current-only queue', () => {
+    const embed = buildQueueEmbed(makeQueuePlayer(0) as never, 1, 10).toJSON();
+
+    expect(embed.fields?.find(field => field.name === 'Page')?.value).toBe('1 out of 1');
+  });
+
+  it('advances a five-minute track slider on each five-second refresh', () => {
+    let position = 0;
+    const current = {...makeSong(1), length: 300};
+    const player = {
+      ...makeQueuePlayer(0),
+      status: STATUS.PLAYING,
+      getCurrent: () => current,
+      getPosition: () => position,
+    };
+    const progressLine = () => {
+      const description = buildQueueEmbed(player as never, 1, 10).toJSON().description ?? '';
+      return description.split('\n').find(line => line.includes('[00:')) ?? '';
+    };
+
+    const initialProgressLine = progressLine();
+    position = 5;
+
+    expect(progressLine()).not.toBe(initialProgressLine);
+  });
+
+  it('does not expose a phantom page for an exact multiple of upcoming tracks', () => {
+    const player = makeQueuePlayer(10);
+    const embed = buildQueueEmbed(player as never, 1, 10).toJSON();
+
+    expect(embed.fields?.find(field => field.name === 'Page')?.value).toBe('1 out of 1');
+    expect(() => buildQueueEmbed(player as never, 2, 10)).toThrow('the queue isn\'t that big');
+  });
+
+  it('rejects pages below 1 defensively', () => {
+    expect(() => buildQueueEmbed(makeQueuePlayer(1) as never, 0, 10)).toThrow('page must be at least 1');
+  });
+});
+
+describe('/remove', () => {
+  it('rejects a starting position beyond the upcoming queue without replying', async () => {
+    const upcoming = ['first', 'second'];
+    const player = {
+      queueSize: () => upcoming.length,
+      removeFromQueue: vi.fn((position: number, range: number) => upcoming.splice(position - 1, range)),
+    };
+    const {interaction, reply} = makeInteraction({integers: {position: 3, range: 1}});
+
+    await expect(new Remove(managerFor(player) as never).execute(interaction)).rejects.toThrow('position is outside the range of the queue');
+    expect(player.removeFromQueue).not.toHaveBeenCalled();
+    expect(upcoming).toEqual(['first', 'second']);
+    expect(reply).not.toHaveBeenCalled();
+  });
+
+  it('removes the last valid upcoming position and replies', async () => {
+    const upcoming = ['first', 'second'];
+    const player = {
+      queueSize: () => upcoming.length,
+      removeFromQueue: vi.fn((position: number, range: number) => upcoming.splice(position - 1, range)),
+    };
+    const {interaction, reply} = makeInteraction({integers: {position: 2, range: 1}});
+
+    await new Remove(managerFor(player) as never).execute(interaction);
+
+    expect(upcoming).toEqual(['first']);
+    expect(reply).toHaveBeenCalledWith(':wastebasket: removed');
+  });
+});
+
+describe('queue navigation error boundaries', () => {
+  it('publishes a successful /skip response after privately deferring failures', async () => {
+    const player = {
+      forward: vi.fn().mockResolvedValue(undefined),
+      getCurrent: vi.fn(() => null),
+    };
+    const {interaction, deferReply, deleteReply, followUp} = makeInteraction();
+
+    await new Skip(managerFor(player) as never).execute(interaction);
+
+    expect(deferReply).toHaveBeenCalledWith({ephemeral: true});
+    expect(followUp).toHaveBeenCalledWith({content: 'keep \'er movin\'', embeds: []});
+    expect(deleteReply).toHaveBeenCalledOnce();
+  });
+
+  it('defers /skip and preserves playback startup errors', async () => {
+    const failure = new Error('FFmpeg startup failed');
+    const player = {
+      forward: vi.fn().mockRejectedValue(failure),
+      getCurrent: vi.fn(() => ({title: 'Destination'})),
+    };
+    const {interaction, deferReply, editReply} = makeInteraction();
+
+    await expect(new Skip(managerFor(player) as never).execute(interaction)).rejects.toBe(failure);
+
+    expect(deferReply).toHaveBeenCalledWith({ephemeral: true});
+    expect(editReply).not.toHaveBeenCalled();
+  });
+
+  it('defers /unskip and preserves playback startup errors', async () => {
+    const failure = new Error('FFmpeg startup failed');
+    const player = {
+      back: vi.fn().mockRejectedValue(failure),
+      getCurrent: vi.fn(() => ({title: 'Destination'})),
+    };
+    const {interaction, deferReply, editReply} = makeInteraction();
+
+    await expect(new Unskip(managerFor(player) as never).execute(interaction)).rejects.toBe(failure);
+
+    expect(deferReply).toHaveBeenCalledWith({ephemeral: true});
+    expect(editReply).not.toHaveBeenCalled();
+  });
+});
+
+describe('/stop', () => {
+  for (const [name, status] of Object.entries(STATUS)) {
+    it(`stops, disconnects, and clears a connected ${name} session`, async () => {
+      const queue = ['current', 'upcoming'];
+      const player = {
+        status,
+        voiceConnection: {},
+        stop: vi.fn(() => {
+          player.voiceConnection = null as never;
+          queue.splice(0);
+        }),
+      };
+      const {interaction, reply} = makeInteraction();
+
+      await new Stop(managerFor(player) as never).execute(interaction);
+
+      expect(player.stop).toHaveBeenCalledOnce();
+      expect(player.voiceConnection).toBeNull();
+      expect(queue).toEqual([]);
+      expect(reply).toHaveBeenCalledWith('u betcha, stopped');
+    });
+  }
+
+  it('still rejects when there is no connection', async () => {
+    const player = {status: STATUS.PLAYING, voiceConnection: null, stop: vi.fn()};
+    const {interaction, reply} = makeInteraction();
+
+    await expect(new Stop(managerFor(player) as never).execute(interaction)).rejects.toThrow('not connected');
+    expect(player.stop).not.toHaveBeenCalled();
+    expect(reply).not.toHaveBeenCalled();
+  });
+});
+
+describe('seek parsing', () => {
+  it('rejects duration strings with trailing junk or no duration', () => {
+    expect(durationStringToSeconds('1m trailing')).toBeNaN();
+    expect(durationStringToSeconds('not a duration')).toBeNaN();
+    expect(durationStringToSeconds('1e999s')).toBeNaN();
+  });
+
+  it('keeps valid numeric and compound durations', () => {
+    expect(durationStringToSeconds('0')).toBe(0);
+    expect(durationStringToSeconds('1m 30s')).toBe(90);
+    expect(durationStringToSeconds('27,681 ns')).toBeCloseTo(0.000027681);
+  });
+
+  it.each(['-1', '-0:01', '-00:30', 'not-a-time', '1:bad', '1s trailing', '1e999s'])(
+    '/seek rejects invalid absolute value %s without side effects',
+    async value => {
+      const player = {
+        getCurrent: () => ({length: 300, isLive: false}),
+        seek: vi.fn().mockResolvedValue(undefined),
+        getPosition: () => 0,
+      };
+      const {interaction, deferReply, editReply} = makeInteraction({strings: {time: value}});
+
+      await expect(new Seek(managerFor(player) as never).execute(interaction)).rejects.toThrow('invalid seek value');
+      expect(player.seek).not.toHaveBeenCalled();
+      expect(deferReply).not.toHaveBeenCalled();
+      expect(editReply).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps /seek 0 valid', async () => {
+    let position = -1;
+    const player = {
+      getCurrent: () => ({length: 300, isLive: false}),
+      seek: vi.fn(async (value: number) => {
+        position = value;
+      }),
+      getPosition: () => position,
+    };
+    const {interaction, deferReply, editReply} = makeInteraction({strings: {time: '0'}});
+
+    await new Seek(managerFor(player) as never).execute(interaction);
+
+    expect(player.seek).toHaveBeenCalledWith(0);
+    expect(deferReply).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledWith('👍 seeked to 00:00');
+  });
+
+  it.each([
+    ['+1', 1, '00:01'],
+    ['0:00', 0, '00:00'],
+    ['+0:01', 1, '00:01'],
+  ])('keeps supported signed or zero /seek value %s valid', async (value, expectedPosition, expectedTime) => {
+    let position = -1;
+    const player = {
+      getCurrent: () => ({length: 300, isLive: false}),
+      seek: vi.fn(async (nextPosition: number) => {
+        position = nextPosition;
+      }),
+      getPosition: () => position,
+    };
+    const {interaction, deferReply, editReply} = makeInteraction({strings: {time: value}});
+
+    await new Seek(managerFor(player) as never).execute(interaction);
+
+    expect(player.seek).toHaveBeenCalledWith(expectedPosition);
+    expect(deferReply).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledWith(`👍 seeked to ${expectedTime}`);
+  });
+
+  it.each(['0', '-1', 'not-a-time', '1s trailing', '1e999s'])(
+    '/fseek rejects non-positive or invalid value %s without side effects',
+    async value => {
+      const player = {
+        getCurrent: () => ({length: 300, isLive: false}),
+        getPosition: () => 10,
+        forwardSeek: vi.fn().mockResolvedValue(undefined),
+      };
+      const {interaction, deferReply, editReply} = makeInteraction({strings: {time: value}});
+
+      await expect(new ForwardSeek(managerFor(player) as never).execute(interaction)).rejects.toThrow('invalid seek value');
+      expect(player.forwardSeek).not.toHaveBeenCalled();
+      expect(deferReply).not.toHaveBeenCalled();
+      expect(editReply).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps a positive finite /fseek valid', async () => {
+    let position = 10;
+    const player = {
+      getCurrent: () => ({length: 300, isLive: false}),
+      getPosition: () => position,
+      forwardSeek: vi.fn(async (value: number) => {
+        position += value;
+      }),
+    };
+    const {interaction, deferReply, editReply} = makeInteraction({strings: {time: '15'}});
+
+    await new ForwardSeek(managerFor(player) as never).execute(interaction);
+
+    expect(player.forwardSeek).toHaveBeenCalledWith(15);
+    expect(deferReply).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledWith('👍 seeked to 00:25');
+  });
+
+  it('keeps explicit-positive /fseek +1s valid', async () => {
+    let position = 10;
+    const player = {
+      getCurrent: () => ({length: 300, isLive: false}),
+      getPosition: () => position,
+      forwardSeek: vi.fn(async (value: number) => {
+        position += value;
+      }),
+    };
+    const {interaction, deferReply, editReply} = makeInteraction({strings: {time: '+1s'}});
+
+    await new ForwardSeek(managerFor(player) as never).execute(interaction);
+
+    expect(player.forwardSeek).toHaveBeenCalledWith(1);
+    expect(deferReply).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledWith('👍 seeked to 00:11');
+  });
+});
+
+describe('/loop-queue', () => {
+  it('accepts current plus one upcoming song and refreshes the paused playback card', async () => {
+    const player = {
+      status: STATUS.PAUSED,
+      queueSize: () => 1,
+      loopCurrentSong: true,
+      loopCurrentQueue: false,
+      refreshPlayingMessage: vi.fn(),
+    };
+    const {interaction, reply} = makeInteraction();
+
+    await new LoopQueue(managerFor(player) as never).execute(interaction);
+
+    expect(player.loopCurrentSong).toBe(false);
+    expect(player.loopCurrentQueue).toBe(true);
+    expect(player.refreshPlayingMessage).toHaveBeenCalledOnce();
+    expect(reply).toHaveBeenCalledWith('looped queue :)');
+  });
+
+  it('can disable queue looping after clearing the upcoming songs', async () => {
+    const player = {
+      status: STATUS.PAUSED,
+      queueSize: () => 0,
+      loopCurrentSong: false,
+      loopCurrentQueue: true,
+      refreshPlayingMessage: vi.fn(),
+    };
+    const {interaction, reply} = makeInteraction();
+
+    await new LoopQueue(managerFor(player) as never).execute(interaction);
+
+    expect(player.loopCurrentQueue).toBe(false);
+    expect(player.refreshPlayingMessage).toHaveBeenCalledOnce();
+    expect(reply).toHaveBeenCalledWith('stopped looping queue :(');
+  });
+
+  it('rejects when there is no upcoming song', async () => {
+    const player = {
+      status: STATUS.PAUSED,
+      queueSize: () => 0,
+      loopCurrentSong: false,
+      loopCurrentQueue: false,
+    };
+    const {interaction, reply} = makeInteraction();
+
+    await expect(new LoopQueue(managerFor(player) as never).execute(interaction)).rejects.toThrow('not enough songs to loop a queue!');
+    expect(reply).not.toHaveBeenCalled();
+  });
+});
+
+describe('/loop', () => {
+  it.each([false, true])('refreshes the paused playback card when toggling song looping from %s', async loopCurrentSong => {
+    const player = {
+      status: STATUS.PAUSED,
+      loopCurrentSong,
+      loopCurrentQueue: !loopCurrentSong,
+      refreshPlayingMessage: vi.fn(),
+    };
+    const {interaction, reply} = makeInteraction();
+
+    await new Loop(managerFor(player) as never).execute(interaction);
+
+    expect(player.loopCurrentSong).toBe(!loopCurrentSong);
+    expect(player.loopCurrentQueue).toBe(false);
+    expect(player.refreshPlayingMessage).toHaveBeenCalledOnce();
+    expect(reply).toHaveBeenCalledWith(loopCurrentSong ? 'stopped looping :(' : 'looped :)');
+  });
+});
+
+describe('/config get', () => {
+  it('shows requester-only responses and the voice reduction target from their own settings', async () => {
+    mocks.getGuildSettings.mockResolvedValue({
+      playlistLimit: 20,
+      secondsToWaitAfterQueueEmpties: 30,
+      leaveIfNoListeners: true,
+      autoAnnounceNextSong: false,
+      queueAddResponseEphemeral: true,
+      defaultVolume: 80,
+      defaultQueuePageSize: 10,
+      turnDownVolumeWhenPeopleSpeak: true,
+      turnDownVolumeWhenPeopleSpeakTarget: 23,
+    });
+    const {interaction, reply} = makeInteraction({subcommand: 'get'});
+
+    await new Config().execute(interaction);
+
+    const response = reply.mock.calls[0][0] as {embeds: Array<{toJSON: () => {description?: string}}>};
+    const description = response.embeds[0].toJSON().description;
+    expect(description).toContain('**Add to queue reponses show for requester only**: yes');
+    expect(description).toContain('**Reduce volume when people speak target**: 23');
+  });
+});

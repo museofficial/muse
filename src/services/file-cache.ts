@@ -1,4 +1,5 @@
-import {promises as fs, createWriteStream} from 'fs';
+import {promises as fs, createWriteStream, WriteStream} from 'fs';
+import {randomUUID} from 'crypto';
 import path from 'path';
 import {inject, injectable} from 'inversify';
 import {TYPES} from '../types.js';
@@ -8,9 +9,14 @@ import debug from '../utils/debug.js';
 import {prisma} from '../utils/db.js';
 import {FileCache} from '@prisma/client';
 
+export type FileCacheEntry = {
+  generation: string;
+  path: string;
+};
+
 @injectable()
 export default class FileCacheProvider {
-  private static readonly evictionQueue = new PQueue({concurrency: 1});
+  private static readonly mutationQueue = new PQueue({concurrency: 1});
   private readonly config: Config;
 
   constructor(@inject(TYPES.Config) config: Config) {
@@ -23,40 +29,50 @@ export default class FileCacheProvider {
    * @param hash lookup key
    */
   async getPathFor(hash: string): Promise<string | null> {
-    const model = await prisma.fileCache.findUnique({
-      where: {
-        hash,
-      },
-    });
+    return (await this.getEntryFor(hash))?.path ?? null;
+  }
 
-    if (!model) {
-      return null;
-    }
-
-    const resolvedPath = path.join(this.config.CACHE_DIR, hash);
-
-    try {
-      await fs.access(resolvedPath);
-    } catch (_: unknown) {
-      await prisma.fileCache.delete({
+  async getEntryFor(hash: string): Promise<FileCacheEntry | null> {
+    return (await FileCacheProvider.mutationQueue.add(async () => {
+      const model = await prisma.fileCache.findUnique({
         where: {
           hash,
         },
       });
 
-      return null;
-    }
+      if (!model) {
+        return null;
+      }
 
-    await prisma.fileCache.update({
-      where: {
-        hash,
-      },
-      data: {
-        accessedAt: new Date(),
-      },
-    });
+      const resolvedPath = path.join(this.config.CACHE_DIR, hash);
+      let stats;
 
-    return resolvedPath;
+      try {
+        stats = await fs.stat(resolvedPath, {bigint: true});
+      } catch (_: unknown) {
+        await prisma.fileCache.delete({
+          where: {
+            hash,
+          },
+        });
+
+        return null;
+      }
+
+      await prisma.fileCache.update({
+        where: {
+          hash,
+        },
+        data: {
+          accessedAt: new Date(),
+        },
+      });
+
+      return {
+        generation: this.getFileGeneration(stats),
+        path: resolvedPath,
+      };
+    })) ?? null;
   }
 
   /**
@@ -66,28 +82,34 @@ export default class FileCacheProvider {
    * @param hash lookup key
    */
   createWriteStream(hash: string) {
-    const tmpPath = path.join(this.config.CACHE_DIR, 'tmp', hash);
+    const tmpPath = path.join(this.config.CACHE_DIR, 'tmp', `${hash}.${randomUUID()}`);
     const finalPath = path.join(this.config.CACHE_DIR, hash);
 
     const stream = createWriteStream(tmpPath);
+    let finished = false;
+    let writeFailed = false;
 
-    stream.on('close', async () => {
-      // Only move if size is non-zero (may have errored out)
-      const stats = await fs.stat(tmpPath);
+    const handleWriteError = (error: unknown) => {
+      writeFailed = true;
+      this.reportWriteError(error);
+    };
 
-      if (stats.size !== 0) {
-        await fs.rename(tmpPath, finalPath);
+    stream.once('finish', () => {
+      finished = true;
+    });
+    stream.once('error', handleWriteError);
 
-        await prisma.fileCache.create({
-          data: {
-            hash,
-            accessedAt: new Date(),
-            bytes: stats.size,
-          },
+    stream.once('close', () => {
+      stream.removeListener('error', handleWriteError);
+
+      const completion = finished && !writeFailed
+        ? this.finalizeWrite(hash, tmpPath, finalPath)
+        : this.removeTemporaryFile(tmpPath);
+
+      void completion
+        .catch(error => {
+          this.reportFinalizationError(stream, error);
         });
-      }
-
-      await this.evictOldestIfNecessary();
     });
 
     return stream;
@@ -99,14 +121,134 @@ export default class FileCacheProvider {
    * will be evicted if the cache limit has changed.
    */
   async cleanup() {
-    await this.removeOrphans();
-    await this.evictOldestIfNecessary();
+    await FileCacheProvider.mutationQueue.add(async () => {
+      await this.removeOrphans();
+      await this.evictOldest();
+    });
   }
 
-  private async evictOldestIfNecessary() {
-    void FileCacheProvider.evictionQueue.add(this.evictOldest.bind(this));
+  async invalidate(hash: string, expectedGeneration: string) {
+    await FileCacheProvider.mutationQueue.add(async () => {
+      const resolvedPath = path.join(this.config.CACHE_DIR, hash);
+      try {
+        const stats = await fs.stat(resolvedPath, {bigint: true});
+        if (this.getFileGeneration(stats) !== expectedGeneration) {
+          return;
+        }
+      } catch (error: unknown) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return;
+        }
 
-    return FileCacheProvider.evictionQueue.onEmpty();
+        throw error;
+      }
+
+      const model = await prisma.fileCache.findUnique({where: {hash}});
+      if (model) {
+        try {
+          await prisma.fileCache.delete({where: {hash}});
+        } catch (error: unknown) {
+          if ((error as {code?: string}).code !== 'P2025') {
+            throw error;
+          }
+        }
+      }
+
+      try {
+        await fs.unlink(resolvedPath);
+      } catch (error: unknown) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+      }
+    });
+  }
+
+  private getFileGeneration(stats: {dev: bigint; ino: bigint; mtimeNs: bigint; size: bigint}) {
+    return `${stats.dev}:${stats.ino}:${stats.size}:${stats.mtimeNs}`;
+  }
+
+  private async finalizeWrite(hash: string, tmpPath: string, finalPath: string) {
+    try {
+      const temporaryStats = await fs.stat(tmpPath);
+
+      await FileCacheProvider.mutationQueue.add(async () => {
+        if (temporaryStats.size !== 0) {
+          try {
+            // Tmp and final are on one filesystem. A hard link publishes one
+            // complete writer atomically without replacing an existing winner.
+            await fs.link(tmpPath, finalPath);
+          } catch (error: unknown) {
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+              throw error;
+            }
+          }
+
+          const finalStats = await fs.stat(finalPath);
+          const accessedAt = new Date();
+          await prisma.fileCache.upsert({
+            where: {
+              hash,
+            },
+            create: {
+              hash,
+              accessedAt,
+              bytes: finalStats.size,
+            },
+            update: {
+              accessedAt,
+              bytes: finalStats.size,
+            },
+          });
+        }
+
+        // This task already owns the mutation queue; enqueueing again here
+        // would deadlock behind itself.
+        await this.evictOldest();
+      });
+    } catch (error: unknown) {
+      try {
+        await this.removeTemporaryFile(tmpPath);
+      } catch (cleanupError: unknown) {
+        const message = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+        debug(`Failed to clean up cache temporary file: ${message}`);
+      }
+
+      throw error;
+    }
+
+    await this.removeTemporaryFile(tmpPath);
+  }
+
+  private async removeTemporaryFile(tmpPath: string) {
+    try {
+      await fs.unlink(tmpPath);
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+
+  private reportFinalizationError(stream: WriteStream, error: unknown) {
+    const finalizationError = error instanceof Error ? error : new Error(String(error));
+    console.error('Failed to finalize cache write:', finalizationError);
+    debug(`Failed to finalize cache write: ${finalizationError.message}`);
+
+    if (stream.listenerCount('error') > 0) {
+      try {
+        stream.emit('error', finalizationError);
+      } catch (reportingError: unknown) {
+        const message = reportingError instanceof Error ? reportingError.message : String(reportingError);
+        debug(`Cache write error listener failed: ${message}`);
+      }
+    }
+  }
+
+  private reportWriteError(error: unknown) {
+    const writeError = error instanceof Error ? error : new Error(String(error));
+    console.error('Failed to write cache temporary file:', writeError);
+    debug(`Failed to write cache temporary file: ${writeError.message}`);
   }
 
   private async evictOldest() {
@@ -124,16 +266,18 @@ export default class FileCacheProvider {
 
       });
 
-      if (oldest) {
-        await prisma.fileCache.delete({
-          where: {
-            hash: oldest.hash,
-          },
-        });
-        await fs.unlink(path.join(this.config.CACHE_DIR, oldest.hash));
-        debug(`${oldest.hash} has been evicted`);
-        numOfEvictedFiles++;
+      if (!oldest) {
+        throw new Error(`Cache usage is ${totalSizeBytes} bytes, above the configured limit of ${this.config.CACHE_LIMIT_IN_BYTES} bytes, but no indexed file is available to evict`);
       }
+
+      await prisma.fileCache.delete({
+        where: {
+          hash: oldest.hash,
+        },
+      });
+      await fs.unlink(path.join(this.config.CACHE_DIR, oldest.hash));
+      debug(`${oldest.hash} has been evicted`);
+      numOfEvictedFiles++;
 
       totalSizeBytes = await this.getDiskUsageInBytes();
     }
@@ -147,6 +291,15 @@ export default class FileCacheProvider {
   }
 
   private async removeOrphans() {
+    const temporaryDirectory = path.join(this.config.CACHE_DIR, 'tmp');
+
+    for await (const dirent of await fs.opendir(temporaryDirectory)) {
+      if (dirent.isFile()) {
+        debug(`${dirent.name} was abandoned in the cache temporary directory. Removing from disk.`);
+        await fs.unlink(path.join(temporaryDirectory, dirent.name));
+      }
+    }
+
     // Check filesystem direction (do files exist on the disk but not in the database?)
     for await (const dirent of await fs.opendir(this.config.CACHE_DIR)) {
       if (dirent.isFile()) {
@@ -202,17 +355,17 @@ export default class FileCacheProvider {
    */
   private getFindAllIterable() {
     const limit = 50;
-    let previousCreatedAt: Date | null = null;
+    let previousHash: string | null = null;
 
     let models: FileCache[] = [];
 
     const fetchNextBatch = async () => {
       let where;
 
-      if (previousCreatedAt) {
+      if (previousHash !== null) {
         where = {
-          createdAt: {
-            gt: previousCreatedAt,
+          hash: {
+            gt: previousHash,
           },
         };
       }
@@ -220,13 +373,13 @@ export default class FileCacheProvider {
       models = await prisma.fileCache.findMany({
         where,
         orderBy: {
-          createdAt: 'asc',
+          hash: 'asc',
         },
         take: limit,
       });
 
       if (models.length > 0) {
-        previousCreatedAt = models[models.length - 1].createdAt;
+        previousHash = models[models.length - 1].hash;
       }
     };
 

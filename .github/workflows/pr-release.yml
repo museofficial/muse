@@ -5,21 +5,79 @@ on:
     types:
       - completed
 
+permissions: {}
+
 env:
   REGISTRY_IMAGE: ghcr.io/museofficial/muse
 
 jobs:
+  validate:
+    name: Validate snapshot origin
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.snapshot.outputs.sha }}
+      pr_number: ${{ steps.snapshot.outputs.pr_number }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # The workflow_run workflow and this validator come from the default branch.
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Download SHA
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/snapshot-sha
+          name: sha
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download PR number
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/snapshot-pr
+          name: pull_request_number
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate snapshot metadata
+        id: snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/validate-pr-snapshot.mjs
+
   release-and-comment:
     name: Release snapshot and comment in PR
+    needs: validate
+    if: needs.validate.outputs.sha != ''
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       packages: write
       pull-requests: write
-      attestations: write
-      id-token: write
+    env:
+      SHA: ${{ needs.validate.outputs.sha }}
+      PR_NUMBER: ${{ needs.validate.outputs.pr_number }}
     steps:
+      - name: Download images
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/images
+          pattern: image-linux-*
+          merge-multiple: true
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:
@@ -30,84 +88,34 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Download images
-        uses: actions/download-artifact@v8
-        with:
-          path: /tmp/images
-          pattern: image-linux-*
-          merge-multiple: true
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Load image
-        shell: bash
+      - name: Load images
         run: |
           docker load -i /tmp/images/image-linux-amd64.tar
           docker load -i /tmp/images/image-linux-arm64.tar
 
-      - name: Download SHA
-        uses: actions/download-artifact@v8
-        with:
-          path: /tmp/SHA
-          name: sha
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Read SHA
-        shell: bash
-        run: |
-          sha="$(tr -d '\n' < /tmp/SHA/sha.txt)"
-          echo "SHA=${sha}" >> "$GITHUB_ENV"
-
       - name: Push images
         run: |
-          docker push ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-amd64
-          docker push ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-arm64
+          docker push "${REGISTRY_IMAGE}:${SHA}-linux-amd64"
+          docker push "${REGISTRY_IMAGE}:${SHA}-linux-arm64"
 
-      - name: Download Docker metadata
-        uses: actions/download-artifact@v8
-        with:
-          path: /tmp/metadata
-          name: metadata
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Read the metadata.json file
-        id: metadata_reader
-        uses: juliangruber/read-file-action@v1.1.8
-        with:
-          path: /tmp/metadata/metadata.json
-
-      - name: Download PR number
-        uses: actions/download-artifact@v8
-        with:
-          path: /tmp/pull_request_number
-          name: pull_request_number
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Read PR number
-        shell: bash
+      - name: Create preview manifest
         run: |
-          pr_number="$(tr -d '\n' < /tmp/pull_request_number/pull_request_number.txt)"
-          echo "PR_NUMBER=${pr_number}" >> "$GITHUB_ENV"
-
-      - name: Create manifest list and push
-        run: |
-          tags="$(jq -cr '.tags | map("-t " + .) | join(" ")' /tmp/metadata/metadata.json)"
-          docker buildx imagetools create ${tags} ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-amd64 ${{ env.REGISTRY_IMAGE }}:${{ env.SHA }}-linux-arm64
+          docker buildx imagetools create \
+            -t "${REGISTRY_IMAGE}:pr-${PR_NUMBER}" \
+            "${REGISTRY_IMAGE}:${SHA}-linux-amd64" \
+            "${REGISTRY_IMAGE}:${SHA}-linux-arm64"
 
       - name: Create comment
         uses: marocchino/sticky-pull-request-comment@v3.0.4
         with:
           header: "pr-release"
-          number: ${{ env.PR_NUMBER }}
+          number: ${{ needs.validate.outputs.pr_number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |
             #### :package: :robot: A new release has been made for this pull request.
 
-            To play around with this PR, pull `${{ env.REGISTRY_IMAGE }}:pr-${{ env.PR_NUMBER }}`.
+            To play around with this PR, pull `${{ env.REGISTRY_IMAGE }}:pr-${{ needs.validate.outputs.pr_number }}`.
 
             Images are available for x86_64 and ARM64.
 
-            > Latest commit: ${{ env.SHA }}
+            > Latest commit: ${{ needs.validate.outputs.sha }}

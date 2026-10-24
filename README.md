@@ -14,6 +14,7 @@ Muse is a **highly-opinionated midwestern self-hosted** Discord music bot **that
 ## Features
 
 - 🎥 Livestreams
+- ☁️ SoundCloud tracks, share links, and playlists
 - ⏩ Seeking within a song/video
 - 💾 Local caching for better performance
 - 📋 No vote-to-skip - this is anarchy, not a democracy
@@ -33,6 +34,15 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 - `YOUTUBE_API_KEY` can be acquired by [creating a new project](https://console.developers.google.com) in Google's Developer Console, enabling the YouTube API, and creating an API key under credentials.
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
+
+The `/play` message has emoji controls for previous track, rewind, pause/resume,
+fast-forward, next track, stop, and shuffle. If Muse is already in your server,
+make sure its role has **View Channel**, **Send Messages**, **Embed Links**,
+**Read Message History**, **Add Reactions**, and **Manage Messages** permissions.
+**Manage Messages** lets Muse clear your reaction so you can click the same
+control again. Without it, remove your own reaction before clicking that control
+again. Check the text channel's permission overrides too. The invite link includes
+these permissions for new installations.
 
 A 64-bit OS is required to run Muse.
 
@@ -71,11 +81,14 @@ services:
     restart: always
     volumes:
       - ./muse:/data
+      # Optional: mount YouTube-only cookies for age-restricted videos.
+      # - ./youtube-cookies.txt:/run/secrets/youtube-cookies.txt:ro
     environment:
       - DISCORD_TOKEN=
       - YOUTUBE_API_KEY=
       - SPOTIFY_CLIENT_ID=
       - SPOTIFY_CLIENT_SECRET=
+      # - YT_DLP_COOKIES_PATH=/run/secrets/youtube-cookies.txt
 ```
 
 If you keep the same `DISCORD_TOKEN`, reuse the same `/data` volume, and point your Compose service at a newer image tag, Muse will come back up with the same bot identity and persisted database/cache.
@@ -95,7 +108,66 @@ If you keep the same `DISCORD_TOKEN`, reuse the same `/data` volume, and point y
 
 **Note**: if you're on Windows, you may need to manually set the ffmpeg path. See [#345](https://github.com/museofficial/muse/issues/345) for details.
 
+### Local validation
+
+Run the behavior suite locally with:
+
+```bash
+npm test
+```
+
 ## ⚙️ Additional configuration (advanced)
+
+### Playback display and controls
+
+The `/play` message shows the current song, progress bar, and upcoming songs
+with nearly real-time updates (configurable). The timer updates every five
+seconds by default. To change this, set `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS`
+in your `.env` file to a whole number of seconds greater than zero, then restart
+Muse.
+
+When the queue finishes, Muse removes the card and controls and keeps the
+original queue acknowledgment. Stopping playback shows "Playback stopped."
+Volume and loop changes update the card immediately, including while paused.
+
+To use the emoji controls, you must be in the same voice channel as Muse and
+be allowed to use the matching command in the text channel containing the
+message. Being a listener does not grant extra permissions. You can change who
+can use commands and where under **Server Settings > Integrations > Muse**.
+Muse checks permissions each time you click a control. If it cannot check them,
+it ignores the click.
+
+| Control | Command you need permission to use |
+| --- | --- |
+| Previous Track | `/unskip` |
+| Next Track | `/next` |
+| Rewind | `/seek` |
+| Fast-forward | `/fseek` |
+| Pause / Resume | `/pause` while playing; `/resume` while paused |
+| Stop | `/stop` |
+| Shuffle | `/shuffle` |
+
+Rewind and fast-forward move ten seconds within a song and do not work on
+livestreams. Private messages that only you can see keep updating for as long
+as Discord allows, but do not have emoji controls.
+
+Shuffling removes repeated songs from the upcoming queue, including songs
+that are playing now or have already played. When you add a playlist with
+shuffle enabled, Muse removes repeats within that playlist. Different chapters
+of the same track stay separate.
+
+YouTube playlist imports stop once they have enough playable tracks for
+`/config set-playlist-limit`. Private and deleted entries do not count toward
+that limit; each split chapter counts as one track. Video-detail requests are
+limited to three at a time across imports and lookups. This reduces request
+bursts, but your YouTube API project's daily quota still applies.
+
+### Favorites
+
+Favorite names must contain 1–100 characters. `/favorites list` may shorten long
+names and queries for display; the saved query is still used in full. Existing
+names longer than 100 characters can still be entered manually with
+`/favorites use` or `/favorites remove`.
 
 ### Cache
 
@@ -106,6 +178,10 @@ By default, Muse limits the total cache size to around 2 GB. If you want to chan
 Muse now uses `yt-dlp` to resolve playable YouTube media URLs. In Docker, the image already includes it. For direct Node.js installs, either put `yt-dlp` on your `PATH` or set `YT_DLP_PATH` in your environment file.
 
 Muse logs `YT_DLP_VERSION` on startup. Set `YT_DLP_AUTO_UPDATE=true` to make Muse try to update the configured `yt-dlp` installation before connecting to Discord. This works best with the Docker image's bundled virtualenv, or when `YT_DLP_PATH` points at a virtualenv or standalone `yt-dlp` executable that Muse can update.
+
+Age-restricted videos require cookies from an age-verified YouTube account. Export a YouTube-only Netscape cookie file using the [official yt-dlp guidance](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies), mount it outside `/data`, and set `YT_DLP_COOKIES_PATH` to its container path. Treat this file like a password. Muse copies it to a private per-extraction temporary file because yt-dlp updates the cookie jar while it runs, so the mounted source may remain read-only and concurrent guilds do not share a writable cookie file.
+
+Current YouTube extraction also requires a supported JavaScript runtime. The Docker image includes the matching `yt-dlp-ejs` package and uses its bundled Node.js runtime. Direct installs should install `yt-dlp[default]` and provide Node.js 22 or newer.
 
 The `ghcr.io/museofficial/muse:yt-dlp-latest` image is rebuilt on a schedule from the latest Muse release with the newest `yt-dlp` published to PyPI. Versioned refresh tags are also published as `:<muse-version>-yt-dlp-<yt-dlp-version>`.
 
@@ -156,4 +232,12 @@ You can configure the bot to automatically turn down the volume when people are 
 
 - `/config set-reduce-vol-when-voice true` - Enable automatic volume reduction
 - `/config set-reduce-vol-when-voice false` - Disable automatic volume reduction
-- `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 70)
+- `/config set-reduce-vol-when-voice-target <volume>` - Set the target volume percentage when people speak (0-100, default is 20)
+
+### Troubleshooting voice connection timeouts
+
+Muse retries a stalled initial voice handshake up to three times, waiting up to 20 seconds per attempt. Requests are added to the queue only after the connection is ready; a failed join leaves the existing queue intact. A later successful request can still resume songs that were already queued intentionally.
+
+The failure message includes the last voice and network states. `OpeningWs` means the secure connection to the voice server did not open; check outbound TCP access to the **port supplied by Discord**, which is not necessarily 443. `UdpHandshaking` means the voice server was reached but UDP discovery did not finish; check outbound UDP and return traffic through the firewall/NAT. Discord describes both steps in its [voice connection documentation](https://docs.discord.com/developers/topics/voice-connections).
+
+Keep voice tokens, session IDs, encryption keys, and full protocol/debug payloads out of logs and bug reports. The network-state diagnostic reports only a state name.

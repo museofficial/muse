@@ -65,23 +65,34 @@ const getYouTubeAndSpotifySuggestionsFor = async (query: string, spotify?: Spoti
     const maxSpotifySuggestions = Math.floor(limit / 2);
     const numOfSpotifySuggestions = Math.min(maxSpotifySuggestions, totalSpotifyResults);
 
-    const maxSpotifyAlbums = Math.floor(numOfSpotifySuggestions / 2);
-    const numOfSpotifyAlbums = Math.min(maxSpotifyAlbums, spotifyResponse.albums?.items.length ?? 0);
-    const maxSpotifyTracks = numOfSpotifySuggestions - numOfSpotifyAlbums;
+    const preferredSpotifyAlbums = Math.floor(numOfSpotifySuggestions / 2);
+    let numOfSpotifyAlbums = Math.min(preferredSpotifyAlbums, spotifyAlbums.length);
+    const numOfSpotifyTracks = Math.min(
+      numOfSpotifySuggestions - numOfSpotifyAlbums,
+      spotifyTracks.length,
+    );
+    numOfSpotifyAlbums = Math.min(
+      spotifyAlbums.length,
+      numOfSpotifySuggestions - numOfSpotifyTracks,
+    );
+
+    const selectedSpotifyAlbums = spotifyAlbums.slice(0, numOfSpotifyAlbums);
+    const selectedSpotifyTracks = spotifyTracks.slice(0, numOfSpotifyTracks);
+    const actualSpotifySuggestions = selectedSpotifyAlbums.length + selectedSpotifyTracks.length;
 
     // Make room for spotify results
-    const maxYouTubeSuggestions = limit - numOfSpotifySuggestions;
+    const maxYouTubeSuggestions = limit - actualSpotifySuggestions;
     suggestions = suggestions.slice(0, maxYouTubeSuggestions);
 
     suggestions.push(
-      ...spotifyAlbums.slice(0, maxSpotifyAlbums).map(album => ({
+      ...selectedSpotifyAlbums.map(album => ({
         name: `Spotify: 💿 ${album.name}${album.artists.length > 0 ? ` - ${album.artists[0].name}` : ''}`,
         value: `spotify:album:${album.id}`,
       })),
     );
 
     suggestions.push(
-      ...spotifyTracks.slice(0, maxSpotifyTracks).map(track => ({
+      ...selectedSpotifyTracks.map(track => ({
         name: `Spotify: 🎵 ${track.name}${track.artists.length > 0 ? ` - ${track.artists[0].name}` : ''}`,
         value: `spotify:track:${track.id}`,
       })),
