@@ -251,7 +251,7 @@ describe('GetSongs collection limits and conversion accounting', () => {
 
     await expect(getSongs.getSongs('https://www.youtube.com/playlist?list=PL123', 2, false))
       .resolves.toEqual([[playlist[0], playlist[1]], '']);
-    expect(youtubeAPI.getPlaylist).toHaveBeenCalledWith('PL123', false);
+    expect(youtubeAPI.getPlaylist).toHaveBeenCalledWith('PL123', false, 2);
   });
 
   it('counts a fulfilled empty Spotify conversion as one song not found', async () => {

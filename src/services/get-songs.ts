@@ -58,7 +58,7 @@ export default class {
       // YouTube source
       if (url.searchParams.get('list')) {
         // YouTube playlist
-        const songs = await this.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters);
+        const songs = await this.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters, playlistLimit);
         newSongs.push(...songs.slice(0, playlistLimit));
       } else {
         const songs = await this.youtubeVideo(url.href, shouldSplitChapters);
@@ -116,8 +116,8 @@ export default class {
     return this.youtubeAPI.getVideo(url, shouldSplitChapters);
   }
 
-  private async youtubePlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
-    return this.youtubeAPI.getPlaylist(listId, shouldSplitChapters);
+  private async youtubePlaylist(listId: string, shouldSplitChapters: boolean, playlistLimit: number): Promise<SongMetadata[]> {
+    return this.youtubeAPI.getPlaylist(listId, shouldSplitChapters, playlistLimit);
   }
 
   private async spotifySource(url: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], number, number]> {

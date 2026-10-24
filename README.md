@@ -158,6 +158,12 @@ that are playing now or have already played. When you add a playlist with
 shuffle enabled, Muse removes repeats within that playlist. Different chapters
 of the same track stay separate.
 
+YouTube playlist imports stop once they have enough playable tracks for
+`/config set-playlist-limit`. Private and deleted entries do not count toward
+that limit; each split chapter counts as one track. Video-detail requests are
+limited to three at a time across imports and lookups. This reduces request
+bursts, but your YouTube API project's daily quota still applies.
+
 ### Favorites
 
 Favorite names must contain 1–100 characters. `/favorites list` may shorten long

@@ -6,6 +6,7 @@ vi.mock('../src/services/player.js', () => ({
 }));
 
 import YoutubeAPI from '../src/services/youtube-api.js';
+import GetSongs from '../src/services/get-songs.js';
 
 interface PlaylistItemPage {
   items: Array<{
@@ -110,21 +111,21 @@ const chapterSummary = (songs: Awaited<ReturnType<YoutubeAPI['getVideo']>>) => s
 }));
 
 describe('YoutubeAPI playlist pagination', () => {
-  it.each([false, true])('handles an early detail rejection while another page is pending (page fails: %s)', async pageFails => {
+  it.each(['details', 'page'])('propagates a %s failure without starting later pages or leaving unhandled rejections', async failure => {
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown) => {unhandled.push(reason);};
     process.on('unhandledRejection', onUnhandled);
     const detailsError = new Error('Video details unavailable');
     const pageError = new Error('Playlist page unavailable');
+    let pageRequests = 0;
     const cache = {
       wrap: async (_fetch: unknown, {searchParams}: {searchParams: Record<string, string>}) => {
         if (searchParams.playlistId) {
-          if (!searchParams.pageToken) {
-            return {items: [makePlaylistItem('first-video')], nextPageToken: 'page-2'};
+          pageRequests++;
+          if (failure === 'page') {
+            throw pageError;
           }
-          await new Promise(resolve => setTimeout(resolve, 20));
-          if (pageFails) {throw pageError;}
-          return {items: []};
+          return {items: [makePlaylistItem('first-video')], nextPageToken: 'page-2'};
         }
         if (searchParams.id === PLAYLIST_ID) {
           return {items: [{id: PLAYLIST_ID, snippet: {title: 'Playlist'}}]};
@@ -134,8 +135,10 @@ describe('YoutubeAPI playlist pagination', () => {
     };
     try {
       const api = new YoutubeAPI({YOUTUBE_API_KEY: 'test-key'} as never, cache as never);
-      await expect(api.getPlaylist(PLAYLIST_ID, false)).rejects.toBe(pageFails ? pageError : detailsError);
+      await expect(api.getPlaylist(PLAYLIST_ID, false)).rejects.toBe(failure === 'page' ? pageError : detailsError);
+      await new Promise(resolve => setImmediate(resolve));
       expect(unhandled).toEqual([]);
+      expect(pageRequests).toBe(1);
     } finally {
       process.removeListener('unhandledRejection', onUnhandled);
     }
@@ -144,7 +147,7 @@ describe('YoutubeAPI playlist pagination', () => {
   it('retains all fetched details across pages and stops when the final page has no token', async () => {
     const firstVideo = makeVideo({id: 'video-first', title: 'First'});
     const secondVideo = makeVideo({id: 'video-second', title: 'Second'});
-    const {api, getPlaylistItemsCallCount} = makeHarness({
+    const {api, cache, getPlaylistItemsCallCount} = makeHarness({
       itemCount: 99,
       pages: [
         {items: [makePlaylistItem(firstVideo.id)], nextPageToken: 'page-2'},
@@ -161,6 +164,8 @@ describe('YoutubeAPI playlist pagination', () => {
     ]);
     expect(songs.every(song => song.playlist?.source === PLAYLIST_ID)).toBe(true);
     expect(getPlaylistItemsCallCount()).toBe(2);
+    expect(cache.wrap.mock.calls.filter(([, {searchParams}]) => searchParams.playlistId)
+      .every(([, {searchParams}]) => searchParams.maxResults === '50')).toBe(true);
   });
 
   it('stops before requesting a repeated page token and retains every processed page', async () => {
@@ -206,6 +211,139 @@ describe('YoutubeAPI playlist pagination', () => {
 
     await expect(api.getPlaylist(PLAYLIST_ID, false)).resolves.toEqual([]);
     expect(getPlaylistItemsCallCount()).toBe(1);
+  });
+});
+
+describe('bounded YouTube playlist imports', () => {
+  it.each([2, 51])('loads only the first %s entries of a 600-video playlist through GetSongs', async limit => {
+    const pageRequests: Record<string, string>[] = [];
+    const detailRequests: string[][] = [];
+    const cache = {
+      wrap: async (_fetch: unknown, {searchParams}: {searchParams: Record<string, string>}) => {
+        if (searchParams.playlistId) {
+          pageRequests.push(searchParams);
+          const offset = Number(searchParams.pageToken ?? 0);
+          const count = Number(searchParams.maxResults);
+          const nextOffset = Math.min(600, offset + count);
+          return {
+            items: Array.from({length: nextOffset - offset}, (_, i) => makePlaylistItem(`video-${offset + i}`)),
+            ...(nextOffset < 600 ? {nextPageToken: String(nextOffset)} : {}),
+          };
+        }
+
+        if (searchParams.id === PLAYLIST_ID) {
+          return {items: [{id: PLAYLIST_ID, contentDetails: {itemCount: 600}, snippet: {title: 'Large playlist'}}]};
+        }
+
+        const ids = searchParams.id.split(',');
+        detailRequests.push(ids);
+        return {items: ids.map(id => makeVideo({id}))};
+      },
+    };
+    const api = new YoutubeAPI({YOUTUBE_API_KEY: 'test-key'} as never, cache as never);
+    const [songs] = await new GetSongs(api).getSongs(`https://www.youtube.com/playlist?list=${PLAYLIST_ID}`, limit, false);
+
+    expect(songs.map(song => song.url)).toEqual(Array.from({length: limit}, (_, i) => `video-${i}`));
+    expect(pageRequests).toHaveLength(Math.ceil(limit / 50));
+    expect(pageRequests.map(page => page.maxResults)).toEqual(limit === 2 ? ['2'] : ['50', '1']);
+    expect(detailRequests.flat()).toEqual(songs.map(song => song.url));
+  });
+
+  it('continues past missing and malformed entries until enough playable songs are found', async () => {
+    const {api, getPlaylistItemsCallCount} = makeHarness({
+      pages: [
+        {items: [makePlaylistItem('deleted'), makePlaylistItem('malformed')], nextPageToken: 'page-2'},
+        {items: [makePlaylistItem('first'), makePlaylistItem('second')], nextPageToken: 'unused-page'},
+      ],
+      videos: [makeVideo({id: 'malformed', duration: 'invalid'}), makeVideo({id: 'first'}), makeVideo({id: 'second'})],
+    });
+
+    const songs = await api.getPlaylist(PLAYLIST_ID, false, 2);
+
+    expect(songs.map(song => song.url)).toEqual(['first', 'second']);
+    expect(getPlaylistItemsCallCount()).toBe(2);
+  });
+
+  it('counts split chapters toward the output limit and stops within the final video', async () => {
+    const {api, cache, getPlaylistItemsCallCount} = makeHarness({
+      pages: [
+        {items: [makePlaylistItem('first')], nextPageToken: 'page-2'},
+        {items: [makePlaylistItem('second')], nextPageToken: 'unused-page'},
+      ],
+      videos: ['first', 'second'].map(id => makeVideo({id, description: '0:00 Intro\n1:00 Main', duration: 'PT2M'})),
+    });
+
+    const songs = await api.getPlaylist(PLAYLIST_ID, true, 3);
+
+    expect(chapterSummary(songs)).toEqual([
+      {title: 'Intro (first)', offset: 0, length: 60},
+      {title: 'Main (first)', offset: 60, length: 60},
+      {title: 'Intro (second)', offset: 0, length: 60},
+    ]);
+    expect(getPlaylistItemsCallCount()).toBe(2);
+    const pages = cache.wrap.mock.calls.filter(([, {searchParams}]) => searchParams.playlistId);
+    expect(pages.map(([, {searchParams}]) => searchParams.maxResults)).toEqual(['3', '1']);
+  });
+
+  it('preserves duplicate playlist entries and their source ordering', async () => {
+    const {api} = makeHarness({
+      pages: [
+        {items: ['second', 'first'].map(makePlaylistItem), nextPageToken: 'page-2'},
+        {items: [makePlaylistItem('second')]},
+      ],
+      videos: [makeVideo({id: 'first'}), makeVideo({id: 'second'})],
+    });
+
+    expect((await api.getPlaylist(PLAYLIST_ID, false, 3)).map(song => song.url)).toEqual(['second', 'first', 'second']);
+  });
+
+  it('returns an empty result without fetching when no tracks can be added', async () => {
+    const {api, cache} = makeHarness();
+
+    await expect(api.getPlaylist(PLAYLIST_ID, false, 0)).resolves.toEqual([]);
+    expect(cache.wrap).not.toHaveBeenCalled();
+  });
+
+  it('shares the three-request detail limit across independent imports and direct video lookups', async () => {
+    let release!: () => void;
+    const blocked = new Promise<void>(resolve => {release = resolve;});
+    let active = 0;
+    let peak = 0;
+    const detailCalls: string[] = [];
+    const cache = {wrap: (fetchValue: () => Promise<unknown>) => fetchValue()};
+    const api = new YoutubeAPI({YOUTUBE_API_KEY: 'test-key'} as never, cache as never);
+    Object.defineProperty(api, 'got', {value: (endpoint: string, {searchParams}: {searchParams: Record<string, string>}) => ({
+      json: async () => {
+        if (endpoint === 'playlists') {
+          return {items: [{id: searchParams.id, snippet: {title: searchParams.id}}]};
+        }
+        if (endpoint === 'playlistItems') {
+          return {items: [makePlaylistItem(searchParams.playlistId)]};
+        }
+        detailCalls.push(searchParams.id);
+        active++;
+        peak = Math.max(peak, active);
+        await blocked;
+        active--;
+        return {items: [makeVideo({id: searchParams.id})]};
+      },
+    })});
+
+    const results = Promise.all([
+      ...Array.from({length: 4}, (_, i) => api.getPlaylist(`playlist-${i}`, false, 1)),
+      api.getVideo('direct00001', false),
+      api.getVideo('direct00002', false),
+    ]);
+    try {
+      await new Promise(resolve => setImmediate(resolve));
+      expect(detailCalls).toHaveLength(3);
+      expect(peak).toBe(3);
+    } finally {
+      release();
+      expect(await results).toHaveLength(6);
+    }
+    expect(detailCalls).toHaveLength(6);
+    expect(peak).toBe(3);
   });
 });
 
