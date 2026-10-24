@@ -8,6 +8,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add /help command to list all available commands.
 
+- Keep the retained song available when the queue is cleared during a failed next or previous track request.
+- Allow queue looping to be turned off after the upcoming songs are cleared or removed.
+- Refresh volume and loop indicators immediately, including while playback is paused.
+- Validate favorite names and queries, and keep autocomplete and favorite lists within Discord's message limits without changing saved queries.
+- Fix fresh Node.js installs by using compatible pagination and Node type dependencies.
+
+- Remove playback controls even when the final message edit fails.
+- Validate extracted media formats before starting FFmpeg to avoid URLs that immediately return HTTP 403.
+
+- Show the current song and upcoming songs in the original `/play` message with nearly real-time updates (configurable).
+- Update the timer every five seconds by default, and pause it when the music is paused. Change the update interval with `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS` in `.env`, then restart Muse.
+- Make the progress bar move in smaller steps so it is easier to see how far a song has played.
+- Add emoji controls for pause/resume, stop, rewind, and fast-forward. You can click the same control again to reuse it. Rewind and fast-forward move ten seconds within a song, keep paused music paused, and do not work on livestreams.
+- Add separate Previous Track (⏮️) and Next Track (⏭️) controls, matching `/unskip` and `/next`.
+- Add Shuffle (🔀) next to Stop (⏹️), and show the new song order after shuffling.
+- Require listeners to be in the same voice channel as Muse and have permission to use the matching command. Keep role, member, and channel restrictions in place. If Muse cannot check permissions, it ignores the click.
+- Handle quick clicks in order, and ignore clicks on old playback messages or from listeners who have left the voice channel.
+- Keep music paused when seeking while audio is still buffering, and prevent an older seek from pausing newer playback.
+- Keep the original queue acknowledgment when playback finishes, or show "Playback stopped." after a stop command, and remove the card and emoji controls. Keep message updates in order and stop updating a message if an edit fails.
+- Preserve the stopped or finished display if playback ends while the first `/play` response is being sent.
+- Keep private `/play` messages that only you can see updated for as long as Discord allows, without emoji controls.
+- Redact interaction webhook tokens from playback message error logs.
+- Remove repeated songs when shuffling the upcoming queue, including songs that are playing now or have already played. Keep the current song and previously played songs in place. Different chapters and tracks from different sources stay separate.
+- When adding a playlist with shuffle enabled, remove repeats within that playlist without changing songs already queued.
+- Include the permissions needed for emoji controls in the bot invite link, and explain how to update permissions for bots already in a server.
+- Add tests for the playback display, controls, permissions, update interval, and duplicate removal. Fix playback tests that failed on Windows.
+
+## [2.11.8] - 2026-09-20
+
+- Retry stalled initial voice handshakes within a bounded wait, share concurrent joins, and report the failed network phase without exposing voice credentials.
+- Connect before queueing new requests so failed voice joins do not leave unexpected tracks behind.
+- Handle Discord audio resource errors without crashing Muse and continue normal queue advancement.
+- Keep chapter and SponsorBlock cache boundaries separate so short cached excerpts cannot truncate full tracks. Existing audio caches refill as needed.
+- Apply SponsorBlock trimming within each chapter's original timestamps so split tracks play the correct audio.
+- Ignore stale listener-departure events after the voice connection or channel changes.
+- Prevent early YouTube playlist metadata failures from becoming unhandled rejections while later pages load.
+- Refresh expired metadata without racing concurrent requests to delete the same cache row.
+- Validate PR snapshot provenance before granting publishing access and restrict snapshot tags to the corresponding PR preview.
+- Resolve SoundCloud tracks, share links, and bounded playlists with yt-dlp instead of probing HTML pages as audio streams, and refresh media URLs when playback begins.
+
+## [2.11.7] - 2026-08-20
+
+- Detect FFmpeg failures before reporting playback as started, skip failed queued tracks instead of wedging the player, and retain bounded failure details in the container log.
+- Log failed Discord interactions with command and guild context so playback incidents can be diagnosed after the fact.
+
+## [2.11.6] - 2026-07-12
+
+- Add optional age-verified YouTube cookie-file support for age-restricted playback.
+- Fall back once to a closely matched audio-focused upload when a music video is age-restricted.
+- Prevent unavailable YouTube tracks and rejected automatic queue advances from restarting Muse.
+- Install current yt-dlp JavaScript challenge support and use the bundled Node.js runtime.
+- Fix provider routing and autocomplete allocation, playlist limits and pagination, and YouTube chapter parsing.
+- Fix queue command boundaries, queue insertion, and concurrent Player playback and voice-recovery transitions.
+- Correct SponsorBlock trimming and restore pre-duck volume after overlapping speakers finish.
+- Make cache writes safe under concurrent downloads, reconcile every indexed row, and reject negative cache limits.
+- Reject blank required credentials and honor explicit SQLite database paths during legacy migrations.
+- Add a Node.js behavior suite for commands, providers, queueing, playback, and caching.
+
 ## [2.11.5] - 2026-06-04
 
 - Fix queue-empty crashes when auto-announce is enabled or playback ends without a next song.
@@ -393,9 +451,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/museofficial/muse/compare/v2.11.5...HEAD
+[unreleased]: https://github.com/museofficial/muse/compare/v2.11.7...HEAD
+[2.11.8]: https://github.com/museofficial/muse/compare/v2.11.7...v2.11.8
+[2.11.7]: https://github.com/museofficial/muse/compare/v2.11.6...v2.11.7
+[2.11.6]: https://github.com/museofficial/muse/compare/v2.11.5...v2.11.6
 [2.11.5]: https://github.com/museofficial/muse/compare/v2.11.4...v2.11.5
 [2.11.4]: https://github.com/museofficial/muse/compare/v2.11.3...v2.11.4
+[2.11.3]: https://github.com/museofficial/muse/compare/v2.11.2...v2.11.3
+[2.11.2]: https://github.com/museofficial/muse/compare/v2.11.1...v2.11.2
 [2.11.1]: https://github.com/museofficial/muse/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/museofficial/muse/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/museofficial/muse/compare/v2.10.0...v2.10.1
@@ -469,5 +532,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.2.0]: https://github.com/codetheweb/muse/releases/tag/v0.2.0
 [0.1.1]: https://github.com/codetheweb/muse/releases/tag/v0.1.1
 [0.1.0]: https://github.com/codetheweb/muse/releases/tag/v0.1.0
-
-[2.11.3]: https://github.com/museofficial/muse/compare/v2.11.1...v2.11.3

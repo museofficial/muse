@@ -11,17 +11,25 @@ export default async (oldState: VoiceState, newState: VoiceState): Promise<void>
 
   const player = playerManager.get(oldState.guild.id);
 
-  if (!player.voiceConnection || player.voiceConnection.state.status !== VoiceConnectionStatus.Ready) {
+  const {voiceConnection} = player;
+  if (!voiceConnection || voiceConnection.state.status !== VoiceConnectionStatus.Ready) {
     return;
   }
 
-  const {channelId} = player.voiceConnection.joinConfig;
+  const {channelId} = voiceConnection.joinConfig;
   if (!channelId || (oldState.channelId !== channelId && newState.channelId !== channelId)) {
     return;
   }
 
-  const voiceChannel = newState.guild.channels.cache.get(channelId) as VoiceChannel | undefined;
   const {leaveIfNoListeners} = await getGuildSettings(player.guildId);
+  // A settings lookup can outlive a move, reconnect, or disconnect.
+  if (player.voiceConnection !== voiceConnection
+    || voiceConnection.state.status !== VoiceConnectionStatus.Ready
+    || voiceConnection.joinConfig.channelId !== channelId) {
+    return;
+  }
+
+  const voiceChannel = newState.guild.channels.cache.get(channelId) as VoiceChannel | undefined;
   if (!voiceChannel || (getSizeWithoutBots(voiceChannel) === 0 && leaveIfNoListeners)) {
     player.disconnect();
   }

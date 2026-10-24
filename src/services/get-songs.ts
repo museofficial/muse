@@ -6,6 +6,8 @@ import ffmpeg from 'fluent-ffmpeg';
 import YoutubeAPI from './youtube-api.js';
 import SpotifyAPI, {SpotifyTrack} from './spotify-api.js';
 import {URL} from 'node:url';
+import {getSoundCloudMetadata, YtDlpMediaUnavailableError} from '../utils/yt-dlp.js';
+import pLimit from 'p-limit';
 
 @injectable()
 export default class {
@@ -20,76 +22,84 @@ export default class {
   async getSongs(query: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], string]> {
     const newSongs: SongMetadata[] = [];
     let extraMsg = '';
+    let url: URL | undefined;
 
     // Test if it's a complete URL
     try {
-      const url = new URL(query);
+      url = new URL(query);
+    } catch (_: unknown) {
+      url = undefined;
+    }
 
-      const YOUTUBE_HOSTS = [
-        'www.youtube.com',
-        'youtu.be',
-        'youtube.com',
-        'music.youtube.com',
-        'www.music.youtube.com',
-      ];
+    const supportedProtocols = ['http:', 'https:', 'spotify:'];
 
-      if (YOUTUBE_HOSTS.includes(url.host)) {
-        // YouTube source
-        if (url.searchParams.get('list')) {
-          // YouTube playlist
-          newSongs.push(...await this.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters));
-        } else {
-          const songs = await this.youtubeVideo(url.href, shouldSplitChapters);
-
-          if (songs) {
-            newSongs.push(...songs);
-          } else {
-            throw new Error('that doesn\'t exist');
-          }
-        }
-      } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
-        if (this.spotifyAPI === undefined) {
-          throw new Error('Spotify is not enabled!');
-        }
-
-        const [convertedSongs, nSongsNotFound, totalSongs] = await this.spotifySource(query, playlistLimit, shouldSplitChapters);
-
-        if (totalSongs > playlistLimit) {
-          extraMsg = `a random sample of ${playlistLimit} songs was taken`;
-        }
-
-        if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
-          extraMsg += ' and ';
-        }
-
-        if (nSongsNotFound !== 0) {
-          if (nSongsNotFound === 1) {
-            extraMsg += '1 song was not found';
-          } else {
-            extraMsg += `${nSongsNotFound.toString()} songs were not found`;
-          }
-        }
-
-        newSongs.push(...convertedSongs);
-      } else {
-        const song = await this.httpLiveStream(query);
-
-        if (song) {
-          newSongs.push(song);
-        } else {
-          throw new Error('that doesn\'t exist');
-        }
-      }
-    } catch (err: any) {
-      if (err instanceof Error && err.message === 'Spotify is not enabled!') {
-        throw err;
-      }
-
-      // Not a URL, must search YouTube
+    if (!url || !supportedProtocols.includes(url.protocol)) {
+      // Not a supported provider URL, so search YouTube as free text.
       const songs = await this.youtubeVideoSearch(query, shouldSplitChapters);
 
       if (songs) {
         newSongs.push(...songs);
+      } else {
+        throw new Error('that doesn\'t exist');
+      }
+
+      return [newSongs, extraMsg];
+    }
+
+    const YOUTUBE_HOSTS = [
+      'www.youtube.com',
+      'youtu.be',
+      'youtube.com',
+      'music.youtube.com',
+      'www.music.youtube.com',
+    ];
+
+    if (YOUTUBE_HOSTS.includes(url.host)) {
+      // YouTube source
+      if (url.searchParams.get('list')) {
+        // YouTube playlist
+        const songs = await this.youtubePlaylist(url.searchParams.get('list')!, shouldSplitChapters);
+        newSongs.push(...songs.slice(0, playlistLimit));
+      } else {
+        const songs = await this.youtubeVideo(url.href, shouldSplitChapters);
+
+        if (songs) {
+          newSongs.push(...songs);
+        } else {
+          throw new Error('that doesn\'t exist');
+        }
+      }
+    } else if (['soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com', 'on.soundcloud.com', 'snd.sc'].includes(url.host)) {
+      newSongs.push(...await this.soundCloudSource(url.href, playlistLimit));
+    } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
+      if (this.spotifyAPI === undefined) {
+        throw new Error('Spotify is not enabled!');
+      }
+
+      const [convertedSongs, nSongsNotFound, totalSongs] = await this.spotifySource(query, playlistLimit, shouldSplitChapters);
+
+      if (totalSongs > playlistLimit) {
+        extraMsg = `a random sample of ${playlistLimit} songs was taken`;
+      }
+
+      if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
+        extraMsg += ' and ';
+      }
+
+      if (nSongsNotFound !== 0) {
+        if (nSongsNotFound === 1) {
+          extraMsg += '1 song was not found';
+        } else {
+          extraMsg += `${nSongsNotFound.toString()} songs were not found`;
+        }
+      }
+
+      newSongs.push(...convertedSongs);
+    } else {
+      const song = await this.httpLiveStream(query);
+
+      if (song) {
+        newSongs.push(song);
       } else {
         throw new Error('that doesn\'t exist');
       }
@@ -148,7 +158,8 @@ export default class {
     return new Promise((resolve, reject) => {
       ffmpeg(url).ffprobe((err, _) => {
         if (err) {
-          reject();
+          reject(err);
+          return;
         }
 
         resolve({
@@ -166,6 +177,54 @@ export default class {
     });
   }
 
+  private async soundCloudSource(url: string, playlistLimit: number): Promise<SongMetadata[]> {
+    const metadata = await getSoundCloudMetadata(url, playlistLimit);
+    const playlist = metadata.entries ? {title: metadata.title ?? 'SoundCloud playlist', source: url} : null;
+    const tracks = metadata.entries ?? [metadata];
+
+    const limit = pLimit(4);
+    const songs = await Promise.all(tracks.slice(0, playlistLimit).map(async track => limit(async () => {
+      if (!track) {
+        return [];
+      }
+
+      // Keep the page URL in the queue; signed audio URLs must be resolved at playback time.
+      const trackUrl = playlist ? track.webpage_url ?? track.url : url;
+      if (!trackUrl) {
+        return [];
+      }
+
+      // Flat SoundCloud playlist entries can contain only a URL, with no title or duration.
+      let details;
+      try {
+        details = playlist ? await getSoundCloudMetadata(trackUrl, 1) : track;
+      } catch (error: unknown) {
+        if (error instanceof YtDlpMediaUnavailableError) {
+          return [];
+        }
+
+        throw error;
+      }
+
+      if (details.entries || !details.title) {
+        return [];
+      }
+
+      return [{
+        url: trackUrl,
+        source: MediaSource.SoundCloud,
+        isLive: false,
+        title: details.title,
+        artist: details.artist ?? details.uploader ?? 'SoundCloud',
+        length: Math.max(0, details.duration ?? 0),
+        offset: 0,
+        playlist,
+        thumbnailUrl: details.thumbnail ?? null,
+      }];
+    })));
+    return songs.flat();
+  }
+
   private async spotifyToYouTube(tracks: SpotifyTrack[], shouldSplitChapters: boolean, playlist?: QueuedPlaylist | undefined): Promise<[SongMetadata[], number, number]> {
     const promisedResults = tracks.map(async track => this.youtubeAPI.search(`"${track.name}" "${track.artist}"`, shouldSplitChapters));
     const searchResults = await Promise.allSettled(promisedResults);
@@ -175,6 +234,10 @@ export default class {
     // Count songs that couldn't be found
     const songs: SongMetadata[] = searchResults.reduce((accum: SongMetadata[], result) => {
       if (result.status === 'fulfilled') {
+        if (result.value.length === 0) {
+          nSongsNotFound++;
+        }
+
         for (const v of result.value) {
           accum.push({
             ...v,

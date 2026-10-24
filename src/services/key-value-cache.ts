@@ -41,11 +41,8 @@ export default class KeyValueCacheProvider {
         return JSON.parse(cachedResult.value) as F;
       }
 
-      await prisma.keyValueCache.delete({
-        where: {
-          key,
-        },
-      });
+      // Keep the expired row until upsert replaces it. Concurrent readers may
+      // have observed the same row, so deleting it here races their refreshes.
     }
 
     debug(`Cache miss: ${key}`);

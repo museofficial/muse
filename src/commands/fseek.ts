@@ -46,6 +46,10 @@ export default class implements Command {
 
     const seekTime = durationStringToSeconds(seekValue);
 
+    if (!Number.isFinite(seekTime) || seekTime <= 0) {
+      throw new Error('invalid seek value');
+    }
+
     if (seekTime + player.getPosition() > currentSong.length) {
       throw new Error('can\'t seek past the end of the song');
     }

@@ -32,6 +32,7 @@ export default class implements Command {
     }
 
     player.loopCurrentSong = !player.loopCurrentSong;
+    player.refreshPlayingMessage();
 
     await interaction.reply((player.loopCurrentSong ? 'looped :)' : 'stopped looping :('));
   }

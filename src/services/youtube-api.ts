@@ -8,12 +8,16 @@ import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
 import {parseTime} from '../utils/time.js';
 import getYouTubeID from 'get-youtube-id';
+import {buildAudioFallbackQuery, rankAudioFallbackCandidates} from '../utils/youtube-audio-fallback.js';
 
 interface VideoDetailsResponse {
   id: string;
   contentDetails: {
     videoId: string;
     duration: string;
+    contentRating?: {
+      ytRating?: string;
+    };
   };
   snippet: {
     title: string;
@@ -80,26 +84,7 @@ export default class {
   }
 
   async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
-    const params = {
-      searchParams: {
-        part: 'snippet',
-        q: query,
-        type: 'video',
-        maxResults: '10',
-      },
-    };
-
-    const {items} = await this.cache.wrap(
-      async () => this.got('search', params).json() as Promise<SearchResponse>,
-      params,
-      {
-        expiresIn: ONE_HOUR_IN_SECONDS,
-      },
-    );
-
-    const ids = items
-      .map(item => item.id.videoId)
-      .filter(Boolean);
+    const ids = await this.searchVideoIDs(query);
 
     if (ids.length === 0) {
       return [];
@@ -113,6 +98,34 @@ export default class {
     return firstVideo
       ? this.getMetadataFromVideo({video: firstVideo, shouldSplitChapters})
       : [];
+  }
+
+  async findAudioFallback(song: SongMetadata): Promise<SongMetadata | null> {
+    if (song.source !== MediaSource.Youtube || song.isLive) {
+      return null;
+    }
+
+    const query = buildAudioFallbackQuery(song);
+    if (!query) {
+      return null;
+    }
+
+    const ids = (await this.searchVideoIDs(query, {videoCategoryId: '10'}))
+      .filter(id => id !== song.url);
+    if (ids.length === 0) {
+      return null;
+    }
+
+    const videos = await this.getVideosByID(ids);
+    const candidates = ids
+      .map(id => videos.find(video => video.id === id))
+      .filter((video): video is VideoDetailsResponse => (
+        Boolean(video)
+        && video!.contentDetails.contentRating?.ytRating !== 'ytAgeRestricted'
+      ))
+      .flatMap(video => this.getMetadataFromVideo({video, shouldSplitChapters: false}));
+
+    return rankAudioFallbackCandidates(song, candidates).at(0) ?? null;
   }
 
   async getVideo(url: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
@@ -156,10 +169,15 @@ export default class {
     const playlistVideos: PlaylistItem[] = [];
     const videoDetailsPromises: Array<Promise<void>> = [];
     const videoDetails: VideoDetailsResponse[] = [];
+    const requestedPageTokens = new Set<string>();
 
     let nextToken: string | undefined;
 
-    while (playlistVideos.length < playlist.contentDetails.itemCount) {
+    do {
+      if (nextToken) {
+        requestedPageTokens.add(nextToken);
+      }
+
       const playlistItemsParams = {
         searchParams: {
           part: 'id, contentDetails',
@@ -183,11 +201,17 @@ export default class {
 
       // Start fetching extra details about videos
       // PlaylistItem misses some details, eg. if the video is a livestream
-      videoDetailsPromises.push((async () => {
-        const videoDetailItems = await this.getVideosByID(items.map(item => item.contentDetails.videoId));
-        videoDetails.push(...videoDetailItems);
-      })());
-    }
+      if (items.length > 0) {
+        const detailsPromise = (async () => {
+          const videoDetailItems = await this.getVideosByID(items.map(item => item.contentDetails.videoId));
+          videoDetails.push(...videoDetailItems);
+        })();
+        // Handle rejection immediately while pagination is still awaiting I/O.
+        // Promise.all below still propagates the original failure to the caller.
+        void detailsPromise.catch(() => undefined);
+        videoDetailsPromises.push(detailsPromise);
+      }
+    } while (nextToken && !requestedPageTokens.has(nextToken));
 
     await Promise.all(videoDetailsPromises);
 
@@ -257,7 +281,7 @@ export default class {
   }
 
   private parseChaptersFromDescription(description: string, videoDurationSeconds: number) {
-    const map = new Map<string, {offset: number; length: number}>();
+    const chapters: Array<[string, {offset: number; length: number}]> = [];
     let foundFirstTimestamp = false;
 
     const foundTimestamps: Array<{name: string; offset: number}> = [];
@@ -268,7 +292,7 @@ export default class {
       }
 
       if (!foundFirstTimestamp) {
-        if (/0{1,2}:00/.test(timestamps[0][0])) {
+        if (/^0+(?::0+)+$/u.test(timestamps[0][0])) {
           foundFirstTimestamp = true;
         } else {
           continue;
@@ -282,20 +306,52 @@ export default class {
       foundTimestamps.push({name: chapterName, offset: seconds});
     }
 
+    const hasInvalidChapter = foundTimestamps.some(({name, offset}, index) => (
+      !name
+      || offset >= videoDurationSeconds
+      || (index > 0 && offset <= foundTimestamps[index - 1].offset)
+    ));
+
+    if (foundTimestamps.length === 0 || hasInvalidChapter) {
+      return null;
+    }
+
     for (const [i, {name, offset}] of foundTimestamps.entries()) {
-      map.set(name, {
+      chapters.push([name, {
         offset,
         length: i === foundTimestamps.length - 1
           ? videoDurationSeconds - offset
           : foundTimestamps[i + 1].offset - offset,
-      });
+      }]);
     }
 
-    if (!map.size) {
-      return null;
+    return chapters;
+  }
+
+  private async searchVideoIDs(query: string, options: {videoCategoryId?: string} = {}): Promise<string[]> {
+    const searchParams: Record<string, string> = {
+      part: 'snippet',
+      q: query,
+      type: 'video',
+      maxResults: '10',
+    };
+
+    if (options.videoCategoryId) {
+      searchParams.videoCategoryId = options.videoCategoryId;
     }
 
-    return map;
+    const params = {searchParams};
+    const {items} = await this.cache.wrap(
+      async () => this.got('search', params).json() as Promise<SearchResponse>,
+      params,
+      {
+        expiresIn: ONE_HOUR_IN_SECONDS,
+      },
+    );
+
+    return items
+      .map(item => item.id.videoId)
+      .filter(Boolean);
   }
 
   private async getVideosByID(videoIDs: string[]): Promise<VideoDetailsResponse[]> {

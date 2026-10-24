@@ -22,7 +22,19 @@ export default class {
 
   async getAlbum(url: string, playlistLimit: number): Promise<[SpotifyTrack[], QueuedPlaylist]> {
     const uri = spotifyURI.parse(url) as spotifyURI.Album;
-    const [{body: album}, {body: {items}}] = await Promise.all([this.spotify.getAlbum(uri.id), this.spotify.getAlbumTracks(uri.id, {limit: 50})]);
+    let [{body: album}, {body: tracksResponse}] = await Promise.all([this.spotify.getAlbum(uri.id), this.spotify.getAlbumTracks(uri.id, {limit: 50})]);
+    const items = [...tracksResponse.items];
+
+    while (tracksResponse.next) {
+      // eslint-disable-next-line no-await-in-loop
+      ({body: tracksResponse} = await this.spotify.getAlbumTracks(uri.id, {
+        limit: parseInt(new URL(tracksResponse.next).searchParams.get('limit') ?? '50', 10),
+        offset: parseInt(new URL(tracksResponse.next).searchParams.get('offset') ?? '0', 10),
+      }));
+
+      items.push(...tracksResponse.items);
+    }
+
     const tracks = this.limitTracks(items, playlistLimit).map(this.toSpotifyTrack);
     const playlist = {title: album.name, source: album.href};
 

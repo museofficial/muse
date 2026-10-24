@@ -16,9 +16,9 @@ RUN apt-get update \
     python3-venv \
     && python3 -m venv /opt/yt-dlp \
     && if [ -n "${YT_DLP_VERSION}" ]; then \
-        /opt/yt-dlp/bin/pip install --no-cache-dir "yt-dlp==${YT_DLP_VERSION}"; \
+        /opt/yt-dlp/bin/pip install --no-cache-dir "yt-dlp[default]==${YT_DLP_VERSION}"; \
     else \
-        /opt/yt-dlp/bin/pip install --no-cache-dir yt-dlp; \
+        /opt/yt-dlp/bin/pip install --no-cache-dir "yt-dlp[default]"; \
     fi \
     && ln -s /opt/yt-dlp/bin/yt-dlp /usr/local/bin/yt-dlp \
     && apt-get autoclean \

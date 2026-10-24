@@ -7,6 +7,7 @@ import Command from './commands/index.js';
 import debug from './utils/debug.js';
 import handleGuildCreate from './events/guild-create.js';
 import handleVoiceStateUpdate from './events/voice-state-update.js';
+import handleMessageReactionAdd from './events/message-reaction-add.js';
 import errorMsg from './utils/error-msg.js';
 import {isUserInVoice} from './utils/channels.js';
 import Config from './services/config.js';
@@ -14,6 +15,25 @@ import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v10';
 import registerCommandsOnGuild from './utils/register-commands-on-guild.js';
+import {BOT_INVITE_PERMISSIONS} from './utils/constants.js';
+
+const sanitizeErrorDetail = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .replace(/https?:\/\/\S+/gi, '[URL]')
+    .replace(/(["']?\b(?:api[-_]?key|key|token|authorization|cookie)["']?\s*[:=]\s*)(?:["'][^"']*["']|Bearer\s+[^,;\s]+|[^,;\s}\]]+)/gi, '$1[redacted]')
+    .replace(/\b(authorization|cookie)\s*[:=]\s*[^\r\n]*/gi, '$1: [redacted]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 500);
+};
+
+const sanitizeErrorForLog = (error: unknown) => {
+  const name = error instanceof Error ? error.name : 'Error';
+  const detail = sanitizeErrorDetail(error);
+
+  return `${name}: ${detail || 'unknown error'}`;
+};
 
 @injectable()
 export default class {
@@ -102,14 +122,22 @@ export default class {
           }
         }
       } catch (error: unknown) {
-        debug(error);
+        const sanitizedError = sanitizeErrorForLog(error);
+        debug(sanitizedError);
+        const interactionName = interaction.isCommand() || interaction.isAutocomplete()
+          ? `/${interaction.commandName}`
+          : interaction.isButton()
+            ? `button:${interaction.customId}`
+            : interaction.type.toString();
+        console.error(`Discord interaction failed (${interactionName}, guild=${interaction.guildId ?? 'dm'}, channel=${interaction.channelId ?? 'unknown'}, user=${interaction.user.id}): ${sanitizedError}`);
+        const userSafeError = new Error(sanitizeErrorDetail(error));
 
         // This can fail if the message was deleted, and we don't want to crash the whole bot
         try {
           if ((interaction.isCommand() || interaction.isButton()) && (interaction.replied || interaction.deferred)) {
-            await interaction.editReply(errorMsg(error as Error));
+            await interaction.editReply(errorMsg(userSafeError));
           } else if (interaction.isCommand() || interaction.isButton()) {
-            await interaction.reply({content: errorMsg(error as Error), ephemeral: true});
+            await interaction.reply({content: errorMsg(userSafeError), ephemeral: true});
           }
         } catch {}
       }
@@ -157,7 +185,7 @@ export default class {
         status: this.config.BOT_STATUS,
       });
 
-      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700160`);
+      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=${BOT_INVITE_PERMISSIONS}`);
     });
 
     this.client.on('error', console.error);
@@ -165,6 +193,13 @@ export default class {
 
     this.client.on('guildCreate', handleGuildCreate);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
+    this.client.on('messageReactionAdd', async (reaction, user) => {
+      try {
+        await handleMessageReactionAdd(reaction, user);
+      } catch (error: unknown) {
+        console.error(`Music reaction control failed: ${sanitizeErrorForLog(error)}`);
+      }
+    });
     await this.client.login();
   }
 }

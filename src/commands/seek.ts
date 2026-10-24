@@ -39,14 +39,22 @@ export default class implements Command {
       throw new Error('can\'t seek in a livestream');
     }
 
-    const time = interaction.options.getString('time')!;
+    const time = interaction.options.getString('time')!.trim();
 
     let seekTime = 0;
 
     if (time.includes(':')) {
+      if (!/^\+?\d+(?::\d+)+$/.test(time)) {
+        throw new Error('invalid seek value');
+      }
+
       seekTime = parseTime(time);
     } else {
       seekTime = durationStringToSeconds(time);
+    }
+
+    if (!Number.isFinite(seekTime) || seekTime < 0) {
+      throw new Error('invalid seek value');
     }
 
     if (seekTime > currentSong.length) {
