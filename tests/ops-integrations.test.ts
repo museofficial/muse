@@ -480,11 +480,11 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
   });
 
   it.each([
-    [404, 'Not Found', true],
-    [410, 'Gone', true],
-    [403, 'Forbidden', false],
-    [429, 'Too Many Requests', false],
-  ] as const)('preserves HTTP %s playback handling after checked SoundCloud formats are rejected', async (status, reason, permanent) => {
+    [404, 'Not Found', true, 1],
+    [410, 'Gone', true, 1],
+    [403, 'Forbidden', false, 3],
+    [429, 'Too Many Requests', false, 1],
+  ] as const)('preserves HTTP %s playback handling after checked SoundCloud formats are rejected', async (status, reason, permanent, ffmpegAttempts) => {
     dependencyMocks.execa
       .mockRejectedValueOnce({stderr: 'ERROR: [soundcloud] fixture: Requested format is not available. Use --list-formats for a list of available formats'})
       .mockResolvedValueOnce({stdout: VALID_MEDIA_RESPONSE});
@@ -512,7 +512,8 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
         await expect(player.play()).rejects.toBeInstanceOf(FfmpegStartupError);
         expect(player.getCurrent()).toBe(song);
         expect(player.status).toBe(STATUS.PAUSED);
-        expect(warning).not.toHaveBeenCalled();
+        // Only 403 is retried, and each retry logs one warning.
+        expect(warning).toHaveBeenCalledTimes(ffmpegAttempts - 1);
       }
 
       expect(dependencyMocks.execa).toHaveBeenCalledTimes(2);
@@ -523,7 +524,7 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
       expect(secondArgs).not.toContain('--check-formats');
       expect(secondArgs).not.toContain('--cookies');
       expect(dependencyMocks.execa.mock.calls.map(call => call[2])).toEqual([{timeout: 45_000}, {timeout: 45_000}]);
-      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(ffmpegAttempts);
       expect(dependencyMocks.ffmpeg).toHaveBeenCalledWith('https://media.example/requested.webm');
       const command = dependencyMocks.ffmpeg.mock.results[0].value as ReturnType<typeof makeFfmpegCommand>;
       expect(command.inputOptions).toHaveBeenCalledWith(expect.arrayContaining([
