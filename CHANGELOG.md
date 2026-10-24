@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Include the permissions needed for emoji controls in the bot invite link, and explain how to update permissions for bots already in a server.
 - Add tests for the playback display, controls, permissions, update interval, and duplicate removal. Fix playback tests that failed on Windows.
 - Wait until the `available_at` time reported by yt-dlp before starting FFmpeg, and retry the same media URL (after 5s, then 10s) when it returns 403 Forbidden at startup.
+- Prevent cancelled playback from starting FFmpeg after an availability wait or a 403 retry delay.
 - Resolve the next queued song's media URL during the last minute of the current song so transitions skip the extraction and availability wait.
 
 ## [2.11.8] - 2026-09-20
