@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
     }>,
     restPut: vi.fn(),
     restSetToken: vi.fn(),
+    reactionHandler: vi.fn(),
     settingUpsert: vi.fn(),
     spinner,
     voiceStateHandler: vi.fn(),
@@ -71,16 +72,22 @@ vi.mock('../src/events/voice-state-update.js', () => ({
   default: mocks.voiceStateHandler,
 }));
 
+vi.mock('../src/events/message-reaction-add.js', () => ({
+  default: mocks.reactionHandler,
+}));
+
 vi.mock('../src/services/player.js', () => ({
   default: class {
     readonly fileCache: unknown;
     readonly findAudioFallback: (song: unknown) => Promise<unknown>;
     readonly guildId: string;
+    readonly playingMessageUpdateIntervalSeconds: number;
 
-    constructor(fileCache: unknown, guildId: string, findAudioFallback: (song: unknown) => Promise<unknown>) {
+    constructor(fileCache: unknown, guildId: string, findAudioFallback: (song: unknown) => Promise<unknown>, playingMessageUpdateIntervalSeconds: number) {
       this.fileCache = fileCache;
       this.guildId = guildId;
       this.findAudioFallback = findAudioFallback;
+      this.playingMessageUpdateIntervalSeconds = playingMessageUpdateIntervalSeconds;
       mocks.playerConstructions.push(this);
     }
   },
@@ -293,7 +300,7 @@ describe('Discord command registration and ready lifecycle', () => {
       status: 'idle',
     });
     expect(mocks.spinner.succeed).toHaveBeenCalledAfter(setPresence);
-    expect(mocks.spinner.succeed).toHaveBeenCalledWith('Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=application-id&scope=bot%20applications.commands&permissions=36700160');
+    expect(mocks.spinner.succeed).toHaveBeenCalledWith('Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=application-id&scope=bot%20applications.commands&permissions=36793408');
   });
 
   it('omits an empty activity URL from presence', async () => {
@@ -321,6 +328,16 @@ describe('Discord command registration and ready lifecycle', () => {
     expect(consoleError).toHaveBeenCalledWith(clientError);
     expect(mocks.debug).toHaveBeenCalledWith('gateway trace');
     consoleError.mockRestore();
+  });
+
+  it('routes message reactions through the music-control boundary', async () => {
+    const {handlers} = await registerBot(true);
+    const reaction = {emoji: {name: '⏯️'}};
+    const user = {bot: false, id: 'member-id'};
+
+    await invoke(handlers, 'messageReactionAdd', reaction, user);
+
+    expect(mocks.reactionHandler).toHaveBeenCalledWith(reaction, user);
   });
 });
 
@@ -484,7 +501,9 @@ describe('per-guild Player isolation', () => {
   it('reuses one Player within a guild and creates a separate Player for another guild', async () => {
     const fileCache = {kind: 'fake cache'};
     const youtubeAPI = {findAudioFallback: vi.fn().mockResolvedValue({title: 'fallback'})};
-    const manager = new PlayerManager(fileCache as never, youtubeAPI as never);
+    const manager = new PlayerManager(fileCache as never, youtubeAPI as never, {
+      PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS: 7,
+    } as never);
 
     const guildA = manager.get('guild-a');
     const guildAAgain = manager.get('guild-a');
@@ -494,6 +513,7 @@ describe('per-guild Player isolation', () => {
     expect(guildB).not.toBe(guildA);
     expect(mocks.playerConstructions.map(player => player.guildId)).toEqual(['guild-a', 'guild-b']);
     expect(mocks.playerConstructions.every(player => player.fileCache === fileCache)).toBe(true);
+    expect(mocks.playerConstructions.every(player => player.playingMessageUpdateIntervalSeconds === 7)).toBe(true);
 
     const song = {title: 'restricted'};
     await mocks.playerConstructions[0].findAudioFallback(song);

@@ -35,6 +35,15 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 
+The `/play` message has emoji controls for previous track, rewind, pause/resume,
+fast-forward, next track, stop, and shuffle. If Muse is already in your server,
+make sure its role has **View Channel**, **Send Messages**, **Embed Links**,
+**Read Message History**, **Add Reactions**, and **Manage Messages** permissions.
+**Manage Messages** lets Muse clear your reaction so you can click the same
+control again. Without it, remove your own reaction before clicking that control
+again. Check the text channel's permission overrides too. The invite link includes
+these permissions for new installations.
+
 A 64-bit OS is required to run Muse.
 
 ### Versioning
@@ -108,6 +117,40 @@ npm test
 ```
 
 ## ⚙️ Additional configuration (advanced)
+
+### Playback display and controls
+
+The `/play` message shows the current song, progress bar, and upcoming songs
+with nearly real-time updates (configurable). The timer updates every five
+seconds by default. To change this, set `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS`
+in your `.env` file to a whole number of seconds greater than zero, then restart
+Muse.
+
+To use the emoji controls, you must be in the same voice channel as Muse and
+be allowed to use the matching command in the text channel containing the
+message. Being a listener does not grant extra permissions. You can change who
+can use commands and where under **Server Settings > Integrations > Muse**.
+Muse checks permissions each time you click a control. If it cannot check them,
+it ignores the click.
+
+| Control | Command you need permission to use |
+| --- | --- |
+| Previous Track | `/unskip` |
+| Next Track | `/next` |
+| Rewind | `/seek` |
+| Fast-forward | `/fseek` |
+| Pause / Resume | `/pause` while playing; `/resume` while paused |
+| Stop | `/stop` |
+| Shuffle | `/shuffle` |
+
+Rewind and fast-forward move ten seconds within a song and do not work on
+livestreams. Private messages that only you can see keep updating for as long
+as Discord allows, but do not have emoji controls.
+
+Shuffling removes repeated songs from the upcoming queue, including songs
+that are playing now or have already played. When you add a playlist with
+shuffle enabled, Muse removes repeats within that playlist. Different chapters
+of the same track stay separate.
 
 ### Cache
 

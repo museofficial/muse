@@ -316,6 +316,26 @@ describe('/queue', () => {
     expect(embed.fields?.find(field => field.name === 'Page')?.value).toBe('1 out of 1');
   });
 
+  it('advances a five-minute track slider on each five-second refresh', () => {
+    let position = 0;
+    const current = {...makeSong(1), length: 300};
+    const player = {
+      ...makeQueuePlayer(0),
+      status: STATUS.PLAYING,
+      getCurrent: () => current,
+      getPosition: () => position,
+    };
+    const progressLine = () => {
+      const description = buildQueueEmbed(player as never, 1, 10).toJSON().description ?? '';
+      return description.split('\n').find(line => line.includes('[00:')) ?? '';
+    };
+
+    const initialProgressLine = progressLine();
+    position = 5;
+
+    expect(progressLine()).not.toBe(initialProgressLine);
+  });
+
   it('does not expose a phantom page for an exact multiple of upcoming tracks', () => {
     const player = makeQueuePlayer(10);
     const embed = buildQueueEmbed(player as never, 1, 10).toJSON();

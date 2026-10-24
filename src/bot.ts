@@ -7,6 +7,7 @@ import Command from './commands/index.js';
 import debug from './utils/debug.js';
 import handleGuildCreate from './events/guild-create.js';
 import handleVoiceStateUpdate from './events/voice-state-update.js';
+import handleMessageReactionAdd from './events/message-reaction-add.js';
 import errorMsg from './utils/error-msg.js';
 import {isUserInVoice} from './utils/channels.js';
 import Config from './services/config.js';
@@ -14,6 +15,7 @@ import {generateDependencyReport} from '@discordjs/voice';
 import {REST} from '@discordjs/rest';
 import {Routes} from 'discord-api-types/v10';
 import registerCommandsOnGuild from './utils/register-commands-on-guild.js';
+import {BOT_INVITE_PERMISSIONS} from './utils/constants.js';
 
 const sanitizeErrorDetail = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
@@ -181,7 +183,7 @@ export default class {
         status: this.config.BOT_STATUS,
       });
 
-      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=36700160`);
+      spinner.succeed(`Ready! Invite the bot with https://discordapp.com/oauth2/authorize?client_id=${this.client.user?.id ?? ''}&scope=bot%20applications.commands&permissions=${BOT_INVITE_PERMISSIONS}`);
     });
 
     this.client.on('error', console.error);
@@ -189,6 +191,13 @@ export default class {
 
     this.client.on('guildCreate', handleGuildCreate);
     this.client.on('voiceStateUpdate', handleVoiceStateUpdate);
+    this.client.on('messageReactionAdd', async (reaction, user) => {
+      try {
+        await handleMessageReactionAdd(reaction, user);
+      } catch (error: unknown) {
+        console.error(`Music reaction control failed: ${sanitizeErrorForLog(error)}`);
+      }
+    });
     await this.client.login();
   }
 }

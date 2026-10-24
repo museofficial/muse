@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Show the current song and upcoming songs in the original `/play` message with nearly real-time updates (configurable).
+- Update the timer every five seconds by default, and pause it when the music is paused. Change the update interval with `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS` in `.env`, then restart Muse.
+- Make the progress bar move in smaller steps so it is easier to see how far a song has played.
+- Add emoji controls for pause/resume, stop, rewind, and fast-forward. You can click the same control again to reuse it. Rewind and fast-forward move ten seconds within a song, keep paused music paused, and do not work on livestreams.
+- Add separate Previous Track (⏮️) and Next Track (⏭️) controls, matching `/unskip` and `/next`.
+- Add Shuffle (🔀) next to Stop (⏹️), and show the new song order after shuffling.
+- Require listeners to be in the same voice channel as Muse and have permission to use the matching command. Keep role, member, and channel restrictions in place. If Muse cannot check permissions, it ignores the click.
+- Handle quick clicks in order, and ignore clicks on old playback messages or from listeners who have left the voice channel.
+- Keep music paused when seeking while audio is still buffering, and prevent an older seek from pausing newer playback.
+- Show "Playback stopped." or "Playback finished." when the music ends, and remove the emoji controls. Keep message updates in order and stop updating a message if an edit fails.
+- Preserve the stopped or finished display if playback ends while the first `/play` response is being sent.
+- Keep private `/play` messages that only you can see updated for as long as Discord allows, without emoji controls.
+- Redact interaction webhook tokens from playback message error logs.
+- Remove repeated songs when shuffling the upcoming queue, including songs that are playing now or have already played. Keep the current song and previously played songs in place. Different chapters and tracks from different sources stay separate.
+- When adding a playlist with shuffle enabled, remove repeats within that playlist without changing songs already queued.
+- Include the permissions needed for emoji controls in the bot invite link, and explain how to update permissions for bots already in a server.
+- Add tests for the playback display, controls, permissions, update interval, and duplicate removal. Fix playback tests that failed on Windows.
+
 ## [2.11.8] - 2026-09-20
 
 - Retry stalled initial voice handshakes within a bounded wait, share concurrent joins, and report the failed network phase without exposing voice credentials.

@@ -5,6 +5,7 @@ import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
 import prismMedia from 'prism-media';
 import shuffle from 'array-shuffle';
+import uniqueSongs from '../utils/unique-songs.js';
 import {
   AudioPlayer,
   AudioPlayerState,
@@ -36,6 +37,7 @@ import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getSoundCloudMediaSource, getYouTubeMediaSource, YtDlpMediaUnavailableError} from '../utils/yt-dlp.js';
 import {Setting} from '@prisma/client';
+import {DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS} from '../utils/constants.js';
 
 export {DEFAULT_VOLUME, MediaSource, STATUS};
 export type {AgeRestrictedFallbackResolver, PlayerEvents, QueuedPlaylist, QueuedSong, SongMetadata};
@@ -93,6 +95,16 @@ const getFfmpegStartupError = (error: unknown) => {
 };
 
 type PlayerPlaybackAttemptContext = PlaybackAttemptContext<QueuedSong, VoiceConnection>;
+export type PlayingMessageTerminalState = 'finished' | 'stopped';
+type PlayingMessageUpdater = (terminalState?: PlayingMessageTerminalState) => Promise<void>;
+type PlayingMessageState = {
+  updater: PlayingMessageUpdater;
+  id?: string;
+  terminalState?: PlayingMessageTerminalState;
+  updateInFlight: boolean;
+  updateQueued: boolean;
+  retired: boolean;
+};
 
 export default class {
   public voiceConnection: VoiceConnection | null = null;
@@ -115,6 +127,9 @@ export default class {
   private readonly playbackAttempts: PlaybackAttemptTracker<QueuedSong, VoiceConnection>;
   private readonly programmaticallyStoppedAudioPlayers = new WeakSet<AudioPlayer>();
   private playPositionInterval: NodeJS.Timeout | undefined;
+  private playingMessage?: PlayingMessageState;
+  private secondsSincePlayingMessageUpdate = 0;
+  private readonly playingMessageUpdateIntervalSeconds: number;
 
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
@@ -127,10 +142,16 @@ export default class {
   private voiceActivitySessionGeneration = 0;
   private hasRegisteredVoiceActivityListener = false;
 
-  constructor(fileCache: FileCacheProvider, guildId: string, ageRestrictedFallbackResolver?: AgeRestrictedFallbackResolver) {
+  constructor(
+    fileCache: FileCacheProvider,
+    guildId: string,
+    ageRestrictedFallbackResolver?: AgeRestrictedFallbackResolver,
+    playingMessageUpdateIntervalSeconds = DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
+  ) {
     this.fileCache = fileCache;
     this.guildId = guildId;
     this.ageRestrictedFallbackResolver = ageRestrictedFallbackResolver;
+    this.playingMessageUpdateIntervalSeconds = playingMessageUpdateIntervalSeconds;
     this.playbackAttempts = new PlaybackAttemptTracker(() => ({
       currentSong: this.getCurrent(),
       queueEntryVersion: this.getCurrentQueueEntryId(),
@@ -201,9 +222,14 @@ export default class {
     }
   }
 
-  async seek(positionSeconds: number): Promise<void> {
+  async seek(positionSeconds: number, {preservePausedState = false} = {}): Promise<void> {
     const attempt = this.playbackAttempts.begin();
-    await this.seekWithAttempt(positionSeconds, attempt);
+    const stayPaused = preservePausedState && this.status === STATUS.PAUSED;
+    try {
+      await this.seekWithAttempt(positionSeconds, attempt, stayPaused);
+    } finally {
+      this.requestPlayingMessageUpdate();
+    }
   }
 
   async forwardSeek(positionSeconds: number): Promise<void> {
@@ -212,6 +238,43 @@ export default class {
 
   getPosition(): number {
     return this.positionInSeconds;
+  }
+
+  /**
+   * Registers the renderer for the live response created when /play starts a
+   * playback session. Older responses can still finish their terminal edits.
+   */
+  setPlayingMessageUpdater(updater: PlayingMessageUpdater, messageId?: string): void {
+    this.playingMessage = {
+      updater,
+      id: messageId,
+      updateInFlight: false,
+      updateQueued: false,
+      retired: false,
+    };
+    this.secondsSincePlayingMessageUpdate = 0;
+  }
+
+  /** Binds a published response only while its renderer still owns the session. */
+  setPlayingMessageId(updater: PlayingMessageUpdater, messageId: string): boolean {
+    const message = this.playingMessage;
+    if (!message || message.updater !== updater || message.terminalState !== undefined) {
+      return false;
+    }
+
+    message.id = messageId;
+    return true;
+  }
+
+  /** Returns whether a reaction belongs to this player's current response. */
+  isPlayingMessage(messageId: string): boolean {
+    // Retire controls as soon as playback ends, even if the final edit is pending.
+    return this.playingMessage?.terminalState === undefined && this.playingMessage?.id === messageId;
+  }
+
+  /** Requests an immediate render after an externally initiated control. */
+  refreshPlayingMessage(): void {
+    this.requestPlayingMessageUpdate();
   }
 
   async play(allowAgeRestrictedFallback = true): Promise<void> {
@@ -232,6 +295,7 @@ export default class {
     }
 
     this.stopTrackingPosition();
+    this.requestPlayingMessageUpdate();
   }
 
   async forward(skip: number): Promise<void> {
@@ -271,6 +335,8 @@ export default class {
       }
 
       throw error;
+    } finally {
+      this.requestPlayingMessageUpdate();
     }
   }
 
@@ -400,6 +466,8 @@ export default class {
       }
 
       throw error;
+    } finally {
+      this.requestPlayingMessageUpdate();
     }
   }
 
@@ -438,12 +506,16 @@ export default class {
     if (this.getCurrent() !== currentSong) {
       this.currentQueueEntryVersion++;
     }
+
+    this.requestPlayingMessageUpdate();
   }
 
   shuffle(): void {
-    const shuffledSongs = shuffle(this.queue.slice(this.queuePosition + 1));
+    const historyAndCurrent = this.queue.slice(0, this.queuePosition + 1);
+    const shuffledSongs = shuffle(uniqueSongs(this.getQueue(), historyAndCurrent));
 
-    this.queue = [...this.queue.slice(0, this.queuePosition + 1), ...shuffledSongs];
+    this.queue = [...historyAndCurrent, ...shuffledSongs];
+    this.requestPlayingMessageUpdate();
   }
 
   clear(): void {
@@ -458,15 +530,18 @@ export default class {
 
     this.queuePosition = 0;
     this.queue = newQueue;
+    this.requestPlayingMessageUpdate();
   }
 
   removeFromQueue(index: number, amount = 1): void {
     this.queue.splice(this.queuePosition + index, amount);
+    this.requestPlayingMessageUpdate();
   }
 
   removeCurrent(): void {
     this.queue = [...this.queue.slice(0, this.queuePosition), ...this.queue.slice(this.queuePosition + 1)];
     this.currentQueueEntryVersion++;
+    this.requestPlayingMessageUpdate();
   }
 
   queueSize(): number {
@@ -482,6 +557,12 @@ export default class {
     this.queuePosition = 0;
     this.queue = [];
     this.currentQueueEntryVersion++;
+    // Serialize a terminal edit behind any progress edit already in flight.
+    if (this.playingMessage) {
+      this.playingMessage.terminalState = 'stopped';
+    }
+
+    this.requestPlayingMessageUpdate();
   }
 
   move(from: number, to: number): QueuedSong {
@@ -490,6 +571,7 @@ export default class {
     }
 
     this.queue.splice(this.queuePosition + to, 0, this.queue.splice(this.queuePosition + from, 1)[0]);
+    this.requestPlayingMessageUpdate();
 
     return this.queue[this.queuePosition + to];
   }
@@ -594,7 +676,7 @@ export default class {
     }
   }
 
-  private async seekWithAttempt(positionSeconds: number, attempt: PlaybackAttemptToken): Promise<void> {
+  private async seekWithAttempt(positionSeconds: number, attempt: PlaybackAttemptToken, stayPaused = false): Promise<void> {
     this.status = STATUS.PAUSED;
 
     const currentSong = this.getCurrent();
@@ -625,6 +707,20 @@ export default class {
 
     if (positionSeconds > currentSong.length) {
       throw new Error('Seek position is outside the range of the song.');
+    }
+
+    if (stayPaused) {
+      // A buffering AudioPlayer cannot be paused. Keep only the new resume
+      // position and let play() recreate the resource when playback is wanted.
+      // Ownership was checked above, before retiring the current resource.
+      this.stopTrackingPosition();
+      this.stopAudioPlayer(true);
+      this.audioPlayer = null;
+      this.audioResource = null;
+      this.positionInSeconds = positionSeconds;
+      this.nowPlaying = currentSong;
+      this.nowPlayingQueueEntryVersion = currentQueueEntryVersion;
+      return;
     }
 
     let realPositionSeconds = positionSeconds;
@@ -895,7 +991,63 @@ export default class {
 
     this.playPositionInterval = setInterval(() => {
       this.positionInSeconds++;
+      this.secondsSincePlayingMessageUpdate++;
+      // Reuse the playback clock so paused and idle time never trigger edits.
+      if (this.secondsSincePlayingMessageUpdate >= this.playingMessageUpdateIntervalSeconds) {
+        this.secondsSincePlayingMessageUpdate = 0;
+        this.requestPlayingMessageUpdate();
+      }
     }, 1000);
+  }
+
+  /**
+   * Serializes edits for each response. Replaced responses may finish their
+   * terminal update, but must not render progress from the new session.
+   */
+  private requestPlayingMessageUpdate(message = this.playingMessage): void {
+    if (!message || message.retired
+      || (message !== this.playingMessage && message.terminalState === undefined)) {
+      return;
+    }
+
+    if (message === this.playingMessage) {
+      this.secondsSincePlayingMessageUpdate = 0;
+    }
+
+    if (message.updateInFlight) {
+      message.updateQueued = true;
+      return;
+    }
+
+    message.updateInFlight = true;
+    const {terminalState} = message;
+    void message.updater(terminalState)
+      .then(() => {
+        if (terminalState && message.terminalState === terminalState) {
+          // Terminal responses no longer receive timer edits or controls.
+          message.retired = true;
+          if (this.playingMessage === message) {
+            this.playingMessage = undefined;
+          }
+        }
+      })
+      .catch((error: unknown) => {
+        // A failed old response must not retire the new session's response.
+        message.retired = true;
+        if (this.playingMessage === message) {
+          this.playingMessage = undefined;
+        }
+
+        const detail = error instanceof Error ? `${error.name}: ${error.message}` : error;
+        console.warn(`Could not update playing message for guild ${this.guildId}: ${sanitizeFfmpegError(detail)}`);
+      })
+      .finally(() => {
+        message.updateInFlight = false;
+        if (message.updateQueued) {
+          message.updateQueued = false;
+          this.requestPlayingMessageUpdate(message);
+        }
+      });
   }
 
   private stopTrackingPosition(): void {
@@ -1072,6 +1224,12 @@ export default class {
     this.stopTrackingPosition();
     this.status = STATUS.IDLE;
     this.stopAudioPlayer(true);
+    // Allow the updater to replace the now-empty queue with a finished state.
+    if (this.playingMessage) {
+      this.playingMessage.terminalState = 'finished';
+    }
+
+    this.requestPlayingMessageUpdate();
 
     const settings = await getGuildSettings(this.guildId);
 

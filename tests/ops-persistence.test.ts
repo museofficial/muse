@@ -379,7 +379,9 @@ describe('SQLite persistence', () => {
       const {default: PlayerManager} = await import('../src/managers/player.js');
       const fileCache = {};
       const youtubeAPI = {findAudioFallback: vi.fn().mockResolvedValue(null)};
-      const firstManager = new PlayerManager(fileCache as never, youtubeAPI as never);
+      const firstManager = new PlayerManager(fileCache as never, youtubeAPI as never, {
+        PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS: 5,
+      } as never);
       firstManager.get('persistent-guild').add({
         addedInChannelId: 'persistent-channel',
         artist: 'Persistent artist',
@@ -394,7 +396,9 @@ describe('SQLite persistence', () => {
         url: 'persistent-video',
       });
 
-      const reopenedManager = new PlayerManager(fileCache as never, youtubeAPI as never);
+      const reopenedManager = new PlayerManager(fileCache as never, youtubeAPI as never, {
+        PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS: 5,
+      } as never);
       expect(firstManager.get('persistent-guild').getCurrent()?.title).toBe('Only in memory');
       expect(reopenedManager.get('persistent-guild').getCurrent()).toBeNull();
       expect(reopenedManager.get('persistent-guild').getQueue()).toEqual([]);

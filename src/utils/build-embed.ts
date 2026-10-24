@@ -48,10 +48,14 @@ const getPlayerUI = (player: Player) => {
 
   const position = player.getPosition();
   const button = player.status === STATUS.PLAYING ? '⏹️' : '▶️';
-  const progressBar = getProgressBar(10, position / song.length);
+  // Ninety-one narrow rail positions fit in about the same visual width as the
+  // original ten-glyph bar, while allowing five-second motion on most songs.
+  const progressBar = getProgressBar(91, position / song.length);
   const elapsedTime = song.isLive ? 'live' : `${prettyTime(position)}/${prettyTime(song.length)}`;
   const loop = player.loopCurrentSong ? '🔂' : player.loopCurrentQueue ? '🔁' : '';
   const vol: string = typeof player.getVolume() === 'number' ? `${player.getVolume()!}%` : '';
+  // Keep the slider outside inline code so Discord renders its emoji and rail
+  // graphically, matching the original Muse playback UI.
   return `${button} ${progressBar} \`[${elapsedTime}]\`🔉 ${vol} ${loop}`;
 };
 

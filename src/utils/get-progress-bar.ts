@@ -1,15 +1,17 @@
 export default (width: number, progress: number): string => {
-  const dotPosition = Math.max(0, Math.min(width - 1, Math.floor(width * progress)));
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+  const dotPosition = Math.min(width - 1, Math.floor(width * clampedProgress));
+  const hairSpace = '\u200A';
+  const wordJoiner = '\u2060';
 
-  let res = '';
+  // Striking through hair spaces produces a continuous, narrow Discord rail
+  // without exposing block characters. Word joiners ensure Discord's Markdown
+  // parser treats the otherwise-whitespace rail as formattable content.
+  const buildRail = (length: number) => length === 0
+    ? ''
+    : `~~${wordJoiner}${hairSpace.repeat(length)}${wordJoiner}~~`;
 
-  for (let i = 0; i < width; i++) {
-    if (i === dotPosition) {
-      res += '🔘';
-    } else {
-      res += '▬';
-    }
-  }
-
-  return res;
+  return buildRail(dotPosition)
+    + '🔘'
+    + buildRail(width - dotPosition - 1);
 };
