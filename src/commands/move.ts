@@ -4,6 +4,7 @@ import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import formatSongReply from '../utils/format-song-reply.js';
 
 @injectable()
 export default class implements Command {
@@ -42,6 +43,6 @@ export default class implements Command {
 
     const {title} = player.move(from, to);
 
-    await interaction.reply('moved **' + title + '** to position **' + String(to) + '**');
+    await interaction.reply(formatSongReply(title, 'moved **', '** to position **' + String(to) + '**'));
   }
 }

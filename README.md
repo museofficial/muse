@@ -129,6 +129,8 @@ Muse.
 When the queue finishes, Muse removes the card and controls and keeps the
 original queue acknowledgment. Stopping playback shows "Playback stopped."
 Volume and loop changes update the card immediately, including while paused.
+Long titles, source labels, and stream URLs are shortened for display when needed
+to fit Discord messages; playback uses the full URL.
 
 To use the emoji controls, you must be in the same voice channel as Muse and
 be allowed to use the matching command in the text channel containing the
@@ -186,7 +188,10 @@ Being a community project, the server may be down or overloaded. When it happen,
 
 ### Custom Bot Status
 
-In the default state, Muse has the status "Online" and the text "Listening to Music". You can change the status through environment variables:
+In the default state, Muse has the status "Online" and the text "Listening to Music".
+The configured status and activity are restored when Discord reconnects.
+
+You can change them with these environment variables:
 
 - `BOT_STATUS`:
   - `online` (Online)

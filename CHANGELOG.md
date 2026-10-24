@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Keep configured bot status and activity when Discord reconnects.
+- Keep long search suggestions within Discord autocomplete limits.
+- Keep long stream URLs and metadata from breaking playback cards and queue replies.
+
 - Keep the retained song available when the queue is cleared during a failed next or previous track request.
 - Allow queue looping to be turned off after the upcoming songs are cleared or removed.
 - Refresh volume and loop indicators immediately, including while playback is paused.

@@ -12,22 +12,25 @@ const getMaxSongTitleLength = (title: string) => {
 };
 
 const getSongTitle = ({title, url, offset, source}: QueuedSong, shouldTruncate = false) => {
-  if (source === MediaSource.HLS) {
-    return `[${title}](${url})`;
-  }
+  const cleanSongTitle = source === MediaSource.HLS ? title : title.replace(/\[.*\]/, '').trim();
+  const songTitle = truncate(cleanSongTitle, shouldTruncate ? getMaxSongTitleLength(cleanSongTitle) : 256);
 
-  const cleanSongTitle = title.replace(/\[.*\]/, '').trim();
-
-  const songTitle = shouldTruncate ? truncate(cleanSongTitle, getMaxSongTitleLength(cleanSongTitle)) : cleanSongTitle;
-  if (source === MediaSource.SoundCloud) {
-    const soundCloudTitle = truncate(songTitle, 256);
+  if (source === MediaSource.SoundCloud || source === MediaSource.HLS) {
     // Keep long share parameters in the playable URL without overflowing Discord embeds.
-    return url.length > 1024 ? soundCloudTitle : `[${soundCloudTitle}](${url})`;
+    return url.length > 1024 ? songTitle : `[${songTitle}](${url})`;
   }
 
   const youtubeId = url.length === 11 ? url : getYouTubeID(url) ?? '';
 
   return `[${songTitle}](https://www.youtube.com/watch?v=${youtubeId}${offset === 0 ? '' : '&t=' + String(offset)})`;
+};
+
+const setBoundedFooter = (message: EmbedBuilder, text: string) => {
+  const {title = '', description = '', fields = []} = message.data;
+  const contentLength = title.length + description.length
+    + fields.reduce((total, field) => total + field.name.length + field.value.length, 0);
+  // Discord also limits the combined text of an embed to 6000 characters.
+  message.setFooter({text: truncate(text, Math.min(2048, 6000 - contentLength))});
 };
 
 const getQueueInfo = (player: Player) => {
@@ -75,8 +78,8 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
       **${getSongTitle(currentlyPlaying)}**
       Requested by: <@${requestedBy}>\n
       ${getPlayerUI(player)}
-    `)
-    .setFooter({text: `Source: ${artist}`});
+    `);
+  setBoundedFooter(message, `Source: ${artist}`);
 
   if (thumbnailUrl) {
     message.setThumbnail(thumbnailUrl);
@@ -145,8 +148,8 @@ export const buildQueueEmbed = (player: Player, page: number, pageSize: number):
     .setDescription(description)
     .addFields([{name: 'In queue', value: getQueueInfo(player), inline: true}, {
       name: 'Total length', value: `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, inline: true,
-    }, {name: 'Page', value: `${page} out of ${maxQueuePage}`, inline: true}])
-    .setFooter({text: `Source: ${artist} ${playlistTitle}`});
+    }, {name: 'Page', value: `${page} out of ${maxQueuePage}`, inline: true}]);
+  setBoundedFooter(message, `Source: ${artist} ${playlistTitle}`);
 
   if (thumbnailUrl) {
     message.setThumbnail(thumbnailUrl);
