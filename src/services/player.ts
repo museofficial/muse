@@ -1,5 +1,6 @@
 import {VoiceChannel} from 'discord.js';
 import {Readable} from 'stream';
+import {setTimeout as sleep} from 'timers/promises';
 import hasha from 'hasha';
 import {WriteStream} from 'fs-capacitor';
 import ffmpeg from 'fluent-ffmpeg';
@@ -35,7 +36,7 @@ import {destroyVoiceConnection, recoverVoiceConnection} from './voice-connection
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
-import {getSoundCloudMediaSource, getYouTubeMediaSource, YtDlpMediaUnavailableError} from '../utils/yt-dlp.js';
+import {getSoundCloudMediaSource, getYouTubeMediaSource, YtDlpMediaUnavailableError, type YtDlpMediaSource} from '../utils/yt-dlp.js';
 import {Setting} from '@prisma/client';
 import {DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS} from '../utils/constants.js';
 
@@ -43,6 +44,11 @@ export {DEFAULT_VOLUME, MediaSource, STATUS};
 export type {AgeRestrictedFallbackResolver, PlayerEvents, QueuedPlaylist, QueuedSong, SongMetadata};
 
 const FFMPEG_STARTUP_TIMEOUT_MS = 20_000;
+const MAX_MEDIA_AVAILABILITY_WAIT_MS = 60_000;
+// Fresh YouTube URLs can return 403 for several seconds before the same URL starts working.
+const MEDIA_FORBIDDEN_RETRY_DELAYS_MS = [5_000, 10_000];
+const PREFETCH_LEAD_SECONDS = 60;
+const PREFETCH_MAX_AGE_MS = 10 * 60 * 1000;
 const VOICE_CONNECTION_ATTEMPTS = 3;
 const VOICE_CONNECTION_ATTEMPT_TIMEOUT_MS = 20_000;
 
@@ -71,7 +77,7 @@ export class FfmpegMediaUnavailableError extends Error {
 }
 
 export class FfmpegStartupError extends Error {
-  constructor(error: unknown) {
+  constructor(error: unknown, public readonly forbidden = false) {
     const detail = sanitizeFfmpegError(error);
     super(`FFmpeg could not initialize audio transcoding${detail ? `: ${detail}` : ''}`);
     this.name = 'FfmpegStartupError';
@@ -82,6 +88,7 @@ const getFfmpegStartupError = (error: unknown) => {
   const detail = error instanceof Error ? error.message : String(error);
   const isInvalidOutput = /Invalid data found when processing input/i.test(detail);
   const isNotFound = /(?:HTTP error|Server returned) (?:404|410)|404 Not Found|410 Gone/i.test(detail);
+  const isForbidden = /(?:HTTP error|Server returned) 403|403 Forbidden/i.test(detail);
 
   if (isInvalidOutput) {
     return new FfmpegMediaUnavailableError(error, 'invalid-output');
@@ -91,7 +98,7 @@ const getFfmpegStartupError = (error: unknown) => {
     return new FfmpegMediaUnavailableError(error, 'not-found');
   }
 
-  return new FfmpegStartupError(error);
+  return new FfmpegStartupError(error, isForbidden);
 };
 
 type PlayerPlaybackAttemptContext = PlaybackAttemptContext<QueuedSong, VoiceConnection>;
@@ -135,6 +142,7 @@ export default class {
   private readonly fileCache: FileCacheProvider;
   private readonly ageRestrictedFallbackResolver?: AgeRestrictedFallbackResolver;
   private disconnectTimer: NodeJS.Timeout | null = null;
+  private prefetchedMedia?: {song: QueuedSong; fetchedAt: number; mediaSource: Promise<YtDlpMediaSource | null>};
 
   private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
   private volumeBeforeVoiceActivity?: number;
@@ -199,6 +207,7 @@ export default class {
   disconnect(): void {
     this.voiceConnectionGeneration++;
     this.pendingConnection = undefined;
+    this.prefetchedMedia = undefined;
     this.playbackAttempts.invalidate();
     this.voiceActivitySessionGeneration++;
 
@@ -742,9 +751,9 @@ export default class {
 
     const previousPosition = this.positionInSeconds;
     this.stopTrackingPosition();
-    let stream: Readable;
+    let stream: Readable | null;
     try {
-      stream = await this.getStream(currentSong, {seek: realPositionSeconds, to});
+      stream = await this.getStream(currentSong, {seek: realPositionSeconds, to}, playback);
     } catch (error: unknown) {
       if (this.playbackAttempts.owns(playback)) {
         this.positionInSeconds = previousPosition;
@@ -753,6 +762,10 @@ export default class {
       }
 
       await this.handlePlaybackError(error, playback, true);
+      return;
+    }
+
+    if (!stream) {
       return;
     }
 
@@ -837,7 +850,11 @@ export default class {
         to = currentSong.length + currentSong.offset;
       }
 
-      const stream = await this.getStream(currentSong, {seek: positionSeconds, to});
+      const stream = await this.getStream(currentSong, {seek: positionSeconds, to}, playback);
+      if (!stream) {
+        return;
+      }
+
       if (!this.playbackAttempts.owns(playback)) {
         this.destroyStaleStream(stream);
         return;
@@ -916,7 +933,15 @@ export default class {
     return hasha(url);
   }
 
-  private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
+  private async getStream(
+    song: QueuedSong,
+    options: {seek?: number; to?: number} = {},
+    playback?: PlayerPlaybackAttemptContext,
+  ): Promise<Readable | null> {
+    if (playback && !this.playbackAttempts.owns(playback)) {
+      return null;
+    }
+
     if (this.status === STATUS.PLAYING) {
       this.stopAudioPlayer();
     } else if (this.status === STATUS.PAUSED) {
@@ -927,6 +952,15 @@ export default class {
       return this.createReadStream({url: song.url, cacheKey: song.url});
     }
 
+    return this.getCachedOrRemoteStream(song, options, playback);
+  }
+
+  private async getCachedOrRemoteStream(
+    song: QueuedSong,
+    options: {seek?: number; to?: number},
+    playback?: PlayerPlaybackAttemptContext,
+  ): Promise<Readable | null> {
+    const isCurrent = () => !playback || this.playbackAttempts.owns(playback);
     let ffmpegInput: string | null;
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
@@ -936,12 +970,23 @@ export default class {
     const cacheKey = JSON.stringify(['audio-v2', song.source, song.url, options.to ?? null]);
     const cacheHash = this.getHashForCache(cacheKey);
     const cachedEntry = await this.fileCache.getEntryFor(cacheHash);
+    if (!isCurrent()) {
+      return null;
+    }
+
     ffmpegInput = cachedEntry?.path ?? null;
 
     if (!ffmpegInput) {
-      const mediaSource = await (song.source === MediaSource.SoundCloud
-        ? getSoundCloudMediaSource(song.url)
-        : getYouTubeMediaSource(song.url));
+      let mediaSource = await this.takePrefetchedMediaSource(song);
+      if (!isCurrent()) {
+        return null;
+      }
+
+      mediaSource ??= await this.fetchMediaSource(song);
+      if (!isCurrent()) {
+        return null;
+      }
+
       ffmpegInput = mediaSource.url;
 
       // Don't cache livestreams or long videos
@@ -961,6 +1006,12 @@ export default class {
 
       const headerOptions = this.buildFfmpegHeaderOptions(mediaSource.headers);
       ffmpegInputOptions.push(...headerOptions);
+
+      await this.waitForMediaAvailability(mediaSource.availableAt);
+    }
+
+    if (!isCurrent()) {
+      return null;
     }
 
     if (options.seek) {
@@ -971,19 +1022,27 @@ export default class {
       ffmpegInputOptions.push('-to', options.to.toString());
     }
 
+    const readStreamOptions = {
+      url: ffmpegInput,
+      cacheKey,
+      ffmpegInputOptions,
+      cache: shouldCacheVideo,
+    };
+
     try {
-      return await this.createReadStream({
-        url: ffmpegInput,
-        cacheKey,
-        ffmpegInputOptions,
-        cache: shouldCacheVideo,
-      });
+      return await (cachedEntry
+        ? this.createReadStream(readStreamOptions)
+        : this.createRemoteReadStream(readStreamOptions, isCurrent));
     } catch (error: unknown) {
+      if (!isCurrent()) {
+        return null;
+      }
+
       if (cachedEntry
         && error instanceof FfmpegMediaUnavailableError
         && error.reason === 'invalid-output') {
         await this.fileCache.invalidate(cacheHash, cachedEntry.generation);
-        return this.getStream(song, options);
+        return this.getStream(song, options, playback);
       }
 
       throw error;
@@ -1007,6 +1066,8 @@ export default class {
         this.secondsSincePlayingMessageUpdate = 0;
         this.requestPlayingMessageUpdate();
       }
+
+      this.prefetchNextSongIfDue();
     }, 1000);
   }
 
@@ -1058,6 +1119,43 @@ export default class {
           this.requestPlayingMessageUpdate(message);
         }
       });
+  }
+
+  private async fetchMediaSource(song: QueuedSong): Promise<YtDlpMediaSource> {
+    return song.source === MediaSource.SoundCloud
+      ? getSoundCloudMediaSource(song.url)
+      : getYouTubeMediaSource(song.url);
+  }
+
+  // Resolving early lets any yt-dlp available_at wait elapse while the current song plays.
+  private prefetchNextSongIfDue(): void {
+    const current = this.getCurrent();
+    const next = this.queue[this.queuePosition + 1];
+    if (!current || !next || this.loopCurrentSong || this.prefetchedMedia?.song === next) {
+      return;
+    }
+
+    if (next.source === MediaSource.HLS || next.isLive || current.length - this.positionInSeconds > PREFETCH_LEAD_SECONDS) {
+      return;
+    }
+
+    const mediaSource = this.fetchMediaSource(next).catch((error: unknown) => {
+      debug(`Prefetch failed for guild ${this.guildId}: ${sanitizeFfmpegError(error)}`);
+      return null;
+    });
+    this.prefetchedMedia = {song: next, fetchedAt: Date.now(), mediaSource};
+  }
+
+  private async takePrefetchedMediaSource(song: QueuedSong): Promise<YtDlpMediaSource | null> {
+    const prefetched = this.prefetchedMedia;
+    if (!prefetched || prefetched.song !== song) {
+      return null;
+    }
+
+    this.prefetchedMedia = undefined;
+    const mediaSource = await prefetched.mediaSource;
+
+    return Date.now() - prefetched.fetchedAt <= PREFETCH_MAX_AGE_MS ? mediaSource : null;
   }
 
   private stopTrackingPosition(): void {
@@ -1265,6 +1363,53 @@ export default class {
     }
 
     return ['-headers', `${headerLines}\r\n`];
+  }
+
+  private async waitForMediaAvailability(availableAt?: number) {
+    if (typeof availableAt !== 'number' || !Number.isFinite(availableAt)) {
+      return;
+    }
+
+    // The available_at value has one-second resolution, so pad by a second to avoid an early request.
+    const waitMs = Math.min((availableAt * 1000) + 1000 - Date.now(), MAX_MEDIA_AVAILABILITY_WAIT_MS);
+    if (waitMs <= 0) {
+      return;
+    }
+
+    console.log(`Waiting ${Math.ceil(waitMs / 1000)}s for media to become available for guild ${this.guildId}, as required by the site.`);
+    await sleep(waitMs);
+  }
+
+  private async createRemoteReadStream(
+    options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean},
+    isCurrent: () => boolean,
+  ): Promise<Readable | null> {
+    for (const delayMs of MEDIA_FORBIDDEN_RETRY_DELAYS_MS) {
+      // Stop, seek, or a newer play request can retire this attempt during a wait.
+      if (!isCurrent()) {
+        return null;
+      }
+
+      try {
+        // Retries must run sequentially so each one follows the wait.
+        // eslint-disable-next-line no-await-in-loop
+        return await this.createReadStream(options);
+      } catch (error: unknown) {
+        if (!isCurrent()) {
+          return null;
+        }
+
+        if (!(error instanceof FfmpegStartupError && error.forbidden)) {
+          throw error;
+        }
+
+        console.warn(`Media URL returned 403 Forbidden for guild ${this.guildId}, retrying in ${delayMs / 1000}s.`);
+        // eslint-disable-next-line no-await-in-loop
+        await sleep(delayMs);
+      }
+    }
+
+    return isCurrent() ? this.createReadStream(options) : null;
   }
 
   private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean}): Promise<Readable> {

@@ -14,6 +14,7 @@ interface YtDlpMediaDownload {
   readonly acodec?: string;
   readonly vcodec?: string;
   readonly http_headers?: Record<string, string | null | undefined>;
+  readonly available_at?: number;
 }
 
 interface YtDlpResponse extends YtDlpMediaDownload {
@@ -37,6 +38,8 @@ export interface YtDlpMediaSource {
   readonly url: string;
   readonly headers: Record<string, string>;
   readonly isLive: boolean;
+  // Unix seconds before which the site rejects the URL (yt-dlp sleeps until then before downloading).
+  readonly availableAt?: number;
 }
 
 export interface YtDlpUpdateResult {
@@ -387,6 +390,7 @@ const toMediaSource = (response: YtDlpResponse): YtDlpMediaSource => {
     url: download.url,
     headers: normalizeHeaders(download.http_headers ?? response.http_headers),
     isLive: Boolean(response.is_live ?? (response.live_status === 'is_live')),
+    availableAt: download.available_at ?? response.available_at,
   };
 };
 

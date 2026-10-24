@@ -782,7 +782,7 @@ describe('CTRL-20 audio-idle advance preservation', () => {
     expect(player.getPosition()).toBe(0);
     expect(player.status).toBe(STATUS.PLAYING);
     expect(getStream).toHaveBeenCalledTimes(2);
-    expect(getStream).toHaveBeenLastCalledWith(repeated, {seek: 0, to: 100});
+    expect(getStream).toHaveBeenLastCalledWith(repeated, {seek: 0, to: 100}, expect.objectContaining({song: repeated}));
   });
 
   it('re-adds each naturally completed entry so queue loop cycles in order', async () => {

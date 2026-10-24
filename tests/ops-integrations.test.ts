@@ -480,11 +480,11 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
   });
 
   it.each([
-    [404, 'Not Found', true],
-    [410, 'Gone', true],
-    [403, 'Forbidden', false],
-    [429, 'Too Many Requests', false],
-  ] as const)('preserves HTTP %s playback handling after checked SoundCloud formats are rejected', async (status, reason, permanent) => {
+    [404, 'Not Found', true, 1],
+    [410, 'Gone', true, 1],
+    [403, 'Forbidden', false, 3],
+    [429, 'Too Many Requests', false, 1],
+  ] as const)('preserves HTTP %s playback handling after checked SoundCloud formats are rejected', async (status, reason, permanent, ffmpegAttempts) => {
     dependencyMocks.execa
       .mockRejectedValueOnce({stderr: 'ERROR: [soundcloud] fixture: Requested format is not available. Use --list-formats for a list of available formats'})
       .mockResolvedValueOnce({stdout: VALID_MEDIA_RESPONSE});
@@ -512,7 +512,8 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
         await expect(player.play()).rejects.toBeInstanceOf(FfmpegStartupError);
         expect(player.getCurrent()).toBe(song);
         expect(player.status).toBe(STATUS.PAUSED);
-        expect(warning).not.toHaveBeenCalled();
+        // Only 403 is retried, and each retry logs one warning.
+        expect(warning).toHaveBeenCalledTimes(ffmpegAttempts - 1);
       }
 
       expect(dependencyMocks.execa).toHaveBeenCalledTimes(2);
@@ -523,7 +524,7 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
       expect(secondArgs).not.toContain('--check-formats');
       expect(secondArgs).not.toContain('--cookies');
       expect(dependencyMocks.execa.mock.calls.map(call => call[2])).toEqual([{timeout: 45_000}, {timeout: 45_000}]);
-      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(ffmpegAttempts);
       expect(dependencyMocks.ffmpeg).toHaveBeenCalledWith('https://media.example/requested.webm');
       const command = dependencyMocks.ffmpeg.mock.results[0].value as ReturnType<typeof makeFfmpegCommand>;
       expect(command.inputOptions).toHaveBeenCalledWith(expect.arrayContaining([
@@ -927,6 +928,340 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
     await expect((player as unknown as {
       getStream(input: QueuedSong): Promise<Readable>;
     }).getStream(song)).rejects.toBeInstanceOf(FfmpegStartupError);
+  });
+
+  const makeUncachedYouTubeSong = (title: string): QueuedSong => ({
+    title,
+    artist: 'Artist',
+    url: 'abcdefghijk',
+    length: 3_600,
+    offset: 0,
+    playlist: null,
+    isLive: false,
+    thumbnailUrl: null,
+    source: MediaSource.Youtube,
+    addedInChannelId: 'text-channel-id',
+    requestedBy: 'requester-id',
+  });
+
+  it('waits until the yt-dlp available_at time before handing the URL to FFmpeg', async () => {
+    vi.useFakeTimers({toFake: ['Date']});
+    vi.setSystemTime(new Date('2026-10-23T00:00:00Z'));
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    dependencyMocks.execa.mockResolvedValue({
+      stdout: JSON.stringify({
+        requested_downloads: [{url: 'https://media.example/requested.webm', available_at: nowSeconds + 9}],
+      }),
+    });
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const order: string[] = [];
+    dependencyMocks.sleep.mockImplementation(async () => {
+      order.push('sleep');
+    });
+    dependencyMocks.ffmpeg.mockImplementation(() => {
+      order.push('ffmpeg');
+      return makeFfmpegCommand();
+    });
+    const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID);
+
+    const stream = await (player as unknown as {
+      getStream(input: QueuedSong): Promise<Readable>;
+    }).getStream(makeUncachedYouTubeSong('Delayed media'));
+
+    expect(dependencyMocks.sleep).toHaveBeenCalledWith(10_000);
+    expect(order).toEqual(['sleep', 'ffmpeg']);
+    stream.destroy();
+  });
+
+  it('does not wait when available_at is already in the past', async () => {
+    dependencyMocks.execa.mockResolvedValue({
+      stdout: JSON.stringify({
+        requested_downloads: [{url: 'https://media.example/requested.webm', available_at: Math.floor(Date.now() / 1000) - 60}],
+      }),
+    });
+    const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID);
+
+    const stream = await (player as unknown as {
+      getStream(input: QueuedSong): Promise<Readable>;
+    }).getStream(makeUncachedYouTubeSong('Available media'));
+
+    expect(dependencyMocks.sleep).not.toHaveBeenCalled();
+    stream.destroy();
+  });
+
+  it('retries the same media URL after a startup 403 instead of failing immediately', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    dependencyMocks.ffmpeg
+      .mockImplementationOnce(() => makeFfmpegCommand({startupError: new Error('Server returned 403 Forbidden (access denied)')}))
+      .mockImplementationOnce(() => makeFfmpegCommand());
+    const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID);
+
+    const stream = await (player as unknown as {
+      getStream(input: QueuedSong): Promise<Readable>;
+    }).getStream(makeUncachedYouTubeSong('Briefly forbidden media'));
+
+    expect(dependencyMocks.sleep).toHaveBeenCalledWith(5_000);
+    expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(2);
+    expect(dependencyMocks.ffmpeg).toHaveBeenNthCalledWith(2, 'https://media.example/requested.webm');
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(warning).toHaveBeenCalledOnce();
+    stream.destroy();
+  });
+
+  it('surfaces a persistent 403 as a startup error after bounded retries', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    dependencyMocks.ffmpeg.mockImplementation(() => makeFfmpegCommand({
+      startupError: new Error('Server returned 403 Forbidden (access denied)'),
+    }));
+    const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID);
+
+    await expect((player as unknown as {
+      getStream(input: QueuedSong): Promise<Readable>;
+    }).getStream(makeUncachedYouTubeSong('Forbidden media'))).rejects.toMatchObject({
+      name: 'FfmpegStartupError',
+      forbidden: true,
+    });
+    expect(dependencyMocks.sleep.mock.calls).toEqual([[5_000], [10_000]]);
+    expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(3);
+  });
+
+  describe('delayed media startup cancellation', () => {
+    const makeStartupPlayer = () => {
+      vi.useFakeTimers({toFake: ['Date', 'setInterval', 'clearInterval']});
+      vi.setSystemTime(new Date('2026-10-24T00:00:00Z'));
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      dependencyMocks.createAudioPlayer.mockImplementation(() => ({
+        listeners: vi.fn(() => []), on: vi.fn(), play: vi.fn(), pause: vi.fn(), stop: vi.fn(),
+      }));
+      dependencyMocks.createAudioResource.mockImplementation((sourceStream: Readable) => ({
+        sourceStream, volume: {setVolume: vi.fn()},
+      }));
+      const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID);
+      const {connection} = makeVoiceConnection();
+      const song = makeUncachedYouTubeSong('Delayed startup');
+      player.voiceConnection = connection as never;
+      player.add(song);
+      return {player, connection, song};
+    };
+
+    const holdMediaSleep = (delayMs: number) => {
+      const started = makeDeferred<void>();
+      const release = makeDeferred<void>();
+      dependencyMocks.sleep.mockImplementation(async (ms: number) => {
+        if (ms === delayMs) {
+          started.resolve();
+          await release.promise;
+        }
+      });
+      return {started: started.promise, release: () => release.resolve()};
+    };
+
+    const delayNextMedia = () => {
+      dependencyMocks.execa.mockResolvedValueOnce({stdout: JSON.stringify({
+        url: 'https://media.example/delayed.webm', available_at: Date.now() / 1000 + 19,
+      })});
+    };
+
+    const rejectNextMedia = () => {
+      dependencyMocks.ffmpeg.mockImplementationOnce(() => makeFfmpegCommand({
+        startupError: new Error('Server returned 403 Forbidden'),
+      }));
+    };
+
+    it('does not start FFmpeg after stop during the availability wait in play', async () => {
+      const {player, connection} = makeStartupPlayer();
+      delayNextMedia();
+      const wait = holdMediaSleep(20_000);
+      const playing = player.play();
+      await wait.started;
+      expect(dependencyMocks.ffmpeg).not.toHaveBeenCalled();
+
+      player.stop();
+      wait.release();
+      await playing;
+
+      expect(player.getCurrent()).toBeNull();
+      expect(player.voiceConnection).toBeNull();
+      expect(connection.subscribe).not.toHaveBeenCalled();
+      expect(dependencyMocks.createAudioPlayer).not.toHaveBeenCalled();
+      expect(dependencyMocks.ffmpeg).not.toHaveBeenCalled();
+    });
+
+    it('does not start seek media after disconnect during its availability wait', async () => {
+      const {player, connection, song} = makeStartupPlayer();
+      await player.play();
+      delayNextMedia();
+      const wait = holdMediaSleep(20_000);
+      const seeking = player.seek(30);
+      await wait.started;
+
+      player.disconnect();
+      wait.release();
+      await seeking;
+
+      expect(player.getCurrent()).toBe(song);
+      expect(player.getPosition()).toBe(0);
+      expect(player.status).toBe(STATUS.PAUSED);
+      expect(player.voiceConnection).toBeNull();
+      expect(connection.subscribe).toHaveBeenCalledOnce();
+      expect(dependencyMocks.createAudioPlayer).toHaveBeenCalledOnce();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+    });
+
+    it('keeps newer playback when an older availability wait finishes', async () => {
+      const {player, connection, song} = makeStartupPlayer();
+      delayNextMedia();
+      const wait = holdMediaSleep(20_000);
+      const olderPlaying = player.play();
+      await wait.started;
+      await player.play();
+      const newerAudio = dependencyMocks.createAudioPlayer.mock.results[0].value;
+      const newerResource = dependencyMocks.createAudioResource.mock.results[0].value;
+
+      wait.release();
+      await olderPlaying;
+
+      expect(player.getCurrent()).toBe(song);
+      expect(player.status).toBe(STATUS.PLAYING);
+      expect(connection.subscribe).toHaveBeenCalledExactlyOnceWith(newerAudio);
+      expect(newerAudio.play).toHaveBeenCalledExactlyOnceWith(newerResource);
+      expect(newerAudio.stop).not.toHaveBeenCalled();
+      expect(newerResource.sourceStream.destroyed).toBe(false);
+      expect(dependencyMocks.createAudioPlayer).toHaveBeenCalledOnce();
+      player.stop();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+    });
+
+    it('does not retry after stop during the first 403 backoff', async () => {
+      const {player, connection} = makeStartupPlayer();
+      rejectNextMedia();
+      const wait = holdMediaSleep(5_000);
+      const playing = player.play();
+      await wait.started;
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+
+      player.stop();
+      wait.release();
+      await playing;
+
+      expect(player.getCurrent()).toBeNull();
+      expect(player.voiceConnection).toBeNull();
+      expect(connection.subscribe).not.toHaveBeenCalled();
+      expect(dependencyMocks.createAudioPlayer).not.toHaveBeenCalled();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+      expect(dependencyMocks.sleep.mock.calls).toEqual([[5_000]]);
+    });
+
+    it('does not run the final 403 retry after newer playback takes ownership', async () => {
+      const {player, connection, song} = makeStartupPlayer();
+      rejectNextMedia();
+      rejectNextMedia();
+      const wait = holdMediaSleep(10_000);
+      const olderPlaying = player.play();
+      await wait.started;
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(2);
+      await player.play();
+      const newerAudio = dependencyMocks.createAudioPlayer.mock.results[0].value;
+      const newerResource = dependencyMocks.createAudioResource.mock.results[0].value;
+
+      wait.release();
+      await olderPlaying;
+
+      expect(player.getCurrent()).toBe(song);
+      expect(player.status).toBe(STATUS.PLAYING);
+      expect(connection.subscribe).toHaveBeenCalledExactlyOnceWith(newerAudio);
+      expect(newerAudio.play).toHaveBeenCalledExactlyOnceWith(newerResource);
+      expect(newerAudio.stop).not.toHaveBeenCalled();
+      expect(newerResource.sourceStream.destroyed).toBe(false);
+      expect(dependencyMocks.createAudioPlayer).toHaveBeenCalledOnce();
+      player.stop();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(3);
+      expect(dependencyMocks.sleep.mock.calls).toEqual([[5_000], [10_000]]);
+    });
+
+    it('still starts playback when both bounded 403 backoffs complete with ownership intact', async () => {
+      const {player, connection, song} = makeStartupPlayer();
+      rejectNextMedia();
+      rejectNextMedia();
+      const wait = holdMediaSleep(10_000);
+      const playing = player.play();
+      await wait.started;
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(2);
+      expect(connection.subscribe).not.toHaveBeenCalled();
+
+      wait.release();
+      await playing;
+
+      expect(player.getCurrent()).toBe(song);
+      expect(player.status).toBe(STATUS.PLAYING);
+      expect(connection.subscribe).toHaveBeenCalledOnce();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(3);
+      expect(dependencyMocks.sleep.mock.calls).toEqual([[5_000], [10_000]]);
+      player.stop();
+    });
+  });
+
+  const makePrefetchPlayer = () => {
+    const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID);
+    const current = makeUncachedYouTubeSong('Current');
+    const next = {...makeUncachedYouTubeSong('Next'), url: 'nextvideo01'};
+    player.add(current);
+    player.add(next);
+    const internals = player as unknown as {
+      positionInSeconds: number;
+      prefetchNextSongIfDue(): void;
+      getStream(input: QueuedSong): Promise<Readable>;
+    };
+
+    return {internals, next};
+  };
+
+  it('prefetches the next song near the end of the current one and reuses the URL', async () => {
+    const {internals, next} = makePrefetchPlayer();
+
+    internals.positionInSeconds = 3_600 - 120;
+    internals.prefetchNextSongIfDue();
+    expect(dependencyMocks.execa).not.toHaveBeenCalled();
+
+    internals.positionInSeconds = 3_600 - 60;
+    internals.prefetchNextSongIfDue();
+    internals.prefetchNextSongIfDue();
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(dependencyMocks.execa.mock.calls[0][1].at(-1)).toBe('https://www.youtube.com/watch?v=nextvideo01');
+
+    const stream = await internals.getStream(next);
+
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(dependencyMocks.ffmpeg).toHaveBeenCalledWith('https://media.example/requested.webm');
+    stream.destroy();
+  });
+
+  it('extracts again when the prefetch failed', async () => {
+    dependencyMocks.execa.mockRejectedValueOnce({stderr: 'ERROR: transient extractor failure'});
+    const {internals, next} = makePrefetchPlayer();
+
+    internals.positionInSeconds = 3_600 - 10;
+    internals.prefetchNextSongIfDue();
+    const stream = await internals.getStream(next);
+
+    expect(dependencyMocks.execa).toHaveBeenCalledTimes(2);
+    expect(dependencyMocks.ffmpeg).toHaveBeenCalledWith('https://media.example/requested.webm');
+    stream.destroy();
+  });
+
+  it('extracts again when the prefetched URL is too old', async () => {
+    vi.useFakeTimers({toFake: ['Date']});
+    const {internals, next} = makePrefetchPlayer();
+
+    internals.positionInSeconds = 3_600 - 10;
+    internals.prefetchNextSongIfDue();
+    await flushAsyncWork();
+    vi.setSystemTime(Date.now() + (11 * 60 * 1000));
+    const stream = await internals.getStream(next);
+
+    expect(dependencyMocks.execa).toHaveBeenCalledTimes(2);
+    stream.destroy();
   });
 
   it('destroys an in-progress cache destination when FFmpeg fails during startup', async () => {
