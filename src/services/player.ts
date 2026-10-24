@@ -741,9 +741,9 @@ export default class {
 
     const previousPosition = this.positionInSeconds;
     this.stopTrackingPosition();
-    let stream: Readable;
+    let stream: Readable | null;
     try {
-      stream = await this.getStream(currentSong, {seek: realPositionSeconds, to});
+      stream = await this.getStream(currentSong, {seek: realPositionSeconds, to}, playback);
     } catch (error: unknown) {
       if (this.playbackAttempts.owns(playback)) {
         this.positionInSeconds = previousPosition;
@@ -752,6 +752,10 @@ export default class {
       }
 
       await this.handlePlaybackError(error, playback, true);
+      return;
+    }
+
+    if (!stream) {
       return;
     }
 
@@ -836,7 +840,11 @@ export default class {
         to = currentSong.length + currentSong.offset;
       }
 
-      const stream = await this.getStream(currentSong, {seek: positionSeconds, to});
+      const stream = await this.getStream(currentSong, {seek: positionSeconds, to}, playback);
+      if (!stream) {
+        return;
+      }
+
       if (!this.playbackAttempts.owns(playback)) {
         this.destroyStaleStream(stream);
         return;
@@ -915,7 +923,15 @@ export default class {
     return hasha(url);
   }
 
-  private async getStream(song: QueuedSong, options: {seek?: number; to?: number} = {}): Promise<Readable> {
+  private async getStream(
+    song: QueuedSong,
+    options: {seek?: number; to?: number} = {},
+    playback?: PlayerPlaybackAttemptContext,
+  ): Promise<Readable | null> {
+    if (playback && !this.playbackAttempts.owns(playback)) {
+      return null;
+    }
+
     if (this.status === STATUS.PLAYING) {
       this.stopAudioPlayer();
     } else if (this.status === STATUS.PAUSED) {
@@ -926,6 +942,15 @@ export default class {
       return this.createReadStream({url: song.url, cacheKey: song.url});
     }
 
+    return this.getCachedOrRemoteStream(song, options, playback);
+  }
+
+  private async getCachedOrRemoteStream(
+    song: QueuedSong,
+    options: {seek?: number; to?: number},
+    playback?: PlayerPlaybackAttemptContext,
+  ): Promise<Readable | null> {
+    const isCurrent = () => !playback || this.playbackAttempts.owns(playback);
     let ffmpegInput: string | null;
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
@@ -935,10 +960,23 @@ export default class {
     const cacheKey = JSON.stringify(['audio-v2', song.source, song.url, options.to ?? null]);
     const cacheHash = this.getHashForCache(cacheKey);
     const cachedEntry = await this.fileCache.getEntryFor(cacheHash);
+    if (!isCurrent()) {
+      return null;
+    }
+
     ffmpegInput = cachedEntry?.path ?? null;
 
     if (!ffmpegInput) {
-      const mediaSource = await this.takePrefetchedMediaSource(song) ?? await this.fetchMediaSource(song);
+      let mediaSource = await this.takePrefetchedMediaSource(song);
+      if (!isCurrent()) {
+        return null;
+      }
+
+      mediaSource ??= await this.fetchMediaSource(song);
+      if (!isCurrent()) {
+        return null;
+      }
+
       ffmpegInput = mediaSource.url;
 
       // Don't cache livestreams or long videos
@@ -962,6 +1000,10 @@ export default class {
       await this.waitForMediaAvailability(mediaSource.availableAt);
     }
 
+    if (!isCurrent()) {
+      return null;
+    }
+
     if (options.seek) {
       ffmpegInputOptions.push('-ss', options.seek.toString());
     }
@@ -980,13 +1022,17 @@ export default class {
     try {
       return await (cachedEntry
         ? this.createReadStream(readStreamOptions)
-        : this.createRemoteReadStream(readStreamOptions));
+        : this.createRemoteReadStream(readStreamOptions, isCurrent));
     } catch (error: unknown) {
+      if (!isCurrent()) {
+        return null;
+      }
+
       if (cachedEntry
         && error instanceof FfmpegMediaUnavailableError
         && error.reason === 'invalid-output') {
         await this.fileCache.invalidate(cacheHash, cachedEntry.generation);
-        return this.getStream(song, options);
+        return this.getStream(song, options, playback);
       }
 
       throw error;
@@ -1324,13 +1370,25 @@ export default class {
     await sleep(waitMs);
   }
 
-  private async createRemoteReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean}): Promise<Readable> {
+  private async createRemoteReadStream(
+    options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean},
+    isCurrent: () => boolean,
+  ): Promise<Readable | null> {
     for (const delayMs of MEDIA_FORBIDDEN_RETRY_DELAYS_MS) {
+      // Stop, seek, or a newer play request can retire this attempt during a wait.
+      if (!isCurrent()) {
+        return null;
+      }
+
       try {
         // Retries must run sequentially so each one follows the wait.
         // eslint-disable-next-line no-await-in-loop
         return await this.createReadStream(options);
       } catch (error: unknown) {
+        if (!isCurrent()) {
+          return null;
+        }
+
         if (!(error instanceof FfmpegStartupError && error.forbidden)) {
           throw error;
         }
@@ -1341,7 +1399,7 @@ export default class {
       }
     }
 
-    return this.createReadStream(options);
+    return isCurrent() ? this.createReadStream(options) : null;
   }
 
   private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean}): Promise<Readable> {

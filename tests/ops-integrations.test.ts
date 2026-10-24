@@ -1025,6 +1025,183 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
     expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(3);
   });
 
+  describe('delayed media startup cancellation', () => {
+    const makeStartupPlayer = () => {
+      vi.useFakeTimers({toFake: ['Date', 'setInterval', 'clearInterval']});
+      vi.setSystemTime(new Date('2026-10-24T00:00:00Z'));
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      dependencyMocks.createAudioPlayer.mockImplementation(() => ({
+        listeners: vi.fn(() => []), on: vi.fn(), play: vi.fn(), pause: vi.fn(), stop: vi.fn(),
+      }));
+      dependencyMocks.createAudioResource.mockImplementation((sourceStream: Readable) => ({
+        sourceStream, volume: {setVolume: vi.fn()},
+      }));
+      const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID);
+      const {connection} = makeVoiceConnection();
+      const song = makeUncachedYouTubeSong('Delayed startup');
+      player.voiceConnection = connection as never;
+      player.add(song);
+      return {player, connection, song};
+    };
+
+    const holdMediaSleep = (delayMs: number) => {
+      const started = makeDeferred<void>();
+      const release = makeDeferred<void>();
+      dependencyMocks.sleep.mockImplementation(async (ms: number) => {
+        if (ms === delayMs) {
+          started.resolve();
+          await release.promise;
+        }
+      });
+      return {started: started.promise, release: () => release.resolve()};
+    };
+
+    const delayNextMedia = () => {
+      dependencyMocks.execa.mockResolvedValueOnce({stdout: JSON.stringify({
+        url: 'https://media.example/delayed.webm', available_at: Date.now() / 1000 + 19,
+      })});
+    };
+
+    const rejectNextMedia = () => {
+      dependencyMocks.ffmpeg.mockImplementationOnce(() => makeFfmpegCommand({
+        startupError: new Error('Server returned 403 Forbidden'),
+      }));
+    };
+
+    it('does not start FFmpeg after stop during the availability wait in play', async () => {
+      const {player, connection} = makeStartupPlayer();
+      delayNextMedia();
+      const wait = holdMediaSleep(20_000);
+      const playing = player.play();
+      await wait.started;
+      expect(dependencyMocks.ffmpeg).not.toHaveBeenCalled();
+
+      player.stop();
+      wait.release();
+      await playing;
+
+      expect(player.getCurrent()).toBeNull();
+      expect(player.voiceConnection).toBeNull();
+      expect(connection.subscribe).not.toHaveBeenCalled();
+      expect(dependencyMocks.createAudioPlayer).not.toHaveBeenCalled();
+      expect(dependencyMocks.ffmpeg).not.toHaveBeenCalled();
+    });
+
+    it('does not start seek media after disconnect during its availability wait', async () => {
+      const {player, connection, song} = makeStartupPlayer();
+      await player.play();
+      delayNextMedia();
+      const wait = holdMediaSleep(20_000);
+      const seeking = player.seek(30);
+      await wait.started;
+
+      player.disconnect();
+      wait.release();
+      await seeking;
+
+      expect(player.getCurrent()).toBe(song);
+      expect(player.getPosition()).toBe(0);
+      expect(player.status).toBe(STATUS.PAUSED);
+      expect(player.voiceConnection).toBeNull();
+      expect(connection.subscribe).toHaveBeenCalledOnce();
+      expect(dependencyMocks.createAudioPlayer).toHaveBeenCalledOnce();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+    });
+
+    it('keeps newer playback when an older availability wait finishes', async () => {
+      const {player, connection, song} = makeStartupPlayer();
+      delayNextMedia();
+      const wait = holdMediaSleep(20_000);
+      const olderPlaying = player.play();
+      await wait.started;
+      await player.play();
+      const newerAudio = dependencyMocks.createAudioPlayer.mock.results[0].value;
+      const newerResource = dependencyMocks.createAudioResource.mock.results[0].value;
+
+      wait.release();
+      await olderPlaying;
+
+      expect(player.getCurrent()).toBe(song);
+      expect(player.status).toBe(STATUS.PLAYING);
+      expect(connection.subscribe).toHaveBeenCalledExactlyOnceWith(newerAudio);
+      expect(newerAudio.play).toHaveBeenCalledExactlyOnceWith(newerResource);
+      expect(newerAudio.stop).not.toHaveBeenCalled();
+      expect(newerResource.sourceStream.destroyed).toBe(false);
+      expect(dependencyMocks.createAudioPlayer).toHaveBeenCalledOnce();
+      player.stop();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+    });
+
+    it('does not retry after stop during the first 403 backoff', async () => {
+      const {player, connection} = makeStartupPlayer();
+      rejectNextMedia();
+      const wait = holdMediaSleep(5_000);
+      const playing = player.play();
+      await wait.started;
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+
+      player.stop();
+      wait.release();
+      await playing;
+
+      expect(player.getCurrent()).toBeNull();
+      expect(player.voiceConnection).toBeNull();
+      expect(connection.subscribe).not.toHaveBeenCalled();
+      expect(dependencyMocks.createAudioPlayer).not.toHaveBeenCalled();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+      expect(dependencyMocks.sleep.mock.calls).toEqual([[5_000]]);
+    });
+
+    it('does not run the final 403 retry after newer playback takes ownership', async () => {
+      const {player, connection, song} = makeStartupPlayer();
+      rejectNextMedia();
+      rejectNextMedia();
+      const wait = holdMediaSleep(10_000);
+      const olderPlaying = player.play();
+      await wait.started;
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(2);
+      await player.play();
+      const newerAudio = dependencyMocks.createAudioPlayer.mock.results[0].value;
+      const newerResource = dependencyMocks.createAudioResource.mock.results[0].value;
+
+      wait.release();
+      await olderPlaying;
+
+      expect(player.getCurrent()).toBe(song);
+      expect(player.status).toBe(STATUS.PLAYING);
+      expect(connection.subscribe).toHaveBeenCalledExactlyOnceWith(newerAudio);
+      expect(newerAudio.play).toHaveBeenCalledExactlyOnceWith(newerResource);
+      expect(newerAudio.stop).not.toHaveBeenCalled();
+      expect(newerResource.sourceStream.destroyed).toBe(false);
+      expect(dependencyMocks.createAudioPlayer).toHaveBeenCalledOnce();
+      player.stop();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(3);
+      expect(dependencyMocks.sleep.mock.calls).toEqual([[5_000], [10_000]]);
+    });
+
+    it('still starts playback when both bounded 403 backoffs complete with ownership intact', async () => {
+      const {player, connection, song} = makeStartupPlayer();
+      rejectNextMedia();
+      rejectNextMedia();
+      const wait = holdMediaSleep(10_000);
+      const playing = player.play();
+      await wait.started;
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(2);
+      expect(connection.subscribe).not.toHaveBeenCalled();
+
+      wait.release();
+      await playing;
+
+      expect(player.getCurrent()).toBe(song);
+      expect(player.status).toBe(STATUS.PLAYING);
+      expect(connection.subscribe).toHaveBeenCalledOnce();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledTimes(3);
+      expect(dependencyMocks.sleep.mock.calls).toEqual([[5_000], [10_000]]);
+      player.stop();
+    });
+  });
+
   const makePrefetchPlayer = () => {
     const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID);
     const current = makeUncachedYouTubeSong('Current');

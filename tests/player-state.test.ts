@@ -189,7 +189,7 @@ describe('Player forward state transitions', () => {
 
     await player.play();
 
-    expect(getStream).toHaveBeenCalledExactlyOnceWith(song, {seek: 50, to: 120});
+    expect(getStream).toHaveBeenCalledExactlyOnceWith(song, {seek: 50, to: 120}, expect.objectContaining({song}));
     expect(player.status).toBe(STATUS.PLAYING);
     expect(player.getPosition()).toBe(30);
   });
@@ -242,7 +242,7 @@ describe('Player forward state transitions', () => {
     getStream.mockResolvedValueOnce(Readable.from([]));
     await player.play();
 
-    expect(getStream).toHaveBeenLastCalledWith(song, {seek: 12, to: 100});
+    expect(getStream).toHaveBeenLastCalledWith(song, {seek: 12, to: 100}, expect.objectContaining({song}));
     expect(player.status).toBe(STATUS.PLAYING);
     expect(getPrivateState(player).audioPlayer).not.toBeNull();
   });
@@ -541,7 +541,7 @@ describe('Player same-URL entry identity', () => {
     expect(getStream).toHaveBeenLastCalledWith(nextSong, {
       seek: nextSong.offset,
       to: nextSong.offset + nextSong.length,
-    });
+    }, expect.objectContaining({song: nextSong}));
   });
 
   it('recreates a disconnected same-entry stream at its retained position', async () => {
@@ -558,7 +558,7 @@ describe('Player same-URL entry identity', () => {
 
     expect(player.getCurrent()).toBe(song);
     expect(player.getPosition()).toBe(7);
-    expect(getStream).toHaveBeenLastCalledWith(song, {seek: 7, to: 100});
+    expect(getStream).toHaveBeenLastCalledWith(song, {seek: 7, to: 100}, expect.objectContaining({song}));
   });
 
   it('treats the same song object queued twice as two different entries', async () => {
