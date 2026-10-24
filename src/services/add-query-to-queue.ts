@@ -182,27 +182,30 @@ export default class AddQueryToQueue {
     });
     const updatePlayingMessage = async (terminalState?: PlayingMessageTerminalState) => {
       // Capture before yielding: stop() can clear the queue while Discord is pending.
-      const update = terminalState
-        ? {content: terminalState === 'stopped' ? 'Playback stopped.' : 'Playback finished.', embeds: []}
-        : {embeds: [buildQueueEmbed(player, 1, pageSize)]};
+      const update = terminalState === 'stopped'
+        ? {content: 'Playback stopped.', embeds: []}
+        : terminalState === 'finished'
+          ? {content, embeds: []}
+          : {embeds: [buildQueueEmbed(player, 1, pageSize)]};
       const response = await responsePromise;
 
       // Public interaction responses become regular channel messages and can
       // use Message.edit. Ephemeral responses must remain on the interaction webhook.
-      if (ephemeral) {
-        await interaction.editReply(update);
-      } else {
-        await response.edit(update);
-      }
-
-      if (terminalState && !ephemeral) {
-        // Controls have no useful action after playback ends. Removing all
-        // reactions also prevents a stale response from looking interactive.
-        // Wait for any pending addition, without delaying the terminal text.
-        await controlsFinished;
-        await response.reactions.removeAll().catch(error => {
-          console.warn(`Could not remove music controls for guild ${guildId}:`, error);
-        });
+      try {
+        if (ephemeral) {
+          await interaction.editReply(update);
+        } else {
+          await response.edit(update);
+        }
+      } finally {
+        if (terminalState && !ephemeral) {
+          // Wait for any pending addition, without delaying the terminal text.
+          // Clear controls even if Discord rejected the final message edit.
+          await controlsFinished;
+          await response.reactions.removeAll().catch(error => {
+            console.warn(`Could not remove music controls for guild ${guildId}:`, error);
+          });
+        }
       }
     };
 

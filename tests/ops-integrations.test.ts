@@ -103,6 +103,7 @@ import Player, {
   FfmpegStartupError,
   MediaSource,
   QueuedSong,
+  STATUS,
 } from '../src/services/player.js';
 import ThirdParty from '../src/services/third-party.js';
 import prepareYtDlp from '../src/utils/prepare-yt-dlp.js';
@@ -446,13 +447,14 @@ describe('OPS-10 yt-dlp selection and update lifecycle', () => {
 });
 
 describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
-  it('bounds SoundCloud collection extraction and does not read YouTube cookies', async () => {
+  it('bounds SoundCloud collection extraction without probing media formats or reading YouTube cookies', async () => {
     process.env.YT_DLP_COOKIES_PATH = '/missing/youtube-only-cookies';
     const metadata = {title: 'Album', entries: [{title: 'Track', url: 'https://soundcloud.com/artist/track'}]};
     dependencyMocks.execa.mockResolvedValue({stdout: JSON.stringify(metadata)});
     await expect(getSoundCloudMetadata('https://soundcloud.com/artist/sets/album', 3)).resolves.toEqual(metadata);
     const args = dependencyMocks.execa.mock.calls[0][1] as string[];
     expect(args).toEqual(expect.arrayContaining(['--flat-playlist', '--playlist-end', '3']));
+    expect(args).not.toContain('--check-formats');
     expect(args).not.toContain('--cookies');
     expect(dependencyMocks.execa.mock.calls[0][2]).toEqual({timeout: 45_000});
   });
@@ -477,6 +479,132 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
       .rejects.not.toBeInstanceOf(YtDlpMediaUnavailableError);
   });
 
+  it.each([
+    [404, 'Not Found', true],
+    [410, 'Gone', true],
+    [403, 'Forbidden', false],
+    [429, 'Too Many Requests', false],
+  ] as const)('preserves HTTP %s playback handling after checked SoundCloud formats are rejected', async (status, reason, permanent) => {
+    dependencyMocks.execa
+      .mockRejectedValueOnce({stderr: 'ERROR: [soundcloud] fixture: Requested format is not available. Use --list-formats for a list of available formats'})
+      .mockResolvedValueOnce({stdout: VALID_MEDIA_RESPONSE});
+    dependencyMocks.ffmpeg.mockImplementation(() => makeFfmpegCommand({
+      startupError: new Error(`Server returned ${status} ${reason}`),
+    }));
+    dependencyMocks.getGuildSettings.mockResolvedValue({secondsToWaitAfterQueueEmpties: 0});
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID);
+    player.voiceConnection = makeVoiceConnection().connection as never;
+    const song: QueuedSong = {
+      title: 'Rejected format', artist: 'Artist', url: 'https://soundcloud.com/artist/track',
+      length: 3_600, offset: 0, playlist: null, isLive: false, thumbnailUrl: null,
+      source: MediaSource.SoundCloud, addedInChannelId: 'text-channel-id', requestedBy: 'requester-id',
+    };
+    player.add(song);
+
+    try {
+      if (permanent) {
+        await expect(player.play()).resolves.toBeUndefined();
+        expect(player.getCurrent()).toBeNull();
+        expect(player.status).toBe(STATUS.IDLE);
+        expect(warning).toHaveBeenCalledOnce();
+      } else {
+        await expect(player.play()).rejects.toBeInstanceOf(FfmpegStartupError);
+        expect(player.getCurrent()).toBe(song);
+        expect(player.status).toBe(STATUS.PAUSED);
+        expect(warning).not.toHaveBeenCalled();
+      }
+
+      expect(dependencyMocks.execa).toHaveBeenCalledTimes(2);
+      const firstArgs = dependencyMocks.execa.mock.calls[0][1] as string[];
+      const secondArgs = dependencyMocks.execa.mock.calls[1][1] as string[];
+      expect(firstArgs).toContain('--check-formats');
+      expect(secondArgs).toEqual(firstArgs.map(arg => arg === '--check-formats' ? '--no-check-formats' : arg));
+      expect(secondArgs).not.toContain('--check-formats');
+      expect(secondArgs).not.toContain('--cookies');
+      expect(dependencyMocks.execa.mock.calls.map(call => call[2])).toEqual([{timeout: 45_000}, {timeout: 45_000}]);
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledOnce();
+      expect(dependencyMocks.ffmpeg).toHaveBeenCalledWith('https://media.example/requested.webm');
+      const command = dependencyMocks.ffmpeg.mock.results[0].value as ReturnType<typeof makeFfmpegCommand>;
+      expect(command.inputOptions).toHaveBeenCalledWith(expect.arrayContaining([
+        '-headers', 'Authorization: Bearer media-token\r\nUser-Agent: Muse ops test\r\n',
+      ]));
+    } finally {
+      player.disconnect();
+    }
+  });
+
+  it('bounds an unsuccessful unchecked-format fallback to one retry', async () => {
+    dependencyMocks.execa.mockRejectedValue({stderr: 'ERROR: Requested format is not available'});
+
+    await expect(getYouTubeMediaSource('abcdefghijk')).rejects.not.toBeInstanceOf(YtDlpMediaUnavailableError);
+
+    expect(dependencyMocks.execa).toHaveBeenCalledTimes(2);
+    expect(dependencyMocks.execa.mock.calls[1][1]).toContain('--no-check-formats');
+  });
+
+  it('reuses and removes the same private cookie copy across the YouTube format fallback', async () => {
+    const directory = await fs.mkdtemp(path.join(tmpdir(), 'muse-format-fallback-'));
+    const configuredCookies = path.join(directory, 'cookies.txt');
+    const fixtureCookies = '# Netscape HTTP Cookie File\n';
+    const temporaryCookies: string[] = [];
+    await fs.writeFile(configuredCookies, fixtureCookies);
+    process.env.YT_DLP_COOKIES_PATH = configuredCookies;
+    dependencyMocks.execa.mockImplementation(async (_executable: string, args: string[]) => {
+      const cookiesPath = args[args.indexOf('--cookies') + 1];
+      temporaryCookies.push(cookiesPath);
+      expect(cookiesPath).not.toBe(configuredCookies);
+      expect(await fs.readFile(cookiesPath, 'utf8')).toBe(fixtureCookies);
+      if (args.includes('--check-formats')) {
+        throw {stderr: 'ERROR: Requested format is not available'};
+      }
+
+      expect(args).toContain('--no-check-formats');
+      return {stdout: VALID_MEDIA_RESPONSE};
+    });
+
+    try {
+      await expect(getYouTubeMediaSource('abcdefghijk')).resolves.toMatchObject({
+        url: 'https://media.example/requested.webm',
+        headers: {Authorization: 'Bearer media-token', 'User-Agent': 'Muse ops test'},
+      });
+      expect(temporaryCookies).toHaveLength(2);
+      expect(temporaryCookies[1]).toBe(temporaryCookies[0]);
+      await expect(fs.access(temporaryCookies[0])).rejects.toMatchObject({code: 'ENOENT'});
+      expect(await fs.readFile(configuredCookies, 'utf8')).toBe(fixtureCookies);
+    } finally {
+      await fs.rm(directory, {recursive: true, force: true});
+    }
+  });
+
+  it.each([
+    {stderr: 'ERROR: HTTP Error 429: Too Many Requests'},
+    {shortMessage: 'Command timed out after 45000 milliseconds', timedOut: true},
+  ])('does not retry unrelated extraction errors: %j', async error => {
+    dependencyMocks.execa.mockRejectedValue(error);
+
+    await expect(getYouTubeMediaSource('abcdefghijk')).rejects.not.toBeInstanceOf(YtDlpMediaUnavailableError);
+
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+  });
+
+  it('does not retry an invalid checked-format JSON response', async () => {
+    dependencyMocks.execa.mockResolvedValue({stdout: '{invalid json'});
+
+    await expect(getYouTubeMediaSource('abcdefghijk')).rejects.toThrow('yt-dlp returned an invalid response.');
+
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+  });
+
+  it('does not retry flat metadata extraction for an unavailable requested format', async () => {
+    dependencyMocks.execa.mockRejectedValue({stderr: 'ERROR: Requested format is not available'});
+
+    await expect(getSoundCloudMetadata('https://soundcloud.com/artist/sets/album', 3)).rejects.toThrow('Requested format is not available');
+
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(dependencyMocks.execa.mock.calls[0][1]).not.toContain('--no-check-formats');
+  });
+
   it('uses the bounded single-video Node-runtime extraction contract and normalizes the selected download', async () => {
     process.env.YT_DLP_PATH = '/fake/yt-dlp';
 
@@ -491,6 +619,7 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
     expect(dependencyMocks.execa).toHaveBeenCalledWith('/fake/yt-dlp', [
       '--dump-single-json',
       '--no-playlist',
+      '--check-formats',
       '--skip-download',
       '--no-warnings',
       '--no-cache-dir',
@@ -509,7 +638,7 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
   it.each([
     [MediaSource.Youtube, 'abcdefghijk', 'https://www.youtube.com/watch?v=abcdefghijk'],
     [MediaSource.SoundCloud, 'https://soundcloud.com/artist/track', 'https://soundcloud.com/artist/track'],
-  ])('hands fresh media and normalized headers to ffmpeg for source %s', async (source, url, extractionUrl) => {
+  ])('requests format validation and hands fresh media and normalized headers to ffmpeg for source %s', async (source, url, extractionUrl) => {
     process.env.YT_DLP_PATH = '/fake/yt-dlp';
     const fileCache = {
       getEntryFor: vi.fn().mockResolvedValue(null),
@@ -535,7 +664,9 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
     const command = dependencyMocks.ffmpeg.mock.results[0].value as ReturnType<typeof makeFfmpegCommand>;
 
     expect(dependencyMocks.ffmpeg).toHaveBeenCalledWith('https://media.example/requested.webm');
+    expect(dependencyMocks.execa.mock.calls[0][1]).toEqual(expect.arrayContaining(['--no-playlist', '--check-formats']));
     expect(dependencyMocks.execa.mock.calls[0][1].at(-1)).toBe(extractionUrl);
+    expect(dependencyMocks.execa.mock.calls[0][2]).toEqual({timeout: 45_000});
     expect(command.inputOptions).toHaveBeenCalledWith([
       '-reconnect',
       '1',

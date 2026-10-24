@@ -1224,7 +1224,7 @@ export default class {
     this.stopTrackingPosition();
     this.status = STATUS.IDLE;
     this.stopAudioPlayer(true);
-    // Allow the updater to replace the now-empty queue with a finished state.
+    // Let the response restore its original acknowledgment after the queue empties.
     if (this.playingMessage) {
       this.playingMessage.terminalState = 'finished';
     }
