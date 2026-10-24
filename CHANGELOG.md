@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Keep the retained song available when the queue is cleared during a failed next or previous track request.
+- Allow queue looping to be turned off after the upcoming songs are cleared or removed.
+- Refresh volume and loop indicators immediately, including while playback is paused.
+- Validate favorite names and queries, and keep autocomplete and favorite lists within Discord's message limits without changing saved queries.
+- Fix fresh Node.js installs by using compatible pagination and Node type dependencies.
+
 - Remove playback controls even when the final message edit fails.
 - Validate extracted media formats before starting FFmpeg to avoid URLs that immediately return HTTP 403.
 

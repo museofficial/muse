@@ -301,9 +301,11 @@ export default class {
   async forward(skip: number): Promise<void> {
     const originalPosition = this.positionInSeconds;
     const originalQueuePosition = this.queuePosition;
+    const originalSong = this.getCurrent();
     const originalQueueEntryVersion = this.currentQueueEntryVersion;
     this.manualForward(skip);
     const destinationSong = this.getCurrent();
+    const destinationQueuePosition = this.queuePosition;
     const destinationQueueEntryVersion = this.currentQueueEntryVersion;
     let destinationPlayback: PlayerPlaybackAttemptContext | null = null;
 
@@ -325,10 +327,12 @@ export default class {
         await playPromise;
       }
     } catch (error: unknown) {
-      const failedTransitionStillOwnsDestination = this.getCurrent() === destinationSong
+      const canRestoreOriginalEntry = this.getCurrent() === destinationSong
+        && this.queuePosition === destinationQueuePosition
+        && this.queue[originalQueuePosition] === originalSong
         && this.currentQueueEntryVersion === destinationQueueEntryVersion
         && (destinationPlayback === null || this.playbackAttempts.owns(destinationPlayback));
-      if (failedTransitionStillOwnsDestination) {
+      if (canRestoreOriginalEntry) {
         this.positionInSeconds = originalPosition;
         this.queuePosition = originalQueuePosition;
         this.currentQueueEntryVersion = originalQueueEntryVersion;
@@ -431,12 +435,14 @@ export default class {
 
     const originalPosition = this.positionInSeconds;
     const originalQueuePosition = this.queuePosition;
+    const originalSong = this.getCurrent();
     const originalQueueEntryVersion = this.currentQueueEntryVersion;
     this.queuePosition--;
     this.currentQueueEntryVersion++;
     this.positionInSeconds = 0;
     this.stopTrackingPosition();
     const destinationSong = this.getCurrent();
+    const destinationQueuePosition = this.queuePosition;
     const destinationQueueEntryVersion = this.currentQueueEntryVersion;
     let destinationPlayback: PlayerPlaybackAttemptContext | null = null;
 
@@ -456,10 +462,12 @@ export default class {
         await playPromise;
       }
     } catch (error: unknown) {
-      const failedTransitionStillOwnsDestination = this.getCurrent() === destinationSong
+      const canRestoreOriginalEntry = this.getCurrent() === destinationSong
+        && this.queuePosition === destinationQueuePosition
+        && this.queue[originalQueuePosition] === originalSong
         && this.currentQueueEntryVersion === destinationQueueEntryVersion
         && (destinationPlayback === null || this.playbackAttempts.owns(destinationPlayback));
-      if (failedTransitionStillOwnsDestination) {
+      if (canRestoreOriginalEntry) {
         this.positionInSeconds = originalPosition;
         this.queuePosition = originalQueuePosition;
         this.currentQueueEntryVersion = originalQueueEntryVersion;
@@ -586,6 +594,8 @@ export default class {
       this.volumeBeforeVoiceActivity = level;
       this.setAudioPlayerVolume(this.voiceActivityVolumeTarget);
     }
+
+    this.requestPlayingMessageUpdate();
   }
 
   getVolume(): number {

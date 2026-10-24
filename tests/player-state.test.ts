@@ -299,6 +299,42 @@ describe('Player forward state transitions', () => {
     expect(player.getPosition()).toBe(31);
   });
 
+  it.each([
+    {direction: 'next', originalIndex: 2, destinationIndex: 3},
+    {direction: 'back', originalIndex: 1, destinationIndex: 0},
+  ])('keeps the retained song when clear runs during a failed $direction transition', async ({direction, originalIndex, destinationIndex}) => {
+    const {getStream, player} = makeReadyPlayer();
+    const songs = ['A', 'B', 'C', 'D'].map(title => makeSong(title));
+    for (const song of songs) {
+      player.add(song);
+    }
+
+    player.manualForward(originalIndex);
+    await player.play();
+    const streamStarted = makeDeferred<void>();
+    const streamResult = makeDeferred<Readable>();
+    getStream.mockImplementationOnce(() => {
+      streamStarted.resolve(undefined);
+      return streamResult.promise;
+    });
+
+    const transition = direction === 'next' ? player.forward(1) : player.back();
+    const transitionFailure = expect(transition).rejects.toThrow('playback failed');
+    await streamStarted.promise;
+    player.clear();
+    streamResult.reject(new Error('playback failed'));
+    await transitionFailure;
+
+    expect(player.getCurrent()).toBe(songs[destinationIndex]);
+    expect(player.getQueue()).toEqual([]);
+    expect(player.getPosition()).toBe(0);
+    expect(player.status).toBe(STATUS.PAUSED);
+
+    await player.play();
+    expect(player.getCurrent()).toBe(songs[destinationIndex]);
+    expect(player.status).toBe(STATUS.PLAYING);
+  });
+
   it('moves a paused non-empty queue forward while remaining paused and never schedules idle disconnect', async () => {
     const player = new Player({} as never, GUILD_ID);
     const voiceConnection = makeVoiceConnection();
@@ -600,6 +636,25 @@ describe('Player queue-finish timer state', () => {
 });
 
 describe('Player playing-message updates', () => {
+  it('refreshes a paused playback card immediately when the volume changes', async () => {
+    const {player} = makeReadyPlayer();
+    player.add(makeSong('Paused volume'));
+    await player.play();
+    player.pause();
+    const displayedVolumes: number[] = [];
+    const update = vi.fn(async () => {
+      displayedVolumes.push(player.getVolume());
+    });
+    player.setPlayingMessageUpdater(update, 'message-id');
+
+    player.setVolume(42);
+
+    expect(update).toHaveBeenCalledOnce();
+    expect(displayedVolumes).toEqual([42]);
+    expect(player.status).toBe(STATUS.PAUSED);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it.each(['api', 'http', 'message'] as const)('does not log private webhook credentials from %s errors', async kind => {
     const player = new Player({} as never, GUILD_ID);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);

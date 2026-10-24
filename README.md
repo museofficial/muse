@@ -128,6 +128,7 @@ Muse.
 
 When the queue finishes, Muse removes the card and controls and keeps the
 original queue acknowledgment. Stopping playback shows "Playback stopped."
+Volume and loop changes update the card immediately, including while paused.
 
 To use the emoji controls, you must be in the same voice channel as Muse and
 be allowed to use the matching command in the text channel containing the
@@ -154,6 +155,13 @@ Shuffling removes repeated songs from the upcoming queue, including songs
 that are playing now or have already played. When you add a playlist with
 shuffle enabled, Muse removes repeats within that playlist. Different chapters
 of the same track stay separate.
+
+### Favorites
+
+Favorite names must contain 1–100 characters. `/favorites list` may shorten long
+names and queries for display; the saved query is still used in full. Existing
+names longer than 100 characters can still be entered manually with
+`/favorites use` or `/favorites remove`.
 
 ### Cache
 
