@@ -4,6 +4,7 @@ import {ChannelType, Collection, MessageFlags} from 'discord.js';
 import {MediaSource, STATUS} from '../src/services/player-types.js';
 import type {ListeningSessionRecord} from '../src/services/listening-session.js';
 import {buildHistoryMessages, buildMoreMessage, buildQueueMessage, buildSessionMessage, buildSessionMessages, sessionButtonId} from '../src/utils/build-session-message.js';
+import {buildQueueEmbed} from '../src/utils/build-embed.js';
 
 const permission = vi.hoisted(() => vi.fn());
 const guildSettings = vi.hoisted(() => vi.fn());
@@ -483,6 +484,88 @@ describe('moving the player onto public queue receipts', () => {
 });
 
 describe('session buttons and durable history', () => {
+  it.each([STATUS.PLAYING, STATUS.PAUSED])('shows the same private queue as /queue while %s', async status => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});
+    f.member.voice.channelId = 'other-voice';
+    f.player.status = status;
+    f.player.getCurrent.mockReturnValue({...track(), thumbnailUrl: 'https://example.test/art.jpg'} as never);
+    f.player.getQueue.mockReturnValue(Array.from({length: 12}, (_, index) => track(`Upcoming ${index + 1}`)));
+    f.player.queueSize.mockReturnValue(12);
+    const interaction = f.interaction('queue');
+
+    await f.service.handleButton(interaction as never);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.embeds[0].toJSON()).toEqual(buildQueueEmbed(f.player as never, 1, 10).toJSON());
+    expect(payload.embeds[0].data.description).toContain('Upcoming 10');
+    expect(payload.embeds[0].data.description).not.toContain('Upcoming 11');
+    expect(payload.components[0].components.map(button => [button.label, button.disabled])).toEqual([
+      ['Previous page', true], ['Next page', false],
+    ]);
+    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
+    expect(permission).not.toHaveBeenCalled();
+    expect(guildSettings).toHaveBeenCalledWith('guild');
+  });
+
+  it('uses the configured queue page size for private pagination', async () => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});
+    guildSettings.mockResolvedValue({defaultQueuePageSize: 2});
+    f.player.getQueue.mockReturnValue([track('Second song'), track('Third song'), track('Fourth song')]);
+    f.player.queueSize.mockReturnValue(3);
+    const interaction = f.interaction('queue', 1);
+
+    await f.service.handleButton(interaction as never);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.embeds[0].toJSON()).toEqual(buildQueueEmbed(f.player as never, 2, 2).toJSON());
+    expect(payload.embeds[0].data.description).toContain('`3.`');
+    expect(payload.embeds[0].data.description).toContain('Fourth song');
+    expect(payload.embeds[0].data.description).not.toContain('Second song');
+    expect(payload.components[0].components.map(button => [button.custom_id, button.disabled])).toEqual([
+      [sessionButtonId(id, 'queue', 0), false], [sessionButtonId(id, 'queue', 2), true],
+    ]);
+  });
+
+  it('clamps an old queue page when tracks finish during the settings lookup', async () => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});
+    f.player.getQueue.mockReturnValue(Array.from({length: 8}, (_, index) => track(`Upcoming ${index + 1}`)));
+    f.player.queueSize.mockReturnValue(8);
+    guildSettings.mockImplementationOnce(async () => {
+      f.player.getQueue.mockReturnValue([track('Last queued song')]);
+      f.player.queueSize.mockReturnValue(1);
+      return {defaultQueuePageSize: 2};
+    });
+    const interaction = f.interaction('queue', 3);
+
+    await f.service.handleButton(interaction as never);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.embeds[0].toJSON()).toEqual(buildQueueEmbed(f.player as never, 1, 2).toJSON());
+    expect(payload.embeds[0].data.description).toContain('Last queued song');
+    expect(payload.components).toEqual([]);
+  });
+
+  it.each([false, true])('handles the queue finishing during a settings lookup (session ended: %s)', async ended => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});
+    guildSettings.mockImplementationOnce(async () => {
+      f.player.getCurrent.mockReturnValue(null as never);
+      f.player.getQueue.mockReturnValue([]);
+      f.player.queueSize.mockReturnValue(0);
+      if (ended) f.state.record.endedAt = new Date();
+      return {defaultQueuePageSize: 10};
+    });
+    const interaction = f.interaction('queue');
+
+    await f.service.handleButton(interaction as never);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(ended
+      ? 'This listening session has ended. Its history is still available.' : 'The queue is empty.');
+  });
+
   it('acknowledges privately before checking history and allows reads outside voice', async () => {
     const f = fixture();
     Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});

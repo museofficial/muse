@@ -302,14 +302,21 @@ export default class SessionPlayer {
       return;
     }
 
+    const queuePageSize = action === 'queue'
+      ? (await getGuildSettings(interaction.guild.id)).defaultQueuePageSize : undefined;
     const player = this.currentPlayer(session);
     if (!player) {
       await interaction.editReply('This listening session has ended. Its history is still available.');
       return;
     }
 
+    if (action === 'queue' && !player.getCurrent()) {
+      await interaction.editReply('The queue is empty.');
+      return;
+    }
+
     if (action === 'queue' || action === 'more') {
-      await interaction.editReply(action === 'queue' ? buildQueueMessage(session, player, page) : buildMoreMessage(session, player));
+      await interaction.editReply(action === 'queue' ? buildQueueMessage(session, player, page, queuePageSize) : buildMoreMessage(session, player));
       return;
     }
 

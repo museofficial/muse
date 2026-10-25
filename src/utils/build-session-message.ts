@@ -6,7 +6,6 @@ import {buildQueueEmbed} from './build-embed.js';
 import {truncate} from './string.js';
 
 export const SESSION_BUTTON_PREFIX = 'muse-session:';
-const PAGE_SIZE = 5;
 const MAX_DESCRIPTION_LENGTH = 4096;
 const MAX_MESSAGE_EMBED_TEXT = 6000;
 const MAX_MESSAGE_EMBEDS = 10;
@@ -159,14 +158,10 @@ export const buildHistoryMessages = (session: ListeningSessionRecord): SessionMe
   message(historyEmbed('Session history'), []),
 ], session);
 
-export const buildQueueMessage = (session: ListeningSessionRecord, player: Player, requestedPage = 0) => {
-  const queue = player.getQueue();
-  const pages = Math.max(1, Math.ceil(queue.length / PAGE_SIZE));
+export const buildQueueMessage = (session: ListeningSessionRecord, player: Player, requestedPage = 0, pageSize = 10) => {
+  const pages = Math.max(1, Math.ceil(player.queueSize() / pageSize));
   const page = Math.max(0, Math.min(requestedPage, pages - 1));
-  const first = page * PAGE_SIZE;
-  const description = queue.slice(first, first + PAGE_SIZE).map((track, index) => `${first + index + 1}. ${trackLink(track)}`).join('\n');
-  const embed = new EmbedBuilder().setColor(0x365c65).setTitle('Up next').setDescription(description || 'No upcoming tracks.')
-    .setFooter({text: `Page ${page + 1} of ${pages} · ${queue.length} upcoming tracks`});
+  const embed = buildQueueEmbed(player, page + 1, pageSize);
   return message(embed, pages > 1 ? [pagination(session, 'queue', page, pages)] : []);
 };
 

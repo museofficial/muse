@@ -80,7 +80,7 @@ const expectBoundedMessages = (messages: SessionMessagePayload[]) => {
 };
 
 describe('session message URL limits', () => {
-  it('bounds encoded links in recaps, full history, and private queues', () => {
+  it('bounds encoded history links and keeps the private queue in the classic format', () => {
     const url = `https://radio.example/${'()'.repeat(130)}`;
     expect(url.length).toBeLessThanOrEqual(300);
     expect(new URL(url).href.replace(/\(/g, '%28').replace(/\)/g, '%29').length).toBeGreaterThan(300);
@@ -91,7 +91,6 @@ describe('session message URL limits', () => {
     const messages = [
       buildSessionMessage(session),
       ...buildHistoryMessages(session),
-      buildQueueMessage(session, player),
     ];
 
     for (const message of messages) {
@@ -100,6 +99,10 @@ describe('session message URL limits', () => {
       expect(description).not.toContain('https://radio.example/');
       expect(description).toContain('\\*');
     }
+
+    const queue = buildQueueMessage(session, player);
+    expect(queue.embeds[0].toJSON()).toEqual(buildQueueEmbed(player, 1, 10).toJSON());
+    expectBoundedMessages([queue]);
     expect(tracks.every(track => track.url === url)).toBe(true);
   });
 
