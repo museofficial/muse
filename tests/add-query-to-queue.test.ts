@@ -180,7 +180,7 @@ describe('AddQueryToQueue skip semantics', () => {
 
     expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: false});
     expect(attachToReply).toHaveBeenCalledWith(player, interaction.channel, expect.any(Promise));
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue — <@requester-id>');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
     expect(replyContent(interaction)).not.toContain('Go to player');
     expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({allowedMentions: {parse: []}}));
     expect(interaction.replyMessage.react).not.toHaveBeenCalled();
@@ -205,7 +205,7 @@ describe('AddQueryToQueue skip semantics', () => {
     expect(play).toHaveBeenCalledOnce();
     expect(forward).not.toHaveBeenCalled();
     expect(attachToReply).toHaveBeenCalledWith(player, interaction.channel, expect.any(Promise));
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the front of the queue — <@requester-id>');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the front of the queue');
     expect(replyContent(interaction)).not.toMatch(/skipped/i);
     expect(interaction.replyMessage.react).not.toHaveBeenCalled();
   });
@@ -220,7 +220,7 @@ describe('AddQueryToQueue skip semantics', () => {
 
     expect(forward).toHaveBeenCalledWith(1);
     expect(player.getCurrent()?.title).toBe('New song');
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue and current track skipped — <@requester-id>');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue and current track skipped');
   });
 
   it('preserves playback startup failures from the skip path', async () => {
@@ -344,7 +344,7 @@ describe('AddQueryToQueue shared player publication', () => {
     expect(interaction.editReply).toHaveBeenCalledOnce();
   });
 
-  it('keeps the requester visible when a long escaped title must be shortened', async () => {
+  it('keeps the confirmation readable when a long escaped title must be shortened', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'));
     const {service} = makeService({player, songs: [makeSong('*Long title* '.repeat(200))]});
     const interaction = makeInteraction();
@@ -353,7 +353,7 @@ describe('AddQueryToQueue shared player publication', () => {
 
     expect(replyContent(interaction).length).toBeLessThanOrEqual(2000);
     expect(replyContent(interaction)).toMatch(/^u betcha, \*\*\\\*Long title\\\*/);
-    expect(replyContent(interaction)).toMatch(/added to the queue — <@requester-id>$/);
+    expect(replyContent(interaction)).toMatch(/added to the queue$/);
     expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({allowedMentions: {parse: []}}));
   });
 
@@ -372,7 +372,7 @@ describe('AddQueryToQueue shared player publication', () => {
 
     expect(attachToReply).toHaveBeenCalledWith(player, interaction.channel, expect.any(Promise));
     expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue — <@requester-id>');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
 
     card.release();
     await pending;
@@ -404,7 +404,7 @@ describe('AddQueryToQueue shared player publication', () => {
     audio.release();
     await card.entered;
     expect(player.status).toBe(STATUS.PLAYING);
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue — <@requester-id>');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
 
     card.release();
     await pending;
@@ -452,7 +452,7 @@ describe('AddQueryToQueue shared player publication', () => {
     for (const [payload] of interaction.editReply.mock.calls) {
       expect(payload.content.length).toBeLessThanOrEqual(2000);
       expect(payload.allowedMentions).toEqual({parse: []});
-      expect(payload.content).toContain(' — <@requester-id>');
+      expect(payload.content).not.toContain('<@requester-id>');
     }
 
     expect(warning).toHaveBeenCalledOnce();
@@ -495,7 +495,7 @@ describe('AddQueryToQueue shared player publication', () => {
     expect(attachToReply).toHaveBeenCalledTimes(2);
     for (const interaction of [first, second]) {
       expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: false});
-      expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue — <@requester-id>');
+      expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
       expect(replyContent(interaction)).not.toContain('session-card-id');
       expect(interaction.replyMessage.react).not.toHaveBeenCalled();
     }
@@ -509,7 +509,7 @@ describe('AddQueryToQueue shared player publication', () => {
     await addToQueue(service, interaction);
 
     expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
-    expect(replyContent(interaction)).toMatch(/^u betcha, \*\*New song\*\* added to the queue — <@requester-id>\n/);
+    expect(replyContent(interaction)).toMatch(/^u betcha, \*\*New song\*\* added to the queue\n/);
     expect(replyContent(interaction)).toMatch(/card|player/i);
     expect(replyContent(interaction)).toMatch(/could not|couldn't|unavailable/i);
   });
@@ -522,7 +522,7 @@ describe('AddQueryToQueue shared player publication', () => {
     await addToQueue(service, interaction);
 
     expect(interaction.editReply).toHaveBeenCalledOnce();
-    expect(replyContent(interaction)).toBe('u betcha, **\\*First\\*** and 1 other songs were added to the queue (1 song was not found) — <@requester-id>');
+    expect(replyContent(interaction)).toBe('u betcha, **\\*First\\*** and 1 other songs were added to the queue (1 song was not found)');
     expect(replyContent(interaction)).not.toContain('session-card-id');
   });
 });
@@ -784,7 +784,7 @@ describe('AddQueryToQueue voice connection failures', () => {
     expect(player.getCurrent()).toBe(current);
     expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
     expect(play).toHaveBeenCalledOnce();
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue (resuming playback) — <@requester-id>');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue (resuming playback)');
   });
 });
 

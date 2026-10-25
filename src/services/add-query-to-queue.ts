@@ -144,7 +144,7 @@ export default class AddQueryToQueue {
 
     const title = escapeMarkdown(firstSong.title);
     const responseContent = (publicationWarning = '') => {
-      const suffix = `${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg} — <@${interaction.member!.user.id}>${publicationWarning}`;
+      const suffix = `${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}${publicationWarning}`;
       return newSongs.length === 1
         ? formatSongReply(title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${suffix}`)
         : formatSongReply(title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${suffix}`);

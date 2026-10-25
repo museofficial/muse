@@ -122,7 +122,8 @@ Muse keeps one shared player card for each listening session. While music plays,
 it uses the classic display: album art, progress bar, requester, source, and
 upcoming tracks. Queue count and duration appear only when songs are waiting;
 page numbers appear only in the full queue view. Each `/play` or `/favorites use`
-request gets a public "u betcha" receipt naming the requester without pinging them.
+request gets a public "u betcha" receipt. Discord identifies the requester above
+the command reply, so the receipt does not repeat their name or mention them.
 Playlists get one receipt for the whole request. The newest receipt in the
 session's text channel carries the player card and controls; older receipts keep
 only their short confirmation. Requests in other channels leave the card in the
