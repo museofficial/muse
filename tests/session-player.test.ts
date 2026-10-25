@@ -275,7 +275,7 @@ describe('shared session card publication', () => {
     const edit = f.card.edit.mock.calls[0][0];
     expect(edit.embeds[0].data.description).toContain('First song');
     expect(edit.embeds[0].data.description).toContain('Played');
-    expect(edit.components.flatMap((row: {components: unknown[]}) => row.components)).toHaveLength(2);
+    expect(edit.components).toEqual([]);
     expect(f.card.delete).not.toHaveBeenCalled();
   });
 });

@@ -167,8 +167,8 @@ it does not perform the action.
 The −10s and +10s buttons move ten seconds within a song and do not work on
 livestreams. Previous, seek, Pause / Resume, and Next form the first row; Queue
 and Shuffle form the second. Use `/stop` to stop playback and disconnect Muse.
-Playback controls are removed when the session ends.
-The complete history remains visible in the recap.
+Recaps have no buttons, including while Muse stays connected with an empty queue.
+The complete history remains visible.
 
 Shuffling removes repeated songs from the upcoming queue, including songs
 that are playing now or have already played. When you add a playlist with

@@ -246,8 +246,7 @@ describe('classic live player', () => {
     const recap = buildSessionMessages(session, makePlayer([], {getCurrent: () => null}));
     expect(recap.length).toBeGreaterThan(1);
     expect(historyLines(recap).map(line => Number(line.match(/^\d+/)![0]))).toEqual(Array.from({length: 125}, (_, index) => index + 1));
-    expect(recap[0].components.flatMap(row => row.components).map(button => button.label)).toEqual(['Queue', 'Shuffle']);
-    expect(recap[0].components.flatMap(row => row.components).every(button => button.style === ButtonStyle.Secondary)).toBe(true);
+    expect(recap.every(message => message.components.length === 0)).toBe(true);
     expectBoundedMessages(recap);
 
     const resumed = buildSessionMessages(session, player);
