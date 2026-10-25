@@ -1,4 +1,5 @@
 import {describe, expect, it} from 'vitest';
+import {ButtonStyle} from 'discord.js';
 import type Player from '../src/services/player.js';
 import {MediaSource, STATUS, type QueuedSong} from '../src/services/player-types.js';
 import type {ListeningSessionRecord} from '../src/services/listening-session.js';
@@ -147,7 +148,9 @@ describe('classic live player', () => {
 
     expect(messages).toHaveLength(1);
     expect(messages[0].embeds).toHaveLength(1);
-    expect(embed).toEqual(buildQueueEmbed(player, 1, 1).toJSON());
+    const queueEmbed = buildQueueEmbed(player, 1, 1).toJSON();
+    expect(embed).toEqual({...queueEmbed, fields: queueEmbed.fields!.filter(field => field.name !== 'Page')});
+    expect(queueEmbed.fields!.find(field => field.name === 'Page')?.value).toBe('1 out of 2');
     expect(buildSessionMessage(session, player, 1).embeds[0].toJSON()).toEqual(embed);
     expect(embed.thumbnail?.url).toBe(current.thumbnailUrl);
     expect(embed.description).toContain('Requested by: <@listener>');
@@ -160,10 +163,10 @@ describe('classic live player', () => {
     expect(embed.fields).toEqual([
       {name: 'In queue', value: '2 songs', inline: true},
       {name: 'Total length', value: '07:30', inline: true},
-      {name: 'Page', value: '1 out of 2', inline: true},
     ]);
-    expect(messages[0].components.flatMap(row => row.components).map(button => button.label)).toEqual([
-      'Previous', '−10s', status === STATUS.PAUSED ? 'Resume' : 'Pause', '+10s', 'Next', 'Queue', 'Shuffle', 'Stop',
+    expect(messages[0].components.map(row => row.components.map(button => button.label))).toEqual([
+      ['Previous', '−10s', status === STATUS.PAUSED ? 'Resume' : 'Pause', '+10s', 'Next'],
+      ['Queue', 'Shuffle'],
     ]);
     expectBoundedMessages(messages);
   });
@@ -173,6 +176,7 @@ describe('classic live player', () => {
     const player = makePlayer(tracks);
     const session = makeSession(tracks);
     const expected = buildQueueEmbed(player, 1, 10).toJSON();
+    expected.fields = expected.fields!.filter(field => field.name !== 'Page');
 
     expect(buildSessionMessages(session, player)[0].embeds[0].toJSON()).toEqual(expected);
     expect(buildSessionMessage(session, player).embeds[0].toJSON()).toEqual(expected);
@@ -180,25 +184,42 @@ describe('classic live player', () => {
     expect(expected.description).not.toContain('Track 11');
   });
 
-  it.each([false, true])('keeps seek, shuffle, and stop on the card and disables unavailable actions for live streams: %s', isLive => {
+  it.each([false, true])('keeps seek and shuffle on the card and disables unavailable actions for live streams: %s', isLive => {
     const track = {...makeTrack('https://music.example/current'), title: 'Current song', isLive};
     const session = makeSession([track]);
     const payload = buildSessionMessage(session, makePlayer([track], {canGoForward: () => false}));
     const controls = payload.components.flatMap(row => row.components);
     const control = (action: string) => controls.find(button => button.custom_id.includes(`:${action}:`))!;
 
-    expect(payload.components.map(row => row.components.length)).toEqual([5, 3]);
+    expect(payload.components.map(row => row.components.length)).toEqual([5, 2]);
     expect(control('previous').disabled).toBe(true);
     expect(control('next').disabled).toBe(true);
     expect(control('backward').disabled).toBe(isLive);
     expect(control('forward').disabled).toBe(isLive);
     expect(control('shuffle').disabled).toBe(true);
-    expect(control('stop').disabled).toBe(false);
-    expect(control('stop').style).toBe(4);
+    expect(control('stop')).toBeUndefined();
+    expect(controls.filter(button => button.style === ButtonStyle.Primary).map(button => button.label)).toEqual(['Pause']);
     expect(controls.some(button => button.label === 'More')).toBe(false);
 
     const withQueue = buildSessionMessage(session, makePlayer([track, track]));
     expect(withQueue.components[1].components.find(button => button.label === 'Shuffle')?.disabled).toBe(false);
+  });
+
+  it('removes empty queue metadata when the last upcoming song starts, without changing the full queue view', () => {
+    const tracks = [makeTrack('https://music.example/current'), makeTrack('https://music.example/next')];
+    const session = makeSession(tracks);
+    const before = buildSessionMessage(session, makePlayer(tracks)).embeds[0].toJSON();
+    expect(before.fields?.map(field => field.name)).toEqual(['In queue', 'Total length']);
+
+    const lastSongPlayer = makePlayer([tracks[1]]);
+    const after = buildSessionMessage(session, lastSongPlayer).embeds[0].toJSON();
+    expect(after.fields ?? []).toEqual([]);
+    expect(after.description).not.toContain('**Up next:**');
+    expect(buildQueueEmbed(lastSongPlayer, 1, 10).toJSON().fields).toEqual([
+      {name: 'In queue', value: '-', inline: true},
+      {name: 'Total length', value: '-', inline: true},
+      {name: 'Page', value: '1 out of 1', inline: true},
+    ]);
   });
 
   it.each([STATUS.PLAYING, STATUS.PAUSED])('hides history and continuations while %s, even after a long session', status => {
@@ -225,7 +246,8 @@ describe('classic live player', () => {
     const recap = buildSessionMessages(session, makePlayer([], {getCurrent: () => null}));
     expect(recap.length).toBeGreaterThan(1);
     expect(historyLines(recap).map(line => Number(line.match(/^\d+/)![0]))).toEqual(Array.from({length: 125}, (_, index) => index + 1));
-    expect(recap[0].components.flatMap(row => row.components).map(button => button.label)).toEqual(['Queue', 'Shuffle', 'Stop']);
+    expect(recap[0].components.flatMap(row => row.components).map(button => button.label)).toEqual(['Queue', 'Shuffle']);
+    expect(recap[0].components.flatMap(row => row.components).every(button => button.style === ButtonStyle.Secondary)).toBe(true);
     expectBoundedMessages(recap);
 
     const resumed = buildSessionMessages(session, player);

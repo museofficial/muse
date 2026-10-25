@@ -86,7 +86,7 @@ describe('shared session card publication', () => {
     expect(initial.description).toContain('Second song');
     expect(initial.description).toContain('Third song');
     expect(initial.description).not.toContain('Fourth song');
-    expect(initial.fields.find(field => field.name === 'Page')?.value).toBe('1 out of 2');
+    expect(initial.fields.map(field => field.name)).toEqual(['In queue', 'Total length']);
     await f.state.updater!();
     expect(f.card.edit.mock.calls.at(-1)![0].embeds[0].data).toEqual(initial);
     expect(guildSettings).toHaveBeenCalledOnce();
@@ -275,7 +275,7 @@ describe('shared session card publication', () => {
     const edit = f.card.edit.mock.calls[0][0];
     expect(edit.embeds[0].data.description).toContain('First song');
     expect(edit.embeds[0].data.description).toContain('Played');
-    expect(edit.components.flatMap((row: {components: unknown[]}) => row.components)).toHaveLength(3);
+    expect(edit.components.flatMap((row: {components: unknown[]}) => row.components)).toHaveLength(2);
     expect(f.card.delete).not.toHaveBeenCalled();
   });
 });
@@ -702,7 +702,7 @@ describe('bounded session rendering', () => {
     f.player.getCurrent.mockReturnValue({...track(), isLive: true});
     expect(buildSessionMessage(f.state.record, f.player as never).components[0].components[2].label).toBe('Resume');
     const controls = buildMoreMessage(f.state.record, f.player as never).components[0].components;
-    expect(controls.map(button => button.label)).toEqual(['Back 10 seconds', 'Forward 10 seconds', 'Shuffle', 'Stop and leave']);
+    expect(controls.map(button => button.label)).toEqual(['Back 10 seconds', 'Forward 10 seconds', 'Shuffle']);
     expect(controls.slice(0, 2).every(button => button.disabled)).toBe(true);
     expect(controls.every(button => !('emoji' in button))).toBe(true);
   });

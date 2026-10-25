@@ -131,18 +131,22 @@ export const buildSessionMessages = (session: ListeningSessionRecord, player?: P
       button(session, 'forward', '+10s', {disabled: current.isLive}),
       button(session, 'next', 'Next', {disabled: !player.canGoForward(1)}),
     ));
-  }
-
-  if (active) {
     components.push(row(
       button(session, 'queue', 'Queue'),
       button(session, 'shuffle', 'Shuffle', {disabled: player.isQueueEmpty()}),
-      button(session, 'stop', 'Stop', {style: ButtonStyle.Danger}),
+    ));
+  } else if (active) {
+    components.push(row(
+      button(session, 'queue', 'Queue'),
+      button(session, 'shuffle', 'Shuffle', {disabled: player.isQueueEmpty()}),
     ));
   }
 
   if (current && player) {
-    return [message(buildQueueEmbed(player, 1, queuePageSize), components)];
+    const embed = buildQueueEmbed(player, 1, queuePageSize);
+    // Pagination belongs to the full queue view; an empty preview needs no summary.
+    embed.setFields(player.isQueueEmpty() ? [] : (embed.data.fields ?? []).filter(field => field.name !== 'Page'));
+    return [message(embed, components)];
   }
 
   const recap = historyEmbed('Session recap').setDescription(recapDescription(session));
@@ -180,6 +184,5 @@ export const buildMoreMessage = (session: ListeningSessionRecord, player: Player
     button(session, 'backward', 'Back 10 seconds', {disabled: seekDisabled}),
     button(session, 'forward', 'Forward 10 seconds', {disabled: seekDisabled}),
     button(session, 'shuffle', 'Shuffle', {disabled: player.isQueueEmpty()}),
-    button(session, 'stop', 'Stop and leave', {style: ButtonStyle.Danger}),
   )]);
 };

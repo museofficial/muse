@@ -119,8 +119,9 @@ npm test
 ### Playback display and controls
 
 Muse keeps one shared player card for each listening session. While music plays,
-it uses the classic display: album art, progress bar, requester, source, upcoming
-tracks, queue count, and queue duration. Each `/play` or `/favorites use` request
+it uses the classic display: album art, progress bar, requester, source, and
+upcoming tracks. Queue count and duration appear only when songs are waiting;
+page numbers appear only in the full queue view. Each `/play` or `/favorites use` request
 gets a private "u betcha" confirmation, without repeating a link to the player.
 Queue confirmations are always private; the former
 `set-queue-add-response-hidden` setting has been removed. The player card is
@@ -161,12 +162,12 @@ it does not perform the action.
 | −10s | `/seek` |
 | +10s | `/fseek` |
 | Pause / Resume | `/pause` while playing; `/resume` while paused |
-| Stop | `/stop` |
 | Shuffle | `/shuffle` |
 
 The −10s and +10s buttons move ten seconds within a song and do not work on
-livestreams. Seek, shuffle, and stop controls are directly on the player card.
-Stop also disconnects Muse. Playback controls are removed when the session ends.
+livestreams. Previous, seek, Pause / Resume, and Next form the first row; Queue
+and Shuffle form the second. Use `/stop` to stop playback and disconnect Muse.
+Playback controls are removed when the session ends.
 The complete history remains visible in the recap.
 
 Shuffling removes repeated songs from the upcoming queue, including songs
