@@ -1,4 +1,4 @@
-import {ChannelType, PermissionFlagsBits, type ButtonInteraction, type Client, type GuildTextBasedChannel, type Message} from 'discord.js';
+import {ChannelType, MessageFlags, PermissionFlagsBits, type ButtonInteraction, type Client, type GuildTextBasedChannel, type Message} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import {Routes} from 'discord-api-types/v10';
 import {TYPES} from '../types.js';
@@ -92,22 +92,97 @@ export default class SessionPlayer {
         return `https://discord.com/channels/${player.guildId}/${card.channelId}/${card.id}`;
       }
 
-      const published = card;
-      player.setPlayingMessageUpdater(async () => this.serialize(this.publications, player.guildId, async () => {
-        await controller.flush();
-        const current = controller.snapshot();
-        const snapshot = current?.id === captured.id ? current : await this.capturedSession(player, captured.id);
-        if (snapshot.messageId !== published.id || snapshot.channelId !== published.channelId) {
-          return;
-        }
-
-        await this.publishMessages(published, originalChannel, snapshot, {
-          player: current?.id === captured.id ? player : undefined, queuePageSize: defaultQueuePageSize,
-        });
-      }), card.id, {keepAfterFinish: true, retryOnError: true});
+      this.installUpdater(player, originalChannel, card, {sessionId: captured.id, queuePageSize: defaultQueuePageSize});
       await this.historyPublisher.publish(originalChannel, bound, buildSessionMessages(bound, player, defaultQueuePageSize).slice(1), {force: true});
       player.refreshPlayingMessage();
       return `https://discord.com/channels/${player.guildId}/${card.channelId}/${card.id}`;
+    });
+  }
+
+  /** Move the live player onto the latest public receipt in its original channel. */
+  public async attachToReply(player: Player, channel: GuildTextBasedChannel, receipt: Promise<Message>): Promise<void> {
+    // Observe send failures immediately, even while an earlier publication runs.
+    const result = receipt.then(card => ({card}), (error: unknown) => ({error}));
+    const controller = player.listeningSession;
+    controller?.setChannel(channel.id);
+    const captured = controller?.snapshot();
+    if (!controller || !captured) {
+      throw new Error('No listening session is available.');
+    }
+
+    // Reserve order synchronously, before the Discord send or any other await.
+    await this.serialize(this.publications, player.guildId, async () => {
+      const sent = await result;
+      if ('error' in sent) {
+        throw sent.error;
+      }
+
+      const {card} = sent;
+      if (!this.isPublicReceipt(card, channel, player.guildId)) {
+        throw new Error('The player needs a public bot receipt in its text channel.');
+      }
+
+      await controller.flush();
+      let session = await this.capturedSession(player, captured.id);
+      // A request elsewhere may have its own receipt, but never moves history.
+      if (!this.canMoveToReceipt(session, card)) {
+        return;
+      }
+
+      const {defaultQueuePageSize} = await getGuildSettings(player.guildId);
+      let previous: Message | undefined;
+      if (session.messageId) {
+        try {
+          previous = await channel.messages.fetch({message: session.messageId, force: true});
+        } catch (error) {
+          if (!isMissingMessage(error)) {
+            throw error;
+          }
+        }
+      }
+
+      const previousId = session.messageId;
+      const clear = {embeds: [], components: [], allowedMentions: {parse: [] as never[]}};
+      let rendered: ListeningSessionRecord;
+      try {
+        session = await this.capturedSession(player, captured.id);
+        const payload = buildSessionMessage(session, session.endedAt ? undefined : player, defaultQueuePageSize);
+        // First prove the new message is editable without enabling its controls.
+        await card.edit({...payload, content: undefined, components: []});
+        if (previous) {
+          await previous.edit(previous.content ? clear : {components: []});
+        }
+
+        await this.bindCapturedMessage(player, captured.id, channel.id, card.id);
+        if (controller.snapshot()?.id === captured.id) {
+          this.installUpdater(player, channel, card, {sessionId: captured.id, queuePageSize: defaultQueuePageSize});
+        }
+
+        rendered = await this.capturedSession(player, captured.id);
+        await card.edit({...buildSessionMessage(rendered, rendered.endedAt ? undefined : player, defaultQueuePageSize), content: undefined});
+      } catch (error) {
+        await this.restorePublication(player, channel, {card, previous, previousId, captured, queuePageSize: defaultQueuePageSize});
+        throw error;
+      }
+
+      // Keep the old receipt. Only an empty standalone player can be removed.
+      if (previous && !previous.content) {
+        await previous.delete().catch(() => undefined);
+      }
+
+      try {
+        await this.historyPublisher.publish(channel, rendered, buildSessionMessages(rendered, rendered.endedAt ? undefined : player, defaultQueuePageSize).slice(1), {force: true});
+        if (rendered.endedAt) {
+          await this.store.markRecovered(rendered.id);
+          this.historyPublisher.forget(rendered.id);
+        }
+      } catch (error) {
+        if (controller.snapshot()?.id === captured.id) {
+          player.refreshPlayingMessage();
+        }
+
+        throw error;
+      }
     });
   }
 
@@ -222,6 +297,11 @@ export default class SessionPlayer {
       return;
     }
 
+    if (!interaction.message.flags.has(MessageFlags.Ephemeral) && interaction.message.id !== session.messageId) {
+      await interaction.editReply('The player moved. Use the controls on its latest queue receipt.');
+      return;
+    }
+
     const player = this.currentPlayer(session);
     if (!player) {
       await interaction.editReply('This listening session has ended. Its history is still available.');
@@ -268,7 +348,9 @@ export default class SessionPlayer {
       return;
     }
 
+    const {messageId} = session;
     const canControl = () => this.currentPlayer(session) === active
+      && active.listeningSession?.snapshot()?.messageId === messageId
       && guild.members.cache.get(interaction.user.id)?.voice.channelId === active.voiceConnection?.joinConfig.channelId
       && Boolean(active.voiceConnection?.joinConfig.channelId);
     const command = playbackCommands[action];
@@ -306,6 +388,82 @@ export default class SessionPlayer {
     return saved;
   }
 
+  private canMoveToReceipt(session: ListeningSessionRecord, card: Message): boolean {
+    return session.channelId === card.channelId && (!session.messageId || !/^\d+$/.test(session.messageId)
+      || BigInt(card.id) > BigInt(session.messageId));
+  }
+
+  private async restorePublication(player: Player, channel: GuildTextBasedChannel, {card, previous, previousId, captured, queuePageSize}: {
+    card: Message; previous?: Message; previousId: string | null; captured: ListeningSessionRecord; queuePageSize: number;
+  }): Promise<void> {
+    const load = async () => this.capturedSession(player, captured.id)
+      .catch(async () => this.store.load(captured.id, player.guildId)).catch(() => undefined);
+    const failed = await load();
+    if (failed?.messageId === card.id) {
+      await this.bindCapturedMessage(player, captured.id, channel.id, previousId).catch(() => undefined);
+    }
+
+    const restored = await load();
+    // If persistence also rejects rollback, retain the newly bound card and
+    // its retrying updater instead of clearing the only recoverable player.
+    const retained = restored?.messageId === card.id ? card : previous;
+    const abandoned = retained === card ? previous : card;
+    if (abandoned) {
+      await abandoned.edit(abandoned.content ? {embeds: [], components: []} : {components: []}).catch(() => undefined);
+    }
+
+    if (retained) {
+      const current = player.listeningSession?.snapshot();
+      if (restored?.messageId === retained.id && current?.id === captured.id) {
+        this.installUpdater(player, channel, retained, {sessionId: captured.id, queuePageSize});
+      }
+
+      const payload = buildSessionMessage(restored ?? captured, current?.id === captured.id ? player : undefined, queuePageSize);
+      await retained.edit({...payload, content: undefined}).catch(() => {
+        if (current?.id === captured.id) {
+          player.refreshPlayingMessage();
+        }
+      });
+    }
+  }
+
+  private isPublicReceipt(card: Message, channel: GuildTextBasedChannel, guildId: string): boolean {
+    return Boolean(channel.client.user?.id) && card.author.id === channel.client.user?.id
+      && card.guildId === guildId && card.channelId === channel.id && channel.guild.id === guildId
+      && !card.flags.has(MessageFlags.Ephemeral) && /^\d+$/.test(card.id) && Boolean(card.content.trim());
+  }
+
+  private installUpdater(player: Player, channel: GuildTextBasedChannel, card: Message, {sessionId, queuePageSize}: {sessionId: string; queuePageSize: number}): void {
+    const controller = player.listeningSession!;
+    player.setPlayingMessageUpdater(async () => this.serialize(this.publications, player.guildId, async () => {
+      await controller.flush();
+      const current = controller.snapshot();
+      const snapshot = current?.id === sessionId ? current : await this.capturedSession(player, sessionId);
+      if (snapshot.messageId !== card.id || snapshot.channelId !== card.channelId) {
+        return;
+      }
+
+      await this.publishMessages(card, channel, snapshot, {
+        player: current?.id === sessionId ? player : undefined, queuePageSize,
+      });
+    }), card.id, {keepAfterFinish: true, retryOnError: true});
+  }
+
+  private async bindCapturedMessage(player: Player, sessionId: string, channelId: string, messageId: string | null): Promise<void> {
+    const controller = player.listeningSession!;
+    if (controller.snapshot()?.id === sessionId) {
+      await controller.setMessage(channelId, messageId);
+      return;
+    }
+
+    const archived = await this.capturedSession(player, sessionId);
+    if (!archived.endedAt) {
+      throw new Error('The completed listening-session history is not available.');
+    }
+
+    await this.store.save({...archived, channelId, messageId});
+  }
+
   private async archivePublication(player: Player, sessionId: string, card: Message, channel: GuildTextBasedChannel): Promise<void> {
     try {
       await player.listeningSession?.flush();
@@ -331,7 +489,7 @@ export default class SessionPlayer {
 
   private async publishMessages(card: Message, channel: GuildTextBasedChannel, session: ListeningSessionRecord, {player, queuePageSize}: {player?: Player; queuePageSize?: number} = {}): Promise<void> {
     const [first, ...history] = buildSessionMessages(session, player, queuePageSize);
-    await card.edit(first);
+    await card.edit({...first, content: undefined});
     await this.historyPublisher.publish(channel, {...session, channelId: card.channelId, messageId: card.id}, history, {force: Boolean(session.endedAt)});
     if (session.endedAt) {
       await this.store.markRecovered(session.id);

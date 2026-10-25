@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
-import {ChannelType, Collection} from 'discord.js';
+import {ChannelType, Collection, MessageFlags} from 'discord.js';
 import {MediaSource, STATUS} from '../src/services/player-types.js';
 import type {ListeningSessionRecord} from '../src/services/listening-session.js';
 import {buildHistoryMessages, buildMoreMessage, buildQueueMessage, buildSessionMessage, buildSessionMessages, sessionButtonId} from '../src/utils/build-session-message.js';
@@ -27,13 +27,13 @@ const record = (): ListeningSessionRecord => ({
 const fixture = () => {
   const state = {record: record(), updater: undefined as undefined | (() => Promise<void>)};
   const records = new Map([[id, state.record]]);
-  const card = {id: 'message', channelId: 'channel', edit: vi.fn().mockResolvedValue(undefined), delete: vi.fn().mockResolvedValue(undefined)};
+  const card = {id: 'message', channelId: 'channel', content: '', edit: vi.fn().mockResolvedValue(undefined), delete: vi.fn().mockResolvedValue(undefined)};
   const member = {id: 'listener', voice: {channelId: 'voice'}};
   const channel = {
     id: 'channel', type: ChannelType.GuildText, guild: {id: 'guild'},
     isTextBased: () => true, isThread: () => false, permissionsFor: vi.fn(() => ({has: () => true})),
     messages: {fetch: vi.fn().mockResolvedValue(card)}, send: vi.fn().mockResolvedValue(card),
-    client: {channels: {fetch: vi.fn()}, rest: {get: vi.fn()}},
+    client: {user: {id: 'bot'}, channels: {fetch: vi.fn()}, rest: {get: vi.fn()}},
   };
   channel.client.channels.fetch.mockResolvedValue(channel);
   const guild = {
@@ -68,7 +68,7 @@ const fixture = () => {
   const service = new SessionPlayer(manager as never, store as never);
   const interaction = (action: string, page = 0) => ({
     customId: sessionButtonId(id, action, page), guild, channelId: 'channel', user: {id: 'listener'},
-    message: {id: 'private-controls'}, deferReply: vi.fn().mockResolvedValue(undefined), editReply: vi.fn().mockResolvedValue(undefined), followUp: vi.fn().mockResolvedValue(undefined), deleteReply: vi.fn().mockResolvedValue(undefined),
+    message: {id: 'private-controls', flags: {has: (flag: number) => flag === MessageFlags.Ephemeral}}, deferReply: vi.fn().mockResolvedValue(undefined), editReply: vi.fn().mockResolvedValue(undefined), followUp: vi.fn().mockResolvedValue(undefined), deleteReply: vi.fn().mockResolvedValue(undefined),
   });
   return {state, records, card, member, channel, guild, controller, player, manager, store, service, interaction};
 };
@@ -277,6 +277,208 @@ describe('shared session card publication', () => {
     expect(edit.embeds[0].data.description).toContain('Played');
     expect(edit.components).toEqual([]);
     expect(f.card.delete).not.toHaveBeenCalled();
+  });
+});
+
+const receipt = (f: ReturnType<typeof fixture>, messageId = '200') => ({
+  ...f.card, id: messageId, guildId: 'guild', content: 'u betcha, **Next song** added to the queue — <@listener>',
+  author: {id: 'bot'}, flags: {has: () => false},
+  edit: vi.fn().mockResolvedValue(undefined), delete: vi.fn().mockResolvedValue(undefined),
+});
+
+describe('moving the player onto public queue receipts', () => {
+  it('binds the first receipt without sending a standalone card and retains its text on updates', async () => {
+    const f = fixture();
+    const next = receipt(f);
+    await f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(next as never));
+    expect(f.channel.send).not.toHaveBeenCalled();
+    expect(f.state.record.messageId).toBe(next.id);
+    expect(next.edit).toHaveBeenCalledTimes(2);
+    expect(f.player.refreshPlayingMessage).not.toHaveBeenCalled();
+    expect(f.player.setPlayingMessageUpdater).toHaveBeenLastCalledWith(expect.any(Function), next.id, {keepAfterFinish: true, retryOnError: true});
+    await f.state.updater!();
+    expect(next.edit.mock.calls.every(([payload]) => payload.content === undefined)).toBe(true);
+    expect(next.edit.mock.calls.at(-1)![0].components).toHaveLength(2);
+    f.state.record.endedAt = new Date();
+    f.state.record.entries[0].status = 'stopped';
+    await f.state.updater!();
+    expect(next.edit.mock.calls.at(-1)![0]).toMatchObject({content: undefined, components: []});
+    expect(next.edit.mock.calls.at(-1)![0].embeds[0].data.title).toBe('Session recap');
+  });
+
+  it('leaves the old receipt as text and makes its previously queued updater a no-op', async () => {
+    const f = fixture();
+    f.card.id = '100';
+    f.card.content = 'u betcha, First song added to the queue — <@listener>';
+    await f.service.ensureMessage(f.player as never, f.channel as never);
+    const oldUpdater = f.state.updater!;
+    const next = receipt(f);
+    await f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(next as never));
+    expect(f.card.edit).toHaveBeenLastCalledWith(expect.objectContaining({embeds: [], components: []}));
+    expect(f.card.delete).not.toHaveBeenCalled();
+    const calls = f.card.edit.mock.calls.length;
+    await oldUpdater();
+    expect(f.card.edit).toHaveBeenCalledTimes(calls);
+    expect(f.state.record.messageId).toBe('200');
+  });
+
+  it('retires an empty legacy standalone card without trying to edit it to an empty message', async () => {
+    const f = fixture();
+    f.card.id = '100';
+    Object.assign(f.state.record, {channelId: 'channel', messageId: '100'});
+    const next = receipt(f);
+    await f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(next as never));
+    expect(f.card.edit).toHaveBeenCalledWith({components: []});
+    expect(f.card.delete).toHaveBeenCalledOnce();
+    expect(f.controller.setMessage).toHaveBeenCalledBefore(f.card.delete);
+  });
+
+  it('reserves publication before the first receipt arrives and lets the newest snowflake win', async () => {
+    const f = fixture();
+    let resolve!: (message: never) => void;
+    const firstReceipt = new Promise<never>(done => { resolve = done; });
+    const newest = receipt(f, '300');
+    const older = receipt(f, '200');
+    const first = f.service.attachToReply(f.player as never, f.channel as never, firstReceipt);
+    const second = f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(older as never));
+    await new Promise<void>(done => setImmediate(done));
+    expect(older.edit).not.toHaveBeenCalled();
+    resolve(newest as never);
+    await Promise.all([first, second]);
+    expect(f.state.record.messageId).toBe('300');
+    expect(older.edit).not.toHaveBeenCalled();
+  });
+
+  it('keeps a later request in another channel as a receipt without exposing the original player', async () => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'original', messageId: '100'});
+    const next = receipt(f);
+    await f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(next as never));
+    expect(next.edit).not.toHaveBeenCalled();
+    expect(f.controller.setMessage).not.toHaveBeenCalled();
+    expect(f.state.record.channelId).toBe('original');
+  });
+
+  it.each(['author', 'guild', 'channel', 'ephemeral'])('rejects a receipt with invalid %s', async invalid => {
+    const f = fixture();
+    const next = receipt(f);
+    if (invalid === 'author') next.author.id = 'another-bot';
+    if (invalid === 'guild') next.guildId = 'another-guild';
+    if (invalid === 'channel') next.channelId = 'another-channel';
+    if (invalid === 'ephemeral') next.flags.has = () => true;
+    await expect(f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(next as never))).rejects.toThrow('public bot receipt');
+    expect(next.edit).not.toHaveBeenCalled();
+    expect(f.controller.setMessage).not.toHaveBeenCalled();
+  });
+
+  it('pins a delayed receipt to the completed session when a new session starts', async () => {
+    const f = fixture();
+    let resolve!: (message: never) => void;
+    const pending = f.service.attachToReply(f.player as never, f.channel as never, new Promise<never>(done => { resolve = done; }));
+    f.state.record.endedAt = new Date();
+    f.state.record.entries[0].status = 'stopped';
+    f.state.record = {...record(), id: 'b4d70da3-1b9f-4e13-a962-2156db953d73'};
+    const next = receipt(f);
+    resolve(next as never);
+    await pending;
+    expect(f.controller.setMessage).not.toHaveBeenCalled();
+    expect(f.state.record.messageId).toBeNull();
+    expect(f.player.setPlayingMessageUpdater).not.toHaveBeenCalled();
+    expect(f.records.get(id)?.messageId).toBe('200');
+    expect(next.edit.mock.calls.at(-1)![0].components).toEqual([]);
+    expect(next.edit.mock.calls.at(-1)![0].embeds[0].data.title).toBe('Session recap');
+  });
+
+  it('renders a recap if Stop arrives while the new player edit is in flight', async () => {
+    const f = fixture();
+    const next = receipt(f);
+    next.edit.mockResolvedValueOnce(undefined).mockImplementationOnce(async () => {
+      f.state.record.endedAt = new Date();
+      f.state.record.entries[0].status = 'stopped';
+    });
+    await f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(next as never));
+    await f.state.updater!();
+    expect(next.edit.mock.calls.at(-1)![0].components).toEqual([]);
+    expect(next.edit.mock.calls.at(-1)![0].embeds[0].data.title).toBe('Session recap');
+  });
+
+  it('keeps the old binding when retiring the old card fails', async () => {
+    const f = fixture();
+    f.card.id = '100';
+    f.card.content = 'Previous request';
+    Object.assign(f.state.record, {channelId: 'channel', messageId: '100'});
+    f.card.edit.mockRejectedValueOnce(new Error('Discord unavailable'));
+    const next = receipt(f);
+    await expect(f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(next as never))).rejects.toThrow('Discord unavailable');
+    expect(f.state.record.messageId).toBe('100');
+    expect(f.card.delete).not.toHaveBeenCalled();
+    expect(next.edit).toHaveBeenLastCalledWith(expect.objectContaining({embeds: [], components: []}));
+  });
+
+  it('restores a mutated binding when persistence fails and preserves both receipt texts', async () => {
+    const f = fixture();
+    f.card.id = '100';
+    f.card.content = 'Previous request';
+    Object.assign(f.state.record, {channelId: 'channel', messageId: '100'});
+    f.controller.setMessage.mockImplementationOnce(async (_channelId, messageId) => {
+      f.state.record.messageId = messageId;
+      throw new Error('SQLite unavailable');
+    });
+    const next = receipt(f);
+    await expect(f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(next as never))).rejects.toThrow('SQLite unavailable');
+    expect(f.state.record.messageId).toBe('100');
+    expect(f.card.edit.mock.calls.at(-1)![0].components).toHaveLength(2);
+    expect(next.edit).toHaveBeenLastCalledWith(expect.objectContaining({embeds: [], components: []}));
+    expect(f.card.delete).not.toHaveBeenCalled();
+    expect(next.delete).not.toHaveBeenCalled();
+  });
+
+  it('restores the old updater if enabling the new card fails after binding', async () => {
+    const f = fixture();
+    f.card.id = '100';
+    f.card.content = 'Previous request';
+    await f.service.ensureMessage(f.player as never, f.channel as never);
+    const next = receipt(f);
+    next.edit.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('Discord unavailable'));
+    await expect(f.service.attachToReply(f.player as never, f.channel as never, Promise.resolve(next as never))).rejects.toThrow('Discord unavailable');
+    expect(f.state.record.messageId).toBe('100');
+    expect(f.player.setPlayingMessageUpdater).toHaveBeenLastCalledWith(expect.any(Function), '100', {keepAfterFinish: true, retryOnError: true});
+    const previousCalls = f.card.edit.mock.calls.length;
+    await f.state.updater!();
+    expect(f.card.edit).toHaveBeenCalledTimes(previousCalls + 1);
+    expect(f.card.delete).not.toHaveBeenCalled();
+  });
+
+  it('preserves the receipt text when recovery replaces its player with a recap', async () => {
+    const f = fixture();
+    f.card.content = 'u betcha, First song added to the queue — <@listener>';
+    const old = {...record(), channelId: 'channel', messageId: f.card.id, endedAt: new Date(), endReason: 'interrupted'};
+    old.entries[0].status = 'interrupted';
+    f.store.interruptOpenSessions.mockResolvedValue([old]);
+    await f.service.prepareRecovery();
+    await f.service.recover(f.channel.client as never);
+    expect(f.card.edit).toHaveBeenCalledWith(expect.objectContaining({content: undefined, components: []}));
+    expect(f.card.edit.mock.calls.at(-1)![0].embeds[0].data.title).toBe('Session recap');
+    expect(f.store.markRecovered).toHaveBeenCalledWith(id);
+  });
+
+  it('rejects transport clicks from a retired public receipt', async () => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: '200'});
+    const click = f.interaction('next');
+    click.message = {id: '100', flags: {has: () => false}};
+    await f.service.handleButton(click as never);
+    expect(f.player.forward).not.toHaveBeenCalled();
+    expect(click.editReply).toHaveBeenCalledWith(expect.stringContaining('player moved'));
+  });
+
+  it('rechecks the bound card after slow control authorization', async () => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: '100'});
+    permission.mockImplementationOnce(async () => { f.state.record.messageId = '200'; return true; });
+    const click = f.interaction('next');
+    await f.service.handleButton(click as never);
+    expect(f.player.forward).not.toHaveBeenCalled();
   });
 });
 

@@ -70,7 +70,7 @@ export default class AddQueryToQueue {
 
     const {playlistLimit} = settings;
 
-    await interaction.deferReply({ephemeral: true});
+    await interaction.deferReply({ephemeral: false});
 
     let [newSongs, extraMsg] = await this.getSongs.getSongs(query, playlistLimit, shouldSplitChapters);
 
@@ -143,22 +143,24 @@ export default class AddQueryToQueue {
     }
 
     const title = escapeMarkdown(firstSong.title);
-    // Capture this session now, but let its card publish alongside the receipt.
-    const publication = this.sessionPlayer.ensureMessage(player, interaction.channel as GuildTextBasedChannel).then(() => '', () => {
+    const responseContent = (publicationWarning = '') => {
+      const suffix = `${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg} — <@${interaction.member!.user.id}>${publicationWarning}`;
+      return newSongs.length === 1
+        ? formatSongReply(title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${suffix}`)
+        : formatSongReply(title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${suffix}`);
+    };
+
+    const receipt = interaction.editReply({content: responseContent(), allowedMentions: {parse: []}});
+    // Capture this session before the reply resolves, so a delayed Discord
+    // response cannot move a later session's player onto an older request.
+    const publication = this.sessionPlayer.attachToReply(player, interaction.channel as GuildTextBasedChannel, receipt).then(() => '', () => {
       // The tracks have already been added. A Discord/persistence failure must
       // not make the requester retry and accidentally enqueue them twice.
       console.warn(`Could not publish the session player for guild ${guildId}.`);
       return '\nThe player card could not be shown. Check my channel permissions, then use /now-playing.';
     });
 
-    const responseContent = (publicationWarning = '') => {
-      const suffix = `${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}${publicationWarning}`;
-      return newSongs.length === 1
-        ? formatSongReply(title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${suffix}`)
-        : formatSongReply(title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${suffix}`);
-    };
-
-    await interaction.editReply({content: responseContent(), allowedMentions: {parse: []}});
+    await receipt;
     const publicationWarning = await publication;
     if (publicationWarning) {
       await interaction.editReply({content: responseContent(publicationWarning), allowedMentions: {parse: []}});

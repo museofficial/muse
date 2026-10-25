@@ -122,7 +122,7 @@ const makeQueueRequest = (ephemeral: boolean, existingSong: boolean) => {
     {get: () => player} as never,
     {ENABLE_SPONSORBLOCK: false} as never,
     {} as never,
-    {ensureMessage: vi.fn().mockResolvedValue('https://discord.com/channels/guild/channel/session')} as never,
+    {attachToReply: vi.fn().mockResolvedValue(undefined)} as never,
   );
   const request = () => service.addToQueue({
     query: streamUrl, addToFrontOfQueue: false, shuffleAdditions: false,
@@ -140,12 +140,12 @@ describe('queue acknowledgment output limits', () => {
     const {content} = interaction.editReply.mock.calls[0][0] as {content: string};
     expect(content.length).toBeLessThanOrEqual(2000);
     expect(content).toMatch(/^u betcha, \*\*https:\/\/radio\.example\//);
-    expect(content).toMatch(/\*\* added to the queue$/);
+    expect(content).toMatch(/\*\* added to the queue — <@requester>$/);
     expect(content).not.toContain('Go to player');
     expect(player.getQueue()[0].url).toBe(streamUrl);
   });
 
-  it.each([false, true])('keeps a long stream confirmation private with legacy hidden=%s', async ephemeral => {
+  it.each([false, true])('publishes a long stream confirmation with legacy hidden=%s', async ephemeral => {
     const {player, interaction, message, request} = makeQueueRequest(ephemeral, false);
 
     await request();
@@ -153,9 +153,10 @@ describe('queue acknowledgment output limits', () => {
     const initial = interaction.editReply.mock.calls[0][0];
     expect(initial.content.length).toBeLessThanOrEqual(2000);
     expect(initial.content).toMatch(/^u betcha, \*\*/);
-    expect(initial.content).toMatch(/\*\* added to the queue$/);
+    expect(initial.content).toMatch(/\*\* added to the queue — <@requester>$/);
     expect(initial.content).not.toContain('Go to player');
-    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
+    expect(initial.allowedMentions).toEqual({parse: []});
+    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: false});
     expect(player.getCurrent()!.url).toBe(streamUrl);
     expect(message.react).not.toHaveBeenCalled();
   });

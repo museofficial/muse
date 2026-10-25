@@ -121,12 +121,14 @@ npm test
 Muse keeps one shared player card for each listening session. While music plays,
 it uses the classic display: album art, progress bar, requester, source, and
 upcoming tracks. Queue count and duration appear only when songs are waiting;
-page numbers appear only in the full queue view. Each `/play` or `/favorites use` request
-gets a private "u betcha" confirmation, without repeating a link to the player.
-Queue confirmations are always private; the former
-`set-queue-add-response-hidden` setting has been removed. The player card is
-always public in the text channel where the session starts. The optional
-next-song announcements remain separate and are off by default.
+page numbers appear only in the full queue view. Each `/play` or `/favorites use`
+request gets a public "u betcha" receipt naming the requester without pinging them.
+Playlists get one receipt for the whole request. The newest receipt in the
+session's text channel carries the player card and controls; older receipts keep
+only their short confirmation. Requests in other channels leave the card in the
+channel where the session started. The former `set-queue-add-response-hidden`
+setting has been removed. Optional next-song announcements remain separate and
+are off by default.
 
 When the queue ends, the card becomes a listening history. It lists the songs
 that actually started, in playback order, and marks skipped tracks. Repeat plays

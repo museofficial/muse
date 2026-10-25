@@ -100,6 +100,66 @@ describe('listening sessions', () => {
     await session.flush();
   });
 
+  it.each([null, 'previous-card'])('restores the previous %s binding after a sustained save failure', async previousId => {
+    const error = new Error('SQLite is busy');
+    const store = {save: vi.fn().mockResolvedValue(undefined)};
+    const session = new ListeningSession('guild', store);
+    session.prepare('voice', 'channel');
+    await session.setMessage('channel', previousId);
+    store.save.mockRejectedValue(error);
+    await expect(session.setMessage('channel', 'new-card')).rejects.toBe(error);
+    expect(session.snapshot()!.messageId).toBe(previousId);
+
+    session.endTrack('completed');
+    store.save.mockResolvedValue(undefined);
+    await session.flush();
+    expect(store.save).toHaveBeenLastCalledWith(expect.objectContaining({messageId: previousId}));
+  });
+
+  it('retains playback changes while restoring a failed card binding', async () => {
+    const error = new Error('SQLite is busy');
+    const store = {save: vi.fn().mockResolvedValue(undefined)};
+    const session = new ListeningSession('guild', store);
+    session.startTrack(song, 'voice', 1);
+    await session.setMessage('channel', 'previous-card');
+    store.save.mockImplementation(async () => {
+      session.endTrack('completed');
+      throw error;
+    });
+    await expect(session.setMessage('channel', 'new-card')).rejects.toBe(error);
+    expect(session.snapshot()).toMatchObject({messageId: 'previous-card', entries: [expect.objectContaining({status: 'completed'})]});
+    store.save.mockResolvedValue(undefined);
+    await session.flush();
+    expect(store.save).toHaveBeenLastCalledWith(expect.objectContaining({messageId: 'previous-card', entries: [expect.objectContaining({status: 'completed'})]}));
+  });
+
+  it('does not roll a failed old binding back over a newer session', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const error = new Error('SQLite is busy');
+    const store = {save: vi.fn().mockResolvedValue(undefined)};
+    const session = new ListeningSession('guild', store);
+    session.prepare('voice', 'channel');
+    await session.setMessage('channel', 'previous-card');
+    const oldId = session.snapshot()!.id;
+    let changed = false;
+    store.save.mockImplementation(async saved => {
+      if (saved.id === oldId) {
+        if (!changed) {
+          changed = true;
+          session.finish('stopped');
+          session.prepare('voice', 'new-channel');
+        }
+        throw error;
+      }
+    });
+    await expect(session.setMessage('channel', 'new-card')).rejects.toBe(error);
+    expect(session.snapshot()).toMatchObject({channelId: 'new-channel', messageId: null});
+    expect(session.snapshot()!.id).not.toBe(oldId);
+    store.save.mockResolvedValue(undefined);
+    await session.flush();
+    expect(store.save).toHaveBeenLastCalledWith(expect.objectContaining({id: oldId, messageId: 'previous-card', endReason: 'stopped'}));
+  });
+
   it('keeps one session while the queue is idle and starts a new session after disconnect', async () => {
     const store = {save: vi.fn().mockResolvedValue(undefined)};
     const session = new ListeningSession('guild', store);

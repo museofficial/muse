@@ -97,14 +97,14 @@ const makeService = ({
   extraMessage = '',
   cacheWrap,
   getSongs,
-  ensureMessage = vi.fn().mockResolvedValue('https://discord.com/channels/guild-id/text-channel-id/session-card-id'),
+  attachToReply = vi.fn().mockResolvedValue(undefined),
 }: {
   player: object;
   songs?: SongMetadata[];
   extraMessage?: string;
   cacheWrap?: (fetchValue: () => Promise<unknown>) => Promise<unknown>;
   getSongs?: ReturnType<typeof vi.fn>;
-  ensureMessage?: ReturnType<typeof vi.fn>;
+  attachToReply?: ReturnType<typeof vi.fn>;
 }) => {
   const songProvider = {
     getSongs: getSongs ?? vi.fn().mockResolvedValue([songs, extraMessage]),
@@ -122,8 +122,8 @@ const makeService = ({
 
   return {
     cache,
-    ensureMessage,
-    service: new AddQueryToQueue(songProvider as never, playerManager as never, config as never, cache as never, {ensureMessage} as never),
+    attachToReply,
+    service: new AddQueryToQueue(songProvider as never, playerManager as never, config as never, cache as never, {attachToReply} as never),
   };
 };
 
@@ -170,17 +170,17 @@ beforeEach(() => {
 });
 
 describe('AddQueryToQueue skip semantics', () => {
-  it.each([false, true])('keeps confirmations private with legacy hidden setting=%s', async queueAddResponseEphemeral => {
+  it.each([false, true])('publishes attributed confirmations with legacy hidden setting=%s', async queueAddResponseEphemeral => {
     dependencyMocks.getGuildSettings.mockResolvedValue({playlistLimit: 50, queueAddResponseEphemeral});
     const player = makePausedPlayer(makeQueuedSong('Existing song'));
-    const {service, ensureMessage} = makeService({player});
+    const {service, attachToReply} = makeService({player});
     const interaction = makeInteraction();
 
     await addToQueue(service, interaction);
 
-    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
-    expect(ensureMessage).toHaveBeenCalledWith(player, interaction.channel);
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
+    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: false});
+    expect(attachToReply).toHaveBeenCalledWith(player, interaction.channel, expect.any(Promise));
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue — <@requester-id>');
     expect(replyContent(interaction)).not.toContain('Go to player');
     expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({allowedMentions: {parse: []}}));
     expect(interaction.replyMessage.react).not.toHaveBeenCalled();
@@ -195,7 +195,7 @@ describe('AddQueryToQueue skip semantics', () => {
     });
     const play = vi.spyOn(player, 'play').mockResolvedValue(undefined);
     const forward = vi.spyOn(player, 'forward');
-    const {service, ensureMessage} = makeService({player});
+    const {service, attachToReply} = makeService({player});
     const interaction = makeInteraction();
 
     await addToQueue(service, interaction, {skip: true, immediate: true});
@@ -204,8 +204,8 @@ describe('AddQueryToQueue skip semantics', () => {
     expect(connect).toHaveBeenCalledOnce();
     expect(play).toHaveBeenCalledOnce();
     expect(forward).not.toHaveBeenCalled();
-    expect(ensureMessage).toHaveBeenCalledWith(player, interaction.channel);
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the front of the queue');
+    expect(attachToReply).toHaveBeenCalledWith(player, interaction.channel, expect.any(Promise));
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the front of the queue — <@requester-id>');
     expect(replyContent(interaction)).not.toMatch(/skipped/i);
     expect(interaction.replyMessage.react).not.toHaveBeenCalled();
   });
@@ -220,7 +220,7 @@ describe('AddQueryToQueue skip semantics', () => {
 
     expect(forward).toHaveBeenCalledWith(1);
     expect(player.getCurrent()?.title).toBe('New song');
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue and current track skipped');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue and current track skipped — <@requester-id>');
   });
 
   it('preserves playback startup failures from the skip path', async () => {
@@ -318,22 +318,61 @@ describe('AddQueryToQueue skip semantics', () => {
 });
 
 describe('AddQueryToQueue shared player publication', () => {
+  it('captures the receipt for the current session before Discord finishes publishing it', async () => {
+    const player = makePausedPlayer(makeQueuedSong('Current'));
+    const receipt = makePromiseBarrier();
+    const interaction = makeInteraction();
+    interaction.editReply.mockImplementationOnce(async () => {
+      await receipt.wait();
+      return interaction.replyMessage;
+    });
+    const attachToReply = vi.fn(async (_player, _channel, pendingReceipt) => {
+      await pendingReceipt;
+    });
+    const {service} = makeService({player, attachToReply});
+
+    const pending = addToQueue(service, interaction);
+    await receipt.entered;
+
+    expect(attachToReply).toHaveBeenCalledWith(player, interaction.channel, interaction.editReply.mock.results[0].value);
+    expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
+    expect(interaction.editReply).toHaveBeenCalledOnce();
+
+    receipt.release();
+    await pending;
+    expect(attachToReply).toHaveBeenCalledOnce();
+    expect(interaction.editReply).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the requester visible when a long escaped title must be shortened', async () => {
+    const player = makePausedPlayer(makeQueuedSong('Current'));
+    const {service} = makeService({player, songs: [makeSong('*Long title* '.repeat(200))]});
+    const interaction = makeInteraction();
+
+    await addToQueue(service, interaction);
+
+    expect(replyContent(interaction).length).toBeLessThanOrEqual(2000);
+    expect(replyContent(interaction)).toMatch(/^u betcha, \*\*\\\*Long title\\\*/);
+    expect(replyContent(interaction)).toMatch(/added to the queue — <@requester-id>$/);
+    expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({allowedMentions: {parse: []}}));
+  });
+
   it('confirms queued songs while the shared card is still publishing', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'));
     const card = makePromiseBarrier();
-    const ensureMessage = vi.fn(async () => {
+    const attachToReply = vi.fn(async () => {
       await card.wait();
       return 'https://discord.com/channels/guild-id/text-channel-id/session-card-id';
     });
-    const {service} = makeService({player, ensureMessage});
+    const {service} = makeService({player, attachToReply});
     const interaction = makeInteraction();
 
     const pending = addToQueue(service, interaction);
     await card.entered;
 
-    expect(ensureMessage).toHaveBeenCalledWith(player, interaction.channel);
+    expect(attachToReply).toHaveBeenCalledWith(player, interaction.channel, expect.any(Promise));
     expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue — <@requester-id>');
 
     card.release();
     await pending;
@@ -349,23 +388,23 @@ describe('AddQueryToQueue shared player publication', () => {
       await audio.wait();
       player.status = STATUS.PLAYING;
     });
-    const ensureMessage = vi.fn(async () => {
+    const attachToReply = vi.fn(async () => {
       await card.wait();
       return 'https://discord.com/channels/guild-id/text-channel-id/session-card-id';
     });
-    const {service} = makeService({player, ensureMessage});
+    const {service} = makeService({player, attachToReply});
     const interaction = makeInteraction();
 
     const pending = addToQueue(service, interaction);
     await audio.entered;
-    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
+    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: false});
     expect(interaction.editReply).not.toHaveBeenCalled();
-    expect(ensureMessage).not.toHaveBeenCalled();
+    expect(attachToReply).not.toHaveBeenCalled();
 
     audio.release();
     await card.entered;
     expect(player.status).toBe(STATUS.PLAYING);
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue — <@requester-id>');
 
     card.release();
     await pending;
@@ -377,23 +416,23 @@ describe('AddQueryToQueue shared player publication', () => {
     player.status = STATUS.IDLE;
     const failure = new Error('FFmpeg startup failed');
     vi.spyOn(player, 'play').mockRejectedValue(failure);
-    const {service, ensureMessage} = makeService({player});
+    const {service, attachToReply} = makeService({player});
     const interaction = makeInteraction();
 
     await expect(addToQueue(service, interaction)).rejects.toBe(failure);
 
     expect(interaction.editReply).not.toHaveBeenCalled();
-    expect(ensureMessage).not.toHaveBeenCalled();
+    expect(attachToReply).not.toHaveBeenCalled();
   });
 
-  it('adds a late publication warning to the same bounded private confirmation', async () => {
+  it('adds a late publication warning to the same bounded public confirmation', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'));
     const card = makePromiseBarrier();
-    const ensureMessage = vi.fn(async () => {
+    const attachToReply = vi.fn(async () => {
       await card.wait();
       throw new Error('Missing Permissions');
     });
-    const {service} = makeService({player, ensureMessage, songs: [makeSong('*Long title* '.repeat(200))]});
+    const {service} = makeService({player, attachToReply, songs: [makeSong('*Long title* '.repeat(200))]});
     const interaction = makeInteraction();
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
@@ -409,9 +448,11 @@ describe('AddQueryToQueue shared player publication', () => {
     expect(interaction.editReply).toHaveBeenCalledTimes(2);
     expect(replyContent(interaction)).toMatch(/^u betcha, /);
     expect(replyContent(interaction)).toContain('The player card could not be shown.');
+    expect(player.getQueue().map(song => song.title)).toEqual(['*Long title* '.repeat(200)]);
     for (const [payload] of interaction.editReply.mock.calls) {
       expect(payload.content.length).toBeLessThanOrEqual(2000);
       expect(payload.allowedMentions).toEqual({parse: []});
+      expect(payload.content).toContain(' — <@requester-id>');
     }
 
     expect(warning).toHaveBeenCalledOnce();
@@ -421,7 +462,7 @@ describe('AddQueryToQueue shared player publication', () => {
   it('waits for the first receipt to finish before appending an early card failure', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'));
     const receipt = makePromiseBarrier();
-    const {service} = makeService({player, ensureMessage: vi.fn().mockRejectedValue(new Error('Missing Permissions'))});
+    const {service} = makeService({player, attachToReply: vi.fn().mockRejectedValue(new Error('Missing Permissions'))});
     const interaction = makeInteraction();
     interaction.editReply.mockImplementationOnce(async () => {
       await receipt.wait();
@@ -442,19 +483,19 @@ describe('AddQueryToQueue shared player publication', () => {
     warning.mockRestore();
   });
 
-  it('maintains the shared card without adding a player link to every private confirmation', async () => {
+  it('hands each public receipt to the shared player without adding a player link', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'), makeQueuedSong('Already queued'));
-    const {service, ensureMessage} = makeService({player});
+    const {service, attachToReply} = makeService({player});
     const first = makeInteraction();
     const second = makeInteraction();
 
     await addToQueue(service, first);
     await addToQueue(service, second);
 
-    expect(ensureMessage).toHaveBeenCalledTimes(2);
+    expect(attachToReply).toHaveBeenCalledTimes(2);
     for (const interaction of [first, second]) {
-      expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
-      expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
+      expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: false});
+      expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue — <@requester-id>');
       expect(replyContent(interaction)).not.toContain('session-card-id');
       expect(interaction.replyMessage.react).not.toHaveBeenCalled();
     }
@@ -462,18 +503,18 @@ describe('AddQueryToQueue shared player publication', () => {
 
   it('confirms queued songs if the public card cannot be sent', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'));
-    const {service} = makeService({player, ensureMessage: vi.fn().mockRejectedValue(new Error('Missing Permissions'))});
+    const {service} = makeService({player, attachToReply: vi.fn().mockRejectedValue(new Error('Missing Permissions'))});
     const interaction = makeInteraction();
 
     await addToQueue(service, interaction);
 
     expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
-    expect(replyContent(interaction)).toMatch(/^u betcha, \*\*New song\*\* added to the queue\n/);
+    expect(replyContent(interaction)).toMatch(/^u betcha, \*\*New song\*\* added to the queue — <@requester-id>\n/);
     expect(replyContent(interaction)).toMatch(/card|player/i);
     expect(replyContent(interaction)).toMatch(/could not|couldn't|unavailable/i);
   });
 
-  it('names the first playlist song and the remaining count in one private reply', async () => {
+  it('names the first playlist song and the remaining count in one public reply', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'), makeQueuedSong('Already queued'));
     const {service} = makeService({player, songs: [makeSong('*First*'), makeSong('Second')], extraMessage: '1 song was not found'});
     const interaction = makeInteraction();
@@ -481,7 +522,7 @@ describe('AddQueryToQueue shared player publication', () => {
     await addToQueue(service, interaction);
 
     expect(interaction.editReply).toHaveBeenCalledOnce();
-    expect(replyContent(interaction)).toBe('u betcha, **\\*First\\*** and 1 other songs were added to the queue (1 song was not found)');
+    expect(replyContent(interaction)).toBe('u betcha, **\\*First\\*** and 1 other songs were added to the queue (1 song was not found) — <@requester-id>');
     expect(replyContent(interaction)).not.toContain('session-card-id');
   });
 });
@@ -743,7 +784,7 @@ describe('AddQueryToQueue voice connection failures', () => {
     expect(player.getCurrent()).toBe(current);
     expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
     expect(play).toHaveBeenCalledOnce();
-    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue (resuming playback)');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue (resuming playback) — <@requester-id>');
   });
 });
 

@@ -705,7 +705,7 @@ describe('key-value cache TTL call-site contracts', () => {
         {} as never,
         {ENABLE_SPONSORBLOCK: true, SPONSORBLOCK_TIMEOUT: 5} as never,
         sponsorBlockCache as never,
-        {ensureMessage: vi.fn()} as never,
+        {attachToReply: vi.fn()} as never,
       );
       await (addQueryToQueue as unknown as {
         skipNonMusicSegments(song: object): Promise<object>;

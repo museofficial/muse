@@ -139,18 +139,33 @@ export default class ListeningSession {
     }
   }
 
-  async setMessage(channelId: string, messageId: string): Promise<void> {
+  async setMessage(channelId: string, messageId: string | null): Promise<void> {
     if (this.record?.channelId && this.record.channelId !== channelId) {
       throw new Error('A listening session cannot move to another text channel.');
     }
 
+    const binding = this.record;
+    const previous = this.snapshot();
     if (this.record && (this.record.channelId !== channelId || this.record.messageId !== messageId)) {
       this.record.channelId = channelId;
       this.record.messageId = messageId;
       this.scheduleSave();
     }
 
-    await this.flush();
+    try {
+      await this.flush();
+    } catch (error) {
+      if (previous && binding?.messageId === messageId) {
+        // Retain newer playback history, but do not keep a failed card binding.
+        // Queue this replacement behind failed saves so a later flush cannot
+        // retry the rejected binding after we restore its predecessor.
+        binding.messageId = previous.messageId;
+        this.scheduleSave(binding);
+        await this.flush().catch(() => undefined);
+      }
+
+      throw error;
+    }
   }
 
   async flush(): Promise<void> {
@@ -182,12 +197,12 @@ export default class ListeningSession {
     return this.record;
   }
 
-  private scheduleSave(): void {
-    if (!this.record) {
+  private scheduleSave(record = this.record): void {
+    if (!record) {
       return;
     }
 
-    const snapshot = cloneListeningSession(this.record);
+    const snapshot = cloneListeningSession(record);
     this.pendingWrites = this.pendingWrites.then(async () => this.saveSnapshot(snapshot));
   }
 
