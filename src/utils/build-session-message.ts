@@ -7,6 +7,10 @@ import {truncate} from './string.js';
 
 export const SESSION_BUTTON_PREFIX = 'muse-session:';
 const PAGE_SIZE = 5;
+const MAX_DESCRIPTION_LENGTH = 4096;
+const MAX_MESSAGE_EMBED_TEXT = 6000;
+const MAX_MESSAGE_EMBEDS = 10;
+const CONTINUED_HISTORY_TITLE = 'Session history (continued)';
 
 export const sessionButtonId = (sessionId: string, action: string, page = 0): string => `${SESSION_BUTTON_PREFIX}${sessionId}:${action}:${page}`;
 
@@ -60,20 +64,61 @@ const entryLine = (entry: ListeningSessionEntry, index: number): string => {
   return `${index + 1}. ${trackLink(entry)} — ${labels[entry.status]}`;
 };
 
-const message = (embed: EmbedBuilder, components: SessionRow[]) => ({
-  content: '', embeds: [embed], components, allowedMentions: {parse: [] as never[]},
+export type SessionMessagePayload = {
+  content: string;
+  embeds: EmbedBuilder[];
+  components: SessionRow[];
+  allowedMentions: {parse: never[]};
+};
+
+const message = (embed: EmbedBuilder, components: SessionRow[]): SessionMessagePayload => ({
+  content: '', embeds: [embed], components, allowedMentions: {parse: []},
 });
 
+const embedTextLength = (embed: EmbedBuilder): number => {
+  const {title = '', description = '', footer, author, fields = []} = embed.data;
+  return title.length + description.length + (footer?.text.length ?? 0) + (author?.name.length ?? 0)
+    + fields.reduce((total, field) => total + field.name.length + field.value.length, 0);
+};
+
+const historyEmbed = (title: string) => new EmbedBuilder().setColor(0x365c65).setTitle(title);
+
+/** Fill the current message before adding another, keeping each entry intact. */
+const appendHistory = (messages: SessionMessagePayload[], session: ListeningSessionRecord): SessionMessagePayload[] => {
+  const lines = session.entries.length > 0 ? session.entries.map(entryLine) : ['No tracks played.'];
+  for (const line of lines) {
+    let current = messages[messages.length - 1];
+    let embed = current.embeds[current.embeds.length - 1];
+    const description = embed.data.description ?? '';
+    const addition = description ? `\n${line}` : line;
+    const messageLength = current.embeds.reduce((length, item) => length + embedTextLength(item), 0);
+    if (description.length + addition.length <= MAX_DESCRIPTION_LENGTH && messageLength + addition.length <= MAX_MESSAGE_EMBED_TEXT) {
+      embed.setDescription(description + addition);
+      continue;
+    }
+
+    embed = historyEmbed(CONTINUED_HISTORY_TITLE);
+    if (current.embeds.length >= MAX_MESSAGE_EMBEDS || messageLength + embedTextLength(embed) + line.length > MAX_MESSAGE_EMBED_TEXT) {
+      current = message(embed, []);
+      messages.push(current);
+    } else {
+      current.embeds.push(embed);
+    }
+
+    embed.setDescription(line);
+  }
+
+  return messages;
+};
+
 const recapDescription = (session: ListeningSessionRecord): string => {
-  const first = Math.max(0, session.entries.length - PAGE_SIZE);
-  const history = session.entries.slice(first).map((entry, index) => entryLine(entry, first + index)).join('\n');
   const summary = session.endedAt
     ? `Session ended <t:${Math.floor(session.endedAt.getTime() / 1000)}:R>.`
     : 'Queue complete. Add a song to keep listening.';
-  return `${summary}\n\n**${session.entries.length > PAGE_SIZE ? 'Recently played' : 'Session history'}**\n${history || 'No tracks played.'}`;
+  return `${summary}\n\n**Session history**`;
 };
 
-export const buildSessionMessage = (session: ListeningSessionRecord, player?: Player) => {
+export const buildSessionMessages = (session: ListeningSessionRecord, player?: Player): SessionMessagePayload[] => {
   const active = !session.endedAt && player !== undefined;
   const current = active ? player.getCurrent() : null;
   const embed = new EmbedBuilder().setColor(0x365c65);
@@ -111,31 +156,28 @@ export const buildSessionMessage = (session: ListeningSessionRecord, player?: Pl
     embed.setTitle('Session recap').setDescription(recapDescription(session));
   }
 
-  const secondary = [button(session, 'history', 'View full history')];
   if (active) {
-    secondary.unshift(button(session, 'queue', 'Queue'));
-    secondary.push(button(session, 'more', 'More'));
+    components.push(row(button(session, 'queue', 'Queue'), button(session, 'more', 'More')));
   }
 
-  components.push(row(...secondary));
-  return message(embed, components);
+  const first = message(embed, components);
+  if (current) {
+    first.embeds.push(historyEmbed('Session history'));
+  }
+
+  return appendHistory([first], session);
 };
+
+export const buildSessionMessage = (session: ListeningSessionRecord, player?: Player): SessionMessagePayload => buildSessionMessages(session, player)[0];
 
 const pagination = (session: ListeningSessionRecord, action: string, page: number, pages: number) => row(
   button(session, action, 'Previous page', {page: page - 1, disabled: page === 0}),
   button(session, action, 'Next page', {page: page + 1, disabled: page + 1 >= pages}),
 );
 
-export const buildHistoryMessage = (session: ListeningSessionRecord, requestedPage = 0) => {
-  const pages = Math.max(1, Math.ceil(session.entries.length / PAGE_SIZE));
-  const page = Math.max(0, Math.min(requestedPage, pages - 1));
-  const first = page * PAGE_SIZE;
-  const description = session.entries.slice(first, first + PAGE_SIZE)
-    .map((entry, index) => entryLine(entry, first + index)).join('\n') || 'No tracks played.';
-  const embed = new EmbedBuilder().setColor(0x365c65).setTitle('Session history').setDescription(description)
-    .setFooter({text: `Page ${page + 1} of ${pages} · ${session.entries.length} tracks started`});
-  return message(embed, pages > 1 ? [pagination(session, 'history', page, pages)] : []);
-};
+export const buildHistoryMessages = (session: ListeningSessionRecord): SessionMessagePayload[] => appendHistory([
+  message(historyEmbed('Session history'), []),
+], session);
 
 export const buildQueueMessage = (session: ListeningSessionRecord, player: Player, requestedPage = 0) => {
   const queue = player.getQueue();

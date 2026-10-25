@@ -7,8 +7,9 @@ import type Player from './player.js';
 import {STATUS} from './player-types.js';
 import type {ListeningSessionRecord} from './listening-session.js';
 import SessionHistoryStore from './session-history-store.js';
+import SessionHistoryPublisher from './session-history-publisher.js';
 import canUsePlaybackCommand from '../utils/can-use-playback-command.js';
-import {buildHistoryMessage, buildMoreMessage, buildQueueMessage, buildSessionMessage, SESSION_BUTTON_PREFIX} from '../utils/build-session-message.js';
+import {buildHistoryMessages, buildMoreMessage, buildQueueMessage, buildSessionMessage, buildSessionMessages, SESSION_BUTTON_PREFIX} from '../utils/build-session-message.js';
 
 const isMissingMessage = (error: unknown): boolean => Boolean(error && typeof error === 'object' && 'code' in error && error.code === 10008);
 const playbackCommands: Record<string, string> = {
@@ -20,11 +21,14 @@ export default class SessionPlayer {
   private readonly publications = new Map<string, Promise<unknown>>();
   private readonly actions = new Map<string, Promise<unknown>>();
   private interruptedSessions: ListeningSessionRecord[] = [];
+  private readonly historyPublisher: SessionHistoryPublisher;
 
   constructor(
     @inject(TYPES.Managers.Player) private readonly playerManager: PlayerManager,
     @inject(TYPES.Services.SessionHistoryStore) private readonly store: SessionHistoryStore,
-  ) {}
+  ) {
+    this.historyPublisher = new SessionHistoryPublisher(store);
+  }
 
   public async ensureMessage(player: Player, channel: GuildTextBasedChannel, expectedSessionId?: string): Promise<string> {
     const controller = player.listeningSession;
@@ -68,7 +72,7 @@ export default class SessionPlayer {
         card = await originalChannel.send(buildSessionMessage(session, session.endedAt ? undefined : player));
         // Persist a late card on its captured record, never on a newer session.
         if (controller.snapshot()?.id !== captured.id) {
-          await this.archivePublication(player, captured.id, card);
+          await this.archivePublication(player, captured.id, card, originalChannel);
           return `https://discord.com/channels/${player.guildId}/${card.channelId}/${card.id}`;
         }
 
@@ -82,20 +86,22 @@ export default class SessionPlayer {
 
       const bound = await this.capturedSession(player, captured.id);
       if (bound.endedAt) {
-        await card.edit(buildSessionMessage(bound));
+        await this.publishMessages(card, originalChannel, bound);
         return `https://discord.com/channels/${player.guildId}/${card.channelId}/${card.id}`;
       }
 
       const published = card;
-      player.setPlayingMessageUpdater(async () => {
+      player.setPlayingMessageUpdater(async () => this.serialize(this.publications, player.guildId, async () => {
+        await controller.flush();
         const current = controller.snapshot();
         const snapshot = current?.id === captured.id ? current : await this.capturedSession(player, captured.id);
-        if (!snapshot || snapshot.messageId !== published.id || snapshot.channelId !== published.channelId) {
+        if (snapshot.messageId !== published.id || snapshot.channelId !== published.channelId) {
           return;
         }
 
-        await published.edit(buildSessionMessage(snapshot, current?.id === captured.id ? player : undefined));
-      }, card.id, {keepAfterFinish: true});
+        await this.publishMessages(published, originalChannel, snapshot, current?.id === captured.id ? player : undefined);
+      }), card.id, {keepAfterFinish: true, retryOnError: true});
+      await this.historyPublisher.publish(originalChannel, bound, buildSessionMessages(bound, player).slice(1), {force: true});
       player.refreshPlayingMessage();
       return `https://discord.com/channels/${player.guildId}/${card.channelId}/${card.id}`;
     });
@@ -109,7 +115,7 @@ export default class SessionPlayer {
   public async recover(client: Client): Promise<void> {
     const interrupted = this.interruptedSessions;
     this.interruptedSessions = [];
-    await Promise.all(interrupted.map(async session => {
+    await Promise.all(interrupted.map(async session => this.serialize(this.publications, session.guildId, async () => {
       if (!session.channelId) {
         return;
       }
@@ -131,29 +137,27 @@ export default class SessionPlayer {
           }
         }
 
-        if (card) {
-          await card.edit(buildSessionMessage(session));
-        } else {
+        if (!card) {
           // A crash before publication or a deleted card must not leave saved
           // history without a reachable entry point after restart.
           const replacement = await channel.send(buildSessionMessage(session));
           try {
             await this.store.save({...session, channelId: channel.id, messageId: replacement.id});
+            card = replacement;
           } catch (error) {
             await replacement.delete().catch(() => undefined);
             throw error;
           }
         }
 
-        // Clearing pending recovery is separate from binding the card: if this
-        // write fails, keep the valid card and retry its edit on the next boot.
-        await this.store.markRecovered(session.id);
+        // Acknowledge recovery only after every public continuation is saved.
+        await this.publishMessages(card, channel, session);
       } catch {
         // Never move saved history into a different channel when its original
         // channel cannot be read or written.
         console.error(`Could not refresh archived listening-session card ${session.id}.`);
       }
-    }));
+    })));
   }
 
   public async handleButton(interaction: ButtonInteraction): Promise<void> {
@@ -203,7 +207,14 @@ export default class SessionPlayer {
     }
 
     if (action === 'history') {
-      await interaction.editReply(buildHistoryMessage(session, page));
+      // Old deployed buttons remain readable, but never require pagination.
+      const [first, ...rest] = buildHistoryMessages(session);
+      await interaction.editReply(first);
+      for (const payload of rest) {
+        // eslint-disable-next-line no-await-in-loop
+        await interaction.followUp({...payload, ephemeral: true});
+      }
+
       return;
     }
 
@@ -289,7 +300,7 @@ export default class SessionPlayer {
     return saved;
   }
 
-  private async archivePublication(player: Player, sessionId: string, card: Message): Promise<void> {
+  private async archivePublication(player: Player, sessionId: string, card: Message, channel: GuildTextBasedChannel): Promise<void> {
     try {
       await player.listeningSession?.flush();
       const completed = await this.store.load(sessionId, player.guildId);
@@ -301,10 +312,24 @@ export default class SessionPlayer {
       // record so this late card's history link still works after a restart.
       const bound = {...completed, channelId: card.channelId, messageId: card.id};
       await this.store.save(bound);
-      await card.edit(buildSessionMessage(bound));
     } catch (error) {
       await card.delete().catch(() => undefined);
       throw error;
+    }
+
+    const bound = await this.store.load(sessionId, player.guildId);
+    if (bound) {
+      await this.publishMessages(card, channel, bound);
+    }
+  }
+
+  private async publishMessages(card: Message, channel: GuildTextBasedChannel, session: ListeningSessionRecord, player?: Player): Promise<void> {
+    const [first, ...history] = buildSessionMessages(session, player);
+    await card.edit(first);
+    await this.historyPublisher.publish(channel, {...session, channelId: card.channelId, messageId: card.id}, history, {force: Boolean(session.endedAt)});
+    if (session.endedAt) {
+      await this.store.markRecovered(session.id);
+      this.historyPublisher.forget(session.id);
     }
   }
 

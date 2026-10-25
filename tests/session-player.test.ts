@@ -3,7 +3,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {ChannelType, Collection} from 'discord.js';
 import {MediaSource, STATUS} from '../src/services/player-types.js';
 import type {ListeningSessionRecord} from '../src/services/listening-session.js';
-import {buildHistoryMessage, buildMoreMessage, buildQueueMessage, buildSessionMessage, sessionButtonId} from '../src/utils/build-session-message.js';
+import {buildHistoryMessages, buildMoreMessage, buildQueueMessage, buildSessionMessage, buildSessionMessages, sessionButtonId} from '../src/utils/build-session-message.js';
 
 const permission = vi.hoisted(() => vi.fn());
 vi.mock('../src/utils/can-use-playback-command.js', () => ({default: permission}));
@@ -58,11 +58,14 @@ const fixture = () => {
     interruptOpenSessions: vi.fn().mockResolvedValue([]),
     save: vi.fn(async (session: ListeningSessionRecord) => { records.set(session.id, session); }),
     markRecovered: vi.fn().mockResolvedValue(undefined),
+    loadHistoryMessages: vi.fn().mockResolvedValue([]),
+    saveHistoryMessage: vi.fn().mockResolvedValue(undefined),
+    deleteHistoryMessage: vi.fn().mockResolvedValue(undefined),
   };
   const service = new SessionPlayer(manager as never, store as never);
   const interaction = (action: string, page = 0) => ({
     customId: sessionButtonId(id, action, page), guild, channelId: 'channel', user: {id: 'listener'},
-    message: {id: 'private-controls'}, deferReply: vi.fn().mockResolvedValue(undefined), editReply: vi.fn().mockResolvedValue(undefined),
+    message: {id: 'private-controls'}, deferReply: vi.fn().mockResolvedValue(undefined), editReply: vi.fn().mockResolvedValue(undefined), followUp: vi.fn().mockResolvedValue(undefined),
   });
   return {state, records, card, member, channel, guild, controller, player, manager, store, service, interaction};
 };
@@ -79,7 +82,7 @@ describe('shared session card publication', () => {
     expect(links).toEqual(['https://discord.com/channels/guild/channel/message', 'https://discord.com/channels/guild/channel/message']);
     expect(f.channel.send).toHaveBeenCalledOnce();
     expect(f.controller.setMessage).toHaveBeenCalledOnce();
-    expect(f.player.setPlayingMessageUpdater).toHaveBeenLastCalledWith(expect.any(Function), 'message', {keepAfterFinish: true});
+    expect(f.player.setPlayingMessageUpdater).toHaveBeenLastCalledWith(expect.any(Function), 'message', {keepAfterFinish: true, retryOnError: true});
   });
 
   it('keeps the saved history when a deleted card must be replaced', async () => {
@@ -210,7 +213,7 @@ describe('shared session card publication', () => {
     await f.service.ensureMessage(f.player as never, f.channel as never);
     expect(f.controller.setMessage).toHaveBeenCalledWith('channel', 'message');
     expect(f.player.setPlayingMessageUpdater).not.toHaveBeenCalled();
-    expect(f.card.edit.mock.calls[0][0].components[0].components.map((button: {label: string}) => button.label)).toEqual(['View full history']);
+    expect(f.card.edit.mock.calls[0][0].components).toEqual([]);
     expect(f.card.edit.mock.calls[0][0].embeds[0].data.description).toContain('Stopped');
   });
 
@@ -241,7 +244,7 @@ describe('shared session card publication', () => {
     const payload = f.card.edit.mock.calls[0][0];
     expect(payload.embeds[0].data.description).toContain('Stopped');
     expect(payload.embeds[0].data.description).toContain('Session ended');
-    expect(payload.components[0].components.map((button: {label: string}) => button.label)).toEqual(['View full history']);
+    expect(payload.components).toEqual([]);
   });
 
   it('renders a completed queue as history while retaining the shared card', async () => {
@@ -253,7 +256,7 @@ describe('shared session card publication', () => {
     const edit = f.card.edit.mock.calls[0][0];
     expect(edit.embeds[0].data.description).toContain('First song');
     expect(edit.embeds[0].data.description).toContain('Played');
-    expect(edit.components.flatMap((row: {components: unknown[]}) => row.components)).toHaveLength(3);
+    expect(edit.components.flatMap((row: {components: unknown[]}) => row.components)).toHaveLength(2);
     expect(f.card.delete).not.toHaveBeenCalled();
   });
 });
@@ -593,7 +596,7 @@ describe('session buttons and durable history', () => {
       await restarted.prepareRecovery();
       await restarted.recover(f.channel.client as never);
       expect(f.channel.send).toHaveBeenCalledOnce();
-      expect(f.card.edit).toHaveBeenCalledOnce();
+      expect(f.card.edit).toHaveBeenCalledTimes(2);
       expect(f.store.markRecovered).toHaveBeenCalledTimes(2);
       expect(f.store.markRecovered).toHaveBeenLastCalledWith(id);
       expect(f.card.delete).not.toHaveBeenCalled();
@@ -612,7 +615,7 @@ describe('session buttons and durable history', () => {
     expect(f.card.edit).not.toHaveBeenCalled();
     await f.service.recover(f.channel.client as never);
     expect(f.store.interruptOpenSessions).toHaveBeenCalledOnce();
-    expect(f.card.edit.mock.calls[0][0].components[0].components.map((button: {label: string}) => button.label)).toEqual(['View full history']);
+    expect(f.card.edit.mock.calls[0][0].components).toEqual([]);
     expect(f.card.edit.mock.calls[0][0].embeds[0].data.description).toContain('Interrupted');
     expect(f.store.markRecovered).toHaveBeenCalledAfter(f.card.edit);
   });
@@ -625,7 +628,7 @@ describe('bounded session rendering', () => {
     f.player.getCurrent.mockReturnValue(long);
     f.player.getQueue.mockReturnValue(Array.from({length: 20}, () => long));
     f.state.record.entries = Array.from({length: 50}, (_, index) => ({...f.state.record.entries[0], ...long, source: 'HLS', id: String(index)}));
-    for (const payload of [buildSessionMessage(f.state.record, f.player as never), buildHistoryMessage(f.state.record, 9), buildQueueMessage(f.state.record, f.player as never)]) {
+    for (const payload of [buildSessionMessage(f.state.record, f.player as never), ...buildHistoryMessages(f.state.record), buildQueueMessage(f.state.record, f.player as never)]) {
       const embed = payload.embeds[0].toJSON();
       expect(embed.description!.length).toBeLessThanOrEqual(4096);
       expect(JSON.stringify(embed).length).toBeLessThan(6000);
@@ -636,18 +639,16 @@ describe('bounded session rendering', () => {
     expect(long.url.length).toBeGreaterThan(500);
   });
 
-  it('shows the last five tracks in the recap and paginates the full ordered history', () => {
+  it('shows every track directly in a short recap without history controls', () => {
     const session = record();
     session.endedAt = new Date();
     session.entries = Array.from({length: 12}, (_, index) => ({...session.entries[0], title: `Track ${index + 1}`, status: index === 3 ? 'skipped' : 'completed'}));
-    const recap = buildSessionMessage(session);
-    expect(recap.embeds[0].data.description).toContain('8. [Track 8]');
-    expect(recap.embeds[0].data.description).not.toContain('7. [Track 7]');
-    const history = buildHistoryMessage(session, 0);
-    expect(history.embeds[0].data.description).toContain('4. [Track 4]');
-    expect(history.embeds[0].data.description).toContain('Skipped');
-    expect(buildHistoryMessage(session, 999).embeds[0].data.footer!.text).toBe('Page 3 of 3 · 12 tracks started');
-    expect(recap.components[0].components.map(button => button.label)).toEqual(['View full history']);
+    const recaps = buildSessionMessages(session);
+    expect(recaps).toHaveLength(1);
+    const text = recaps[0].embeds.map(embed => embed.data.description).join('\n');
+    for (let n = 1; n <= 12; n++) expect(text).toContain(`${n}. [Track ${n}]`);
+    expect(text).toContain('Skipped');
+    expect(recaps[0].components).toEqual([]);
   });
 
   it('uses labeled controls and disables seek for live streams', () => {

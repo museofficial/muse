@@ -113,6 +113,9 @@ type PlayingMessageState = {
   updateQueued: boolean;
   retired: boolean;
   keepAfterFinish: boolean;
+  retryOnError: boolean;
+  retryAttempts: number;
+  retryTimer?: NodeJS.Timeout;
 };
 
 export default class {
@@ -262,7 +265,7 @@ export default class {
    * Registers the renderer for the live response created when /play starts a
    * playback session. Older responses can still finish their terminal edits.
    */
-  setPlayingMessageUpdater(updater: PlayingMessageUpdater, messageId?: string, {keepAfterFinish = false} = {}): void {
+  setPlayingMessageUpdater(updater: PlayingMessageUpdater, messageId?: string, {keepAfterFinish = false, retryOnError = false} = {}): void {
     this.playingMessage = {
       updater,
       id: messageId,
@@ -270,6 +273,8 @@ export default class {
       updateQueued: false,
       retired: false,
       keepAfterFinish,
+      retryOnError,
+      retryAttempts: 0,
     };
     this.secondsSincePlayingMessageUpdate = 0;
   }
@@ -1121,10 +1126,13 @@ export default class {
       return;
     }
 
+    clearTimeout(message.retryTimer);
+    message.retryTimer = undefined;
     message.updateInFlight = true;
     const {terminalState} = message;
     void message.updater(terminalState)
       .then(() => {
+        message.retryAttempts = 0;
         if (terminalState && message.terminalState === terminalState
           && !(terminalState === 'finished' && message.keepAfterFinish)) {
           // Terminal responses no longer receive timer edits or controls.
@@ -1135,10 +1143,23 @@ export default class {
         }
       })
       .catch((error: unknown) => {
-        // A failed old response must not retire the new session's response.
-        message.retired = true;
-        if (this.playingMessage === message) {
-          this.playingMessage = undefined;
+        if (message.retryOnError) {
+          // Public history can fail independently of the primary card. Keep
+          // its renderer, including a stopped session's final recap. Bound
+          // automatic retries; ordinary progress/control updates can retry too.
+          if (message.retryAttempts < 3) {
+            message.retryAttempts++;
+            message.retryTimer = setTimeout(() => {
+              this.requestPlayingMessageUpdate(message);
+            }, 3000);
+            message.retryTimer.unref();
+          }
+        } else {
+          // A failed old response must not retire the new session's response.
+          message.retired = true;
+          if (this.playingMessage === message) {
+            this.playingMessage = undefined;
+          }
         }
 
         const detail = error instanceof Error ? `${error.name}: ${error.message}` : error;
@@ -1148,7 +1169,11 @@ export default class {
         message.updateInFlight = false;
         if (message.updateQueued) {
           message.updateQueued = false;
-          this.requestPlayingMessageUpdate(message);
+          // A failed render's scheduled retry reads the latest state. Avoid
+          // bypassing its delay when Stop queued the same terminal edit twice.
+          if (!message.retryTimer) {
+            this.requestPlayingMessageUpdate(message);
+          }
         }
       });
   }

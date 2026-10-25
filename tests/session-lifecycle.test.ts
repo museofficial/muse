@@ -335,3 +335,153 @@ describe('listening history through real Player transitions', () => {
   });
 
 });
+
+describe('public session message retries', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  it('recovers a transient live publication failure and keeps later track history and queue completion updating', async () => {
+    const {player, session, finishTrack} = makeHarness(makeSong('First'), makeSong('Second'));
+    await player.play();
+    const renders: Array<{terminal: unknown; entries: Array<[string, string]>}> = [];
+    const update = vi.fn(async (terminal: unknown) => {
+      renders.push({terminal, entries: session.snapshot()!.entries.map(entry => [entry.title, entry.status])});
+    }).mockRejectedValueOnce(new Error('Discord temporarily unavailable'));
+    player.setPlayingMessageUpdater(update, 'session-card', {keepAfterFinish: true, retryOnError: true});
+    player.refreshPlayingMessage();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(update).toHaveBeenCalledOnce();
+    expect(player.getPlayingMessageId()).toBe('session-card');
+
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(update).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(update).toHaveBeenCalledTimes(2);
+    expect(renders.at(-1)).toEqual({terminal: undefined, entries: [['First', 'playing']]});
+
+    await finishTrack();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(renders.at(-1)).toEqual({terminal: undefined, entries: [['First', 'completed'], ['Second', 'playing']]});
+    await finishTrack();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(renders.at(-1)).toEqual({terminal: 'finished', entries: [['First', 'completed'], ['Second', 'completed']]});
+    expect(player.getPlayingMessageId()).toBe('session-card');
+  });
+
+  it.each(['stop', 'disconnect'] as const)('retries a failed final %s recap after three seconds without an audio clock', async action => {
+    const {player, session} = makeHarness(makeSong('Track'));
+    await player.play();
+    player.pause();
+    const update = vi.fn().mockRejectedValueOnce(new Error('Discord temporarily unavailable')).mockResolvedValue(undefined);
+    player.setPlayingMessageUpdater(update, 'session-card', {keepAfterFinish: true, retryOnError: true});
+    player[action]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(player.voiceConnection).toBeNull();
+    expect(update).toHaveBeenCalledOnce();
+    expect(player.getPlayingMessageId()).toBe('session-card');
+
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(update).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1);
+    const terminal = action === 'stop' ? 'stopped' : 'disconnected';
+    expect(update.mock.calls).toEqual([[terminal], [terminal]]);
+    expect(session.snapshot()?.endReason).toBe(terminal);
+    expect(player.getPlayingMessageId()).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('bounds automatic retries, avoids an immediate failure loop, and permits later controls to recover', async () => {
+    const {player} = makeHarness(makeSong('Paused track'));
+    await player.play();
+    player.pause();
+    const update = vi.fn().mockRejectedValue(new Error('Discord unavailable'));
+    player.setPlayingMessageUpdater(update, 'session-card', {keepAfterFinish: true, retryOnError: true});
+    player.refreshPlayingMessage();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(update).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(update).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(update).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(update).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(update).toHaveBeenCalledTimes(4);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(update).toHaveBeenCalledTimes(4);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(player.getPlayingMessageId()).toBe('session-card');
+
+    update.mockResolvedValue(undefined);
+    player.setVolume(45);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(update).toHaveBeenCalledTimes(5);
+    expect(player.getPlayingMessageId()).toBe('session-card');
+
+    update.mockRejectedValueOnce(new Error('Another transient outage'));
+    player.setVolume(50);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(update).toHaveBeenCalledTimes(6);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(update).toHaveBeenCalledTimes(7);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('bounds retries of a disconnected final recap after the audio clock has stopped', async () => {
+    const {player} = makeHarness(makeSong('Track'));
+    await player.play();
+    player.pause();
+    const update = vi.fn().mockRejectedValue(new Error('Discord unavailable'));
+    player.setPlayingMessageUpdater(update, 'session-card', {keepAfterFinish: true, retryOnError: true});
+    player.disconnect();
+    await vi.advanceTimersByTimeAsync(90_000);
+    expect(update.mock.calls).toEqual(Array.from({length: 4}, () => ['disconnected']));
+    expect(vi.getTimerCount()).toBe(0);
+    expect(player.voiceConnection).toBeNull();
+  });
+
+  it('lets an older terminal retry finish without retiring or rendering progress into a new session card', async () => {
+    const {player, session} = makeHarness(makeSong('Original'));
+    await player.play();
+    player.pause();
+    const originalId = session.snapshot()!.id;
+    let rejectOld!: (error: Error) => void;
+    const oldUpdate = vi.fn().mockImplementationOnce(() => new Promise<void>((_resolve, reject) => { rejectOld = reject; })).mockResolvedValue(undefined);
+    player.setPlayingMessageUpdater(oldUpdate, 'old-card', {keepAfterFinish: true, retryOnError: true});
+    player.disconnect();
+
+    const newUpdate = vi.fn().mockResolvedValue(undefined);
+    player.setPlayingMessageUpdater(newUpdate, 'new-card', {keepAfterFinish: true, retryOnError: true});
+    player.voiceConnection = makeConnection() as never;
+    await player.play();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(session.snapshot()!.id).not.toBe(originalId);
+    const newCalls = newUpdate.mock.calls.length;
+    rejectOld(new Error('Old recap temporarily unavailable'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(player.getPlayingMessageId()).toBe('new-card');
+    await vi.advanceTimersByTimeAsync(3000);
+
+    expect(oldUpdate.mock.calls).toEqual([['disconnected'], ['disconnected']]);
+    expect(newUpdate).toHaveBeenCalledTimes(newCalls);
+    expect(player.getPlayingMessageId()).toBe('new-card');
+    expect(player.isPlayingMessage('new-card')).toBe(true);
+    player.setVolume(35);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(newUpdate).toHaveBeenCalledTimes(newCalls + 1);
+  });
+
+  it('preserves immediate retirement for updaters that did not opt into retry', async () => {
+    const {player} = makeHarness(makeSong('Track'));
+    await player.play();
+    player.pause();
+    const update = vi.fn().mockRejectedValue(new Error('Legacy response gone'));
+    player.setPlayingMessageUpdater(update, 'legacy-card', {keepAfterFinish: true});
+    player.refreshPlayingMessage();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(update).toHaveBeenCalledOnce();
+    expect(player.getPlayingMessageId()).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});

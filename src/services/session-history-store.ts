@@ -5,6 +5,12 @@ import type {ListeningSessionRecord, ListeningSessionEntryStatus} from './listen
 type StoredSession = Prisma.ListeningSessionGetPayload<{include: {entries: true}}>;
 type SavedState = {session: string; entries: Map<string, string>};
 
+const validateHistoryMessagePosition = (position: number): void => {
+  if (!Number.isInteger(position) || position < 1 || position > 2_147_483_647) {
+    throw new RangeError('History message positions must be positive 32-bit integers.');
+  }
+};
+
 const toRecord = (session: StoredSession): ListeningSessionRecord => ({
   id: session.id,
   guildId: session.guildId,
@@ -71,6 +77,37 @@ export default class SessionHistoryStore {
       include: {entries: {orderBy: {position: 'asc'}}},
     });
     return session ? toRecord(session) : null;
+  }
+
+  async loadHistoryMessages(sessionId: string): Promise<Array<{position: number; messageId: string | null; afterMessageId: string | null; nonce: string | null}>> {
+    return this.database.listeningSessionMessage.findMany({
+      where: {sessionId},
+      select: {position: true, messageId: true, afterMessageId: true, nonce: true},
+      orderBy: {position: 'asc'},
+    });
+  }
+
+  async beginHistoryMessage(sessionId: string, position: number, afterMessageId: string, nonce: string): Promise<void> {
+    validateHistoryMessagePosition(position);
+    await this.database.listeningSessionMessage.upsert({
+      where: {sessionId_position: {sessionId, position}},
+      create: {sessionId, position, messageId: null, afterMessageId, nonce},
+      update: {messageId: null, afterMessageId, nonce},
+    });
+  }
+
+  async saveHistoryMessage(sessionId: string, position: number, messageId: string): Promise<void> {
+    validateHistoryMessagePosition(position);
+    await this.database.listeningSessionMessage.upsert({
+      where: {sessionId_position: {sessionId, position}},
+      create: {sessionId, position, messageId, afterMessageId: null, nonce: null},
+      update: {messageId, afterMessageId: null, nonce: null},
+    });
+  }
+
+  async deleteHistoryMessage(sessionId: string, position: number): Promise<void> {
+    validateHistoryMessagePosition(position);
+    await this.database.listeningSessionMessage.deleteMany({where: {sessionId, position}});
   }
 
   async interruptOpenSessions(): Promise<ListeningSessionRecord[]> {
