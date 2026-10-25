@@ -836,3 +836,162 @@ describe('CTRL-20 audio-idle advance preservation', () => {
     expect(consoleError).toHaveBeenCalledOnce();
   });
 });
+
+describe('initial audio preparation', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  const makePreparingPlayer = () => {
+    const fileCache = {getEntryFor: vi.fn().mockResolvedValue(null)};
+    const player = new Player(fileCache as never, GUILD_ID);
+    const createRemoteReadStream = vi.fn().mockResolvedValue(Readable.from([]));
+    const createReadStream = vi.fn().mockResolvedValue(Readable.from([]));
+    Object.assign(player, {createRemoteReadStream, createReadStream});
+    return {player, fileCache, createRemoteReadStream, createReadStream};
+  };
+
+  it('overlaps extraction with the voice handshake and consumes the result only after voice is ready', async () => {
+    const {player, createRemoteReadStream} = makePreparingPlayer();
+    const handshake = makeDeferred<void>();
+    const extraction = makeDeferred<{stdout: string}>();
+    const voiceConnection = makeVoiceConnection();
+    dependencyMocks.joinVoiceChannel.mockReturnValue(voiceConnection);
+    dependencyMocks.entersState.mockReturnValueOnce(handshake.promise);
+    dependencyMocks.execa.mockReturnValueOnce(extraction.promise);
+    const song = makeQueuedSong('First');
+
+    const connecting = player.connect({id: 'voice-id', guild: {id: GUILD_ID}} as never);
+    player.prepareAudio(song);
+    await flushAsyncWork();
+
+    expect(dependencyMocks.entersState).toHaveBeenCalledOnce();
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(player.getCurrent()).toBeNull();
+    expect(dependencyMocks.createAudioPlayer).not.toHaveBeenCalled();
+
+    player.add(song);
+    const playing = player.play();
+    extraction.resolve({stdout: VALID_MEDIA_RESPONSE});
+    await flushAsyncWork();
+    expect(createRemoteReadStream).not.toHaveBeenCalled();
+    expect(voiceConnection.subscribe).not.toHaveBeenCalled();
+
+    handshake.resolve();
+    await Promise.all([connecting, playing]);
+
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(createRemoteReadStream).toHaveBeenCalledOnce();
+    expect(voiceConnection.subscribe).toHaveBeenCalledOnce();
+    expect(player.status).toBe(STATUS.PLAYING);
+    player.stop();
+  });
+
+  it('uses the same chapter-bounded cache key as playback without remote extraction on a cache hit', async () => {
+    const {player, fileCache, createReadStream, createRemoteReadStream} = makePreparingPlayer();
+    fileCache.getEntryFor.mockResolvedValue({generation: 'cached', path: '/cached/chapter.webm'});
+    player.voiceConnection = makeVoiceConnection() as never;
+    const song = {...makeQueuedSong('Chapter'), offset: 30, length: 60};
+
+    player.prepareAudio(song);
+    await flushAsyncWork();
+    player.add(song);
+    await player.play();
+
+    expect(dependencyMocks.execa).not.toHaveBeenCalled();
+    expect(createRemoteReadStream).not.toHaveBeenCalled();
+    expect(fileCache.getEntryFor).toHaveBeenCalledTimes(2);
+    expect(fileCache.getEntryFor.mock.calls[0]).toEqual(fileCache.getEntryFor.mock.calls[1]);
+    expect(createReadStream).toHaveBeenCalledWith(expect.objectContaining({
+      url: '/cached/chapter.webm',
+      cacheKey: JSON.stringify(['audio-v2', song.source, song.url, 90]),
+      ffmpegInputOptions: ['-ss', '30', '-to', '90'],
+    }));
+    player.stop();
+  });
+
+  it('does not start extraction if Stop invalidates a pending cache lookup', async () => {
+    const {player, fileCache} = makePreparingPlayer();
+    const cacheLookup = makeDeferred<null>();
+    fileCache.getEntryFor.mockReturnValueOnce(cacheLookup.promise);
+
+    player.prepareAudio(makeQueuedSong('First'));
+    player.stop();
+    cacheLookup.resolve(null);
+    await flushAsyncWork();
+
+    expect(dependencyMocks.execa).not.toHaveBeenCalled();
+    expect(dependencyMocks.createAudioPlayer).not.toHaveBeenCalled();
+  });
+
+  it('does not start playback when Stop retires preparation already being consumed', async () => {
+    const {player, createRemoteReadStream} = makePreparingPlayer();
+    player.voiceConnection = makeVoiceConnection() as never;
+    const extraction = makeDeferred<{stdout: string}>();
+    dependencyMocks.execa.mockReturnValueOnce(extraction.promise);
+    const song = makeQueuedSong('First');
+
+    player.prepareAudio(song);
+    await flushAsyncWork();
+    player.add(song);
+    const playing = player.play();
+    await flushAsyncWork();
+    player.stop();
+    extraction.resolve({stdout: VALID_MEDIA_RESPONSE});
+    await playing;
+
+    expect(player.getCurrent()).toBeNull();
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(createRemoteReadStream).not.toHaveBeenCalled();
+    expect(dependencyMocks.createAudioPlayer).not.toHaveBeenCalled();
+  });
+
+  it('retries a speculative extraction failure through normal playback', async () => {
+    const {player, createRemoteReadStream} = makePreparingPlayer();
+    player.voiceConnection = makeVoiceConnection() as never;
+    dependencyMocks.execa.mockRejectedValueOnce({stderr: 'ERROR: transient extractor failure'});
+    const song = makeQueuedSong('First');
+
+    player.prepareAudio(song);
+    await flushAsyncWork();
+    player.add(song);
+    await player.play();
+
+    expect(dependencyMocks.execa).toHaveBeenCalledTimes(2);
+    expect(createRemoteReadStream).toHaveBeenCalledOnce();
+    expect(player.status).toBe(STATUS.PLAYING);
+    player.stop();
+  });
+
+  it('keeps an existing preparation when another request arrives during the handshake', async () => {
+    const {player} = makePreparingPlayer();
+    player.voiceConnection = makeVoiceConnection() as never;
+    const song = makeQueuedSong('First');
+
+    player.prepareAudio(song);
+    player.prepareAudio(makeQueuedSong('Second'));
+    await flushAsyncWork();
+    player.add(song);
+    await player.play();
+
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(dependencyMocks.execa.mock.calls[0][1].at(-1)).toBe(song.url);
+    player.stop();
+  });
+
+  it('leaves HLS and livestream resolution to normal playback', () => {
+    const {player, fileCache} = makePreparingPlayer();
+
+    player.prepareAudio({...makeQueuedSong('HLS'), source: MediaSource.HLS});
+    player.prepareAudio({...makeQueuedSong('Live'), isLive: true});
+
+    expect(fileCache.getEntryFor).not.toHaveBeenCalled();
+    expect(dependencyMocks.execa).not.toHaveBeenCalled();
+  });
+});

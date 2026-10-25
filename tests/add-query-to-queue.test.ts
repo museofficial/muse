@@ -158,6 +158,7 @@ const setSponsorBlock = (
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(Player.prototype, 'prepareAudio').mockImplementation(() => undefined);
   dependencyMocks.getGuildSettings.mockResolvedValue({
     playlistLimit: 50,
     queueAddResponseEphemeral: false,
@@ -317,6 +318,130 @@ describe('AddQueryToQueue skip semantics', () => {
 });
 
 describe('AddQueryToQueue shared player publication', () => {
+  it('confirms queued songs while the shared card is still publishing', async () => {
+    const player = makePausedPlayer(makeQueuedSong('Current'));
+    const card = makePromiseBarrier();
+    const ensureMessage = vi.fn(async () => {
+      await card.wait();
+      return 'https://discord.com/channels/guild-id/text-channel-id/session-card-id';
+    });
+    const {service} = makeService({player, ensureMessage});
+    const interaction = makeInteraction();
+
+    const pending = addToQueue(service, interaction);
+    await card.entered;
+
+    expect(ensureMessage).toHaveBeenCalledWith(player, interaction.channel);
+    expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
+
+    card.release();
+    await pending;
+    expect(interaction.editReply).toHaveBeenCalledOnce();
+  });
+
+  it('keeps thinking through audio startup but does not wait for the new card to confirm it', async () => {
+    const player = makePausedPlayer();
+    player.status = STATUS.IDLE;
+    const audio = makePromiseBarrier();
+    const card = makePromiseBarrier();
+    vi.spyOn(player, 'play').mockImplementation(async () => {
+      await audio.wait();
+      player.status = STATUS.PLAYING;
+    });
+    const ensureMessage = vi.fn(async () => {
+      await card.wait();
+      return 'https://discord.com/channels/guild-id/text-channel-id/session-card-id';
+    });
+    const {service} = makeService({player, ensureMessage});
+    const interaction = makeInteraction();
+
+    const pending = addToQueue(service, interaction);
+    await audio.entered;
+    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
+    expect(interaction.editReply).not.toHaveBeenCalled();
+    expect(ensureMessage).not.toHaveBeenCalled();
+
+    audio.release();
+    await card.entered;
+    expect(player.status).toBe(STATUS.PLAYING);
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
+
+    card.release();
+    await pending;
+    expect(interaction.editReply).toHaveBeenCalledOnce();
+  });
+
+  it('propagates startup failures without publishing a success receipt or player card', async () => {
+    const player = makePausedPlayer();
+    player.status = STATUS.IDLE;
+    const failure = new Error('FFmpeg startup failed');
+    vi.spyOn(player, 'play').mockRejectedValue(failure);
+    const {service, ensureMessage} = makeService({player});
+    const interaction = makeInteraction();
+
+    await expect(addToQueue(service, interaction)).rejects.toBe(failure);
+
+    expect(interaction.editReply).not.toHaveBeenCalled();
+    expect(ensureMessage).not.toHaveBeenCalled();
+  });
+
+  it('adds a late publication warning to the same bounded private confirmation', async () => {
+    const player = makePausedPlayer(makeQueuedSong('Current'));
+    const card = makePromiseBarrier();
+    const ensureMessage = vi.fn(async () => {
+      await card.wait();
+      throw new Error('Missing Permissions');
+    });
+    const {service} = makeService({player, ensureMessage, songs: [makeSong('*Long title* '.repeat(200))]});
+    const interaction = makeInteraction();
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const pending = addToQueue(service, interaction);
+    await card.entered;
+    expect(interaction.editReply).toHaveBeenCalledOnce();
+    expect(replyContent(interaction)).toMatch(/^u betcha, /);
+    expect(replyContent(interaction)).not.toContain('could not be shown');
+
+    card.release();
+    await pending;
+
+    expect(interaction.editReply).toHaveBeenCalledTimes(2);
+    expect(replyContent(interaction)).toMatch(/^u betcha, /);
+    expect(replyContent(interaction)).toContain('The player card could not be shown.');
+    for (const [payload] of interaction.editReply.mock.calls) {
+      expect(payload.content.length).toBeLessThanOrEqual(2000);
+      expect(payload.allowedMentions).toEqual({parse: []});
+    }
+
+    expect(warning).toHaveBeenCalledOnce();
+    warning.mockRestore();
+  });
+
+  it('waits for the first receipt to finish before appending an early card failure', async () => {
+    const player = makePausedPlayer(makeQueuedSong('Current'));
+    const receipt = makePromiseBarrier();
+    const {service} = makeService({player, ensureMessage: vi.fn().mockRejectedValue(new Error('Missing Permissions'))});
+    const interaction = makeInteraction();
+    interaction.editReply.mockImplementationOnce(async () => {
+      await receipt.wait();
+      return interaction.replyMessage;
+    });
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const pending = addToQueue(service, interaction);
+    await receipt.entered;
+    expect(interaction.editReply).toHaveBeenCalledOnce();
+    expect(replyContent(interaction)).not.toContain('could not be shown');
+
+    receipt.release();
+    await pending;
+
+    expect(interaction.editReply).toHaveBeenCalledTimes(2);
+    expect(replyContent(interaction)).toContain('The player card could not be shown.');
+    warning.mockRestore();
+  });
+
   it('maintains the shared card without adding a player link to every private confirmation', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'), makeQueuedSong('Already queued'));
     const {service, ensureMessage} = makeService({player});
@@ -528,6 +653,40 @@ describe('AddQueryToQueue SponsorBlock trimming', () => {
 
 
 describe('AddQueryToQueue voice connection failures', () => {
+  it.each([false, true])('prepares the correct audio during a pending join with saved queue=%s', async hasSavedQueue => {
+    const player = new Player({} as never, GUILD_ID);
+    const current = makeQueuedSong('Saved current');
+    if (hasSavedQueue) {
+      player.add(current);
+    }
+
+    const connection = makePromiseBarrier();
+    vi.spyOn(player, 'connect').mockImplementation(async () => {
+      await connection.wait();
+      player.voiceConnection = {state: {status: 'ready'}} as never;
+    });
+    const play = vi.spyOn(player, 'play').mockResolvedValue(undefined);
+    const {service} = makeService({player});
+    const interaction = makeInteraction();
+
+    const pending = addToQueue(service, interaction);
+    await connection.entered;
+    expect(player.getCurrent()).toBe(hasSavedQueue ? current : null);
+    expect(player.getQueue()).toEqual([]);
+    expect(play).not.toHaveBeenCalled();
+    expect(interaction.editReply).not.toHaveBeenCalled();
+    expect(player.prepareAudio).toHaveBeenCalledOnce();
+    expect(player.prepareAudio).toHaveBeenCalledWith(hasSavedQueue ? current : makeQueuedSong('New song'));
+
+    connection.release();
+    await pending;
+
+    const preparedSong = vi.mocked(player.prepareAudio).mock.calls[0][0];
+    expect(player.getCurrent()).toBe(preparedSong);
+    expect(play).toHaveBeenCalledOnce();
+    expect(replyContent(interaction)).toContain('New song');
+  });
+
   it.each([false, true])('does not enqueue failed requests with immediate=%s or disturb the saved queue', async immediate => {
     const player = new Player({} as never, GUILD_ID);
     const current = makeQueuedSong('Saved current');
@@ -545,6 +704,8 @@ describe('AddQueryToQueue voice connection failures', () => {
 
     expect(player.getCurrent()).toBe(current);
     expect(player.getQueue()).toEqual([upcoming]);
+    expect(player.prepareAudio).toHaveBeenCalledTimes(2);
+    expect(player.prepareAudio).toHaveBeenCalledWith(current);
     expect(play).not.toHaveBeenCalled();
     expect(interaction.editReply).not.toHaveBeenCalled();
   });
@@ -616,6 +777,7 @@ it.each([STATUS.PAUSED, STATUS.PLAYING])('preserves an established %s session wh
   expect(player.loopCurrentSong).toBe(true);
   expect(connect).not.toHaveBeenCalled();
   expect(play).not.toHaveBeenCalled();
+  expect(player.prepareAudio).not.toHaveBeenCalled();
   expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
   expect(replyContent(interaction)).toContain('New song');
   expect(replyContent(interaction)).not.toMatch(/skipped/i);

@@ -191,6 +191,29 @@ export default class {
     }
   }
 
+  /** Resolve known audio while an initial voice connection becomes ready. */
+  prepareAudio(song: QueuedSong): void {
+    if (song.source === MediaSource.HLS || song.isLive || this.prefetchedMedia) {
+      return;
+    }
+
+    const generation = this.voiceConnectionGeneration;
+    const mediaSource = (async () => {
+      const to = song.offset === undefined ? undefined : song.length + song.offset;
+      const cacheKey = this.getAudioCacheKey(song, to);
+      const cachedEntry = await this.fileCache.getEntryFor(this.getHashForCache(cacheKey));
+      if (cachedEntry || generation !== this.voiceConnectionGeneration) {
+        return null;
+      }
+
+      return this.fetchMediaSource(song);
+    })().catch((error: unknown) => {
+      debug(`Audio preparation failed for guild ${this.guildId}: ${sanitizeFfmpegError(error)}`);
+      return null;
+    });
+    this.prefetchedMedia = {song, fetchedAt: Date.now(), mediaSource};
+  }
+
   async ensureVoiceConnectionReady(): Promise<VoiceConnection> {
     // An initial join may replace a timed-out connection before it succeeds.
     if (this.pendingConnection) {
@@ -962,6 +985,12 @@ export default class {
     return hasha(url);
   }
 
+  private getAudioCacheKey(song: QueuedSong, to?: number): string {
+    // Cached audio starts at zero but may end at a chapter or SponsorBlock boundary.
+    // Version the key to avoid reusing legacy URL-only entries with unknown bounds.
+    return JSON.stringify(['audio-v2', song.source, song.url, to ?? null]);
+  }
+
   private async getStream(
     song: QueuedSong,
     options: {seek?: number; to?: number} = {},
@@ -994,9 +1023,7 @@ export default class {
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
-    // Cached audio starts at zero but may end at a chapter or SponsorBlock boundary.
-    // Version the key to avoid reusing legacy URL-only entries with unknown bounds.
-    const cacheKey = JSON.stringify(['audio-v2', song.source, song.url, options.to ?? null]);
+    const cacheKey = this.getAudioCacheKey(song, options.to);
     const cacheHash = this.getHashForCache(cacheKey);
     const cachedEntry = await this.fileCache.getEntryFor(cacheHash);
     if (!isCurrent()) {

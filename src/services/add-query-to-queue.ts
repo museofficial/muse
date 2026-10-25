@@ -86,20 +86,23 @@ export default class AddQueryToQueue {
       newSongs = await Promise.all(newSongs.map(this.skipNonMusicSegments.bind(this)));
     }
 
-    const needsConnection = player.voiceConnection === null;
-    if (needsConnection) {
-      // A failed join must not leave an unacknowledged request in the queue.
-      await player.connect(targetVoiceChannel);
-    } else {
-      // Let an existing session recover without changing its channel or paused state.
-      await player.ensureVoiceConnectionReady();
-    }
-
     const queuedSongs = newSongs.map(song => ({
       ...song,
       addedInChannelId: interaction.channel!.id,
       requestedBy: interaction.member!.user.id,
     }));
+    const needsConnection = player.voiceConnection === null;
+    if (needsConnection) {
+      // A failed join must not leave an unacknowledged request in the queue.
+      // Resolve audio during the handshake without changing the saved queue.
+      const connection = player.connect(targetVoiceChannel);
+      player.prepareAudio(player.getCurrent() ?? queuedSongs[0]);
+      await connection;
+    } else {
+      // Let an existing session recover without changing its channel or paused state.
+      await player.ensureVoiceConnectionReady();
+    }
+
     queuedSongs.forEach((song, index) => {
       player.add(song, {immediate: addToFrontOfQueue, immediateOffset: index});
     });
@@ -140,21 +143,26 @@ export default class AddQueryToQueue {
     }
 
     const title = escapeMarkdown(firstSong.title);
-    let publicationWarning = '';
-    try {
-      await this.sessionPlayer.ensureMessage(player, interaction.channel as GuildTextBasedChannel);
-    } catch {
+    // Capture this session now, but let its card publish alongside the receipt.
+    const publication = this.sessionPlayer.ensureMessage(player, interaction.channel as GuildTextBasedChannel).then(() => '', () => {
       // The tracks have already been added. A Discord/persistence failure must
       // not make the requester retry and accidentally enqueue them twice.
       console.warn(`Could not publish the session player for guild ${guildId}.`);
-      publicationWarning = '\nThe player card could not be shown. Check my channel permissions, then use /now-playing.';
-    }
+      return '\nThe player card could not be shown. Check my channel permissions, then use /now-playing.';
+    });
 
-    const suffix = `${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}${publicationWarning}`;
-    const responseContent = newSongs.length === 1
-      ? formatSongReply(title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${suffix}`)
-      : formatSongReply(title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${suffix}`);
-    await interaction.editReply({content: responseContent, allowedMentions: {parse: []}});
+    const responseContent = (publicationWarning = '') => {
+      const suffix = `${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}${publicationWarning}`;
+      return newSongs.length === 1
+        ? formatSongReply(title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${suffix}`)
+        : formatSongReply(title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${suffix}`);
+    };
+
+    await interaction.editReply({content: responseContent(), allowedMentions: {parse: []}});
+    const publicationWarning = await publication;
+    if (publicationWarning) {
+      await interaction.editReply({content: responseContent(publicationWarning), allowedMentions: {parse: []}});
+    }
   }
 
   private async skipNonMusicSegments(song: SongMetadata) {
