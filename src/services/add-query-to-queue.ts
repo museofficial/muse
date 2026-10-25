@@ -107,7 +107,6 @@ export default class AddQueryToQueue {
     const firstSong = newSongs[0];
 
     let statusMsg = '';
-    let shouldShowPlayingEmbed = false;
 
     if (needsConnection) {
       // Resume / start playback
@@ -116,12 +115,9 @@ export default class AddQueryToQueue {
       if (wasPlayingSong) {
         statusMsg = 'resuming playback';
       }
-
-      shouldShowPlayingEmbed = true;
     } else if (player.status === STATUS.IDLE) {
       // Player is idle, start playback instead
       await player.play();
-      shouldShowPlayingEmbed = true;
     }
 
     if (!player.getCurrent()) {
@@ -143,28 +139,21 @@ export default class AddQueryToQueue {
       extraMsg = ` (${extraMsg})`;
     }
 
-    const current = player.getCurrent()!;
-    const firstQueuedIndex = player.getQueue().indexOf(queuedSongs[0]);
-    const location = current === queuedSongs[0]
-      ? 'playing now'
-      : firstQueuedIndex >= 0 ? `#${firstQueuedIndex + 1} in queue` : 'added to this session';
-    const describePlayback = shouldShowPlayingEmbed && (!wasPlayingSong || current === queuedSongs[0]);
-    const title = escapeMarkdown(describePlayback ? current.title : firstSong.title);
-    const suffix = `${didSkipCurrentTrack ? ' Current track skipped.' : ''}${extraMsg}`;
-    let link: string;
+    const title = escapeMarkdown(firstSong.title);
+    let publicationWarning = '';
     try {
-      const playerUrl = await this.sessionPlayer.ensureMessage(player, interaction.channel as GuildTextBasedChannel);
-      link = `\n[Go to player](${playerUrl})`;
+      await this.sessionPlayer.ensureMessage(player, interaction.channel as GuildTextBasedChannel);
     } catch {
       // The tracks have already been added. A Discord/persistence failure must
       // not make the requester retry and accidentally enqueue them twice.
       console.warn(`Could not publish the session player for guild ${guildId}.`);
-      link = '\nThe player card could not be shown. Check my channel permissions, then use /now-playing.';
+      publicationWarning = '\nThe player card could not be shown. Check my channel permissions, then use /now-playing.';
     }
 
+    const suffix = `${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}${publicationWarning}`;
     const responseContent = newSongs.length === 1
-      ? formatSongReply(title, describePlayback ? 'Playing **' : 'Added **', `**${describePlayback ? '.' : ` · ${location}.`}${suffix}${link}`)
-      : `Added ${newSongs.length} songs · ${location === 'playing now' ? 'playing now' : `starts at ${location}`}.${suffix}${link}`;
+      ? formatSongReply(title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${suffix}`)
+      : formatSongReply(title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${suffix}`);
     await interaction.editReply({content: responseContent, allowedMentions: {parse: []}});
   }
 

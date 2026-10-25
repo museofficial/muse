@@ -139,9 +139,9 @@ describe('queue acknowledgment output limits', () => {
 
     const {content} = interaction.editReply.mock.calls[0][0] as {content: string};
     expect(content.length).toBeLessThanOrEqual(2000);
-    expect(content).toMatch(/^Added \*\*https:\/\/radio\.example\//);
-    expect(content).toContain('#1');
-    expect(content).toContain('https://discord.com/channels/guild/channel/session');
+    expect(content).toMatch(/^u betcha, \*\*https:\/\/radio\.example\//);
+    expect(content).toMatch(/\*\* added to the queue$/);
+    expect(content).not.toContain('Go to player');
     expect(player.getQueue()[0].url).toBe(streamUrl);
   });
 
@@ -152,7 +152,9 @@ describe('queue acknowledgment output limits', () => {
 
     const initial = interaction.editReply.mock.calls[0][0];
     expect(initial.content.length).toBeLessThanOrEqual(2000);
-    expect(initial.content).toContain('https://discord.com/channels/guild/channel/session');
+    expect(initial.content).toMatch(/^u betcha, \*\*/);
+    expect(initial.content).toMatch(/\*\* added to the queue$/);
+    expect(initial.content).not.toContain('Go to player');
     expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
     expect(player.getCurrent()!.url).toBe(streamUrl);
     expect(message.react).not.toHaveBeenCalled();

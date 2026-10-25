@@ -1,6 +1,7 @@
 import getYouTubeID from 'get-youtube-id';
 import {EmbedBuilder} from 'discord.js';
-import Player, {MediaSource, QueuedSong, STATUS} from '../services/player.js';
+import type Player from '../services/player.js';
+import {MediaSource, STATUS, type QueuedSong} from '../services/player-types.js';
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
 import {truncate} from './string.js';

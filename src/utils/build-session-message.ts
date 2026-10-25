@@ -2,7 +2,7 @@ import {ButtonStyle, EmbedBuilder, escapeMarkdown} from 'discord.js';
 import type Player from '../services/player.js';
 import {MediaSource, STATUS} from '../services/player-types.js';
 import type {ListeningSessionEntry, ListeningSessionRecord} from '../services/listening-session.js';
-import {prettyTime} from './time.js';
+import {buildQueueEmbed} from './build-embed.js';
 import {truncate} from './string.js';
 
 export const SESSION_BUTTON_PREFIX = 'muse-session:';
@@ -118,57 +118,38 @@ const recapDescription = (session: ListeningSessionRecord): string => {
   return `${summary}\n\n**Session history**`;
 };
 
-export const buildSessionMessages = (session: ListeningSessionRecord, player?: Player): SessionMessagePayload[] => {
+export const buildSessionMessages = (session: ListeningSessionRecord, player?: Player, queuePageSize = 10): SessionMessagePayload[] => {
   const active = !session.endedAt && player !== undefined;
   const current = active ? player.getCurrent() : null;
-  const embed = new EmbedBuilder().setColor(0x365c65);
   const components: SessionRow[] = [];
 
   if (current && player) {
-    const upcoming = player.getQueue();
-    const time = current.isLive ? 'Live stream' : `${prettyTime(player.getPosition())} / ${prettyTime(current.length)}`;
-    const source = MediaSource[current.source];
-    const playbackDetails = [time, `Volume ${player.getVolume()}%`];
-    if (player.loopCurrentSong) {
-      playbackDetails.push('Loop: song');
-    }
-
-    if (player.loopCurrentQueue) {
-      playbackDetails.push('Loop: queue');
-    }
-
-    const description = [
-      `**${trackLink(current, 180)}**`,
-      `Requested by <@${current.requestedBy}> · ${source}`,
-      playbackDetails.join(' · '),
-      '',
-      `**Up next · ${upcoming.length} ${upcoming.length === 1 ? 'track' : 'tracks'}**`,
-      upcoming.slice(0, 3).map((track, index) => `${index + 1}. ${trackLink(track)}`).join('\n') || 'Nothing queued yet.',
-    ].join('\n');
-    embed.setTitle(player.status === STATUS.PAUSED ? 'Paused' : 'Now playing').setDescription(description)
-      .setFooter({text: truncate(current.artist || 'Listening session', 200)});
     components.push(row(
       button(session, 'previous', 'Previous', {disabled: !player.canGoBack()}),
+      button(session, 'backward', '−10s', {disabled: current.isLive}),
       button(session, player.status === STATUS.PAUSED ? 'resume' : 'pause', player.status === STATUS.PAUSED ? 'Resume' : 'Pause', {style: ButtonStyle.Primary}),
+      button(session, 'forward', '+10s', {disabled: current.isLive}),
       button(session, 'next', 'Next', {disabled: !player.canGoForward(1)}),
     ));
-  } else {
-    embed.setTitle('Session recap').setDescription(recapDescription(session));
   }
 
   if (active) {
-    components.push(row(button(session, 'queue', 'Queue'), button(session, 'more', 'More')));
+    components.push(row(
+      button(session, 'queue', 'Queue'),
+      button(session, 'shuffle', 'Shuffle', {disabled: player.isQueueEmpty()}),
+      button(session, 'stop', 'Stop', {style: ButtonStyle.Danger}),
+    ));
   }
 
-  const first = message(embed, components);
-  if (current) {
-    first.embeds.push(historyEmbed('Session history'));
+  if (current && player) {
+    return [message(buildQueueEmbed(player, 1, queuePageSize), components)];
   }
 
-  return appendHistory([first], session);
+  const recap = historyEmbed('Session recap').setDescription(recapDescription(session));
+  return appendHistory([message(recap, components)], session);
 };
 
-export const buildSessionMessage = (session: ListeningSessionRecord, player?: Player): SessionMessagePayload => buildSessionMessages(session, player)[0];
+export const buildSessionMessage = (session: ListeningSessionRecord, player?: Player, queuePageSize = 10): SessionMessagePayload => buildSessionMessages(session, player, queuePageSize)[0];
 
 const pagination = (session: ListeningSessionRecord, action: string, page: number, pages: number) => row(
   button(session, action, 'Previous page', {page: page - 1, disabled: page === 0}),

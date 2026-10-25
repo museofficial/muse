@@ -6,6 +6,7 @@ import {MediaSource, STATUS} from '../src/services/player-types.js';
 import {sessionButtonId} from '../src/utils/build-session-message.js';
 
 vi.mock('../src/services/session-history-store.js', () => ({default: class {}}));
+vi.mock('../src/utils/get-guild-settings.js', () => ({getGuildSettings: async () => ({defaultQueuePageSize: 10})}));
 
 import SessionPlayer from '../src/services/session-player.js';
 
@@ -83,8 +84,8 @@ const fixture = (count = 180, ended = true) => {
   };
   const player = {
     guildId: 'guild', listeningSession: controller, status: STATUS.PLAYING,
-    getCurrent: () => ended ? null : ({...state.record.entries.at(-1)!, source: MediaSource.Youtube, isLive: false}),
-    getQueue: () => [], getPosition: () => 30, getVolume: () => 100,
+    getCurrent: vi.fn(() => ended ? null : ({...state.record.entries.at(-1)!, source: MediaSource.Youtube, isLive: false})),
+    getQueue: () => [], queueSize: () => 0, getPosition: () => 30, getVolume: () => 100,
     canGoBack: () => true, canGoForward: () => false, isQueueEmpty: () => true,
     refreshPlayingMessage: vi.fn(),
     setPlayingMessageUpdater: vi.fn((updater: () => Promise<void>) => { state.updater = updater; }),
@@ -257,11 +258,14 @@ describe('public session history integration', () => {
     expect(f.store.markRecovered).not.toHaveBeenCalled();
   });
 
-  it('serializes active updates and concurrent publication without duplicating continuation messages', async () => {
+  it('serializes queue completion and concurrent publication without duplicating continuation messages', async () => {
     const f = fixture(120, false);
     const firstLink = await f.service.ensureMessage(f.player as never, f.channel as never);
     const updater = f.state.updater!;
-    f.state.record.entries = historyEntries(300, false);
+    expect(f.messages.size).toBe(1);
+    expect(f.bindings.size).toBe(0);
+    f.state.record.entries = historyEntries(300);
+    f.player.getCurrent.mockReturnValue(null);
     let release!: () => void;
     let started!: () => void;
     const blocked = new Promise<void>(resolve => { release = resolve; });
@@ -294,6 +298,34 @@ describe('public session history integration', () => {
     expect(new Set(f.bindings.values()).size).toBe(f.bindings.size);
     expect(f.channel.send).toHaveBeenCalledTimes(f.messages.size);
     expectCompleteHistory([...f.messages.values()], 300);
+  });
+
+  it('hides recap continuations when playback resumes and restores the complete history at the next queue end', async () => {
+    const f = fixture(120, false);
+    const current = f.player.getCurrent();
+    await f.service.ensureMessage(f.player as never, f.channel as never);
+    const primaryId = f.state.record.messageId!;
+    const updater = f.state.updater!;
+    f.player.getCurrent.mockReturnValue(null);
+    f.state.record.entries = historyEntries(120);
+    await updater();
+    expect(f.bindings.size).toBeGreaterThan(0);
+    expectCompleteHistory([...f.messages.values()], 120);
+
+    f.player.getCurrent.mockReturnValue(current);
+    f.state.record.entries = historyEntries(121, false);
+    await updater();
+    expect(f.messages.size).toBe(1);
+    expect(f.bindings.size).toBe(0);
+    expect(f.messages.get(primaryId)!.embeds).toHaveLength(1);
+    expect(f.messages.get(primaryId)!.embeds[0].title).toContain('Now Playing');
+    expect(f.state.record.entries).toHaveLength(121);
+
+    f.player.getCurrent.mockReturnValue(null);
+    f.state.record.entries = historyEntries(121);
+    await updater();
+    expect(f.state.record.messageId).toBe(primaryId);
+    expectCompleteHistory([...f.messages.values()], 121);
   });
 
   it('answers a legacy history button with every chunk using follow-ups instead of page clicks', async () => {

@@ -3,6 +3,8 @@ import type Player from '../src/services/player.js';
 import {MediaSource, STATUS, type QueuedSong} from '../src/services/player-types.js';
 import type {ListeningSessionRecord} from '../src/services/listening-session.js';
 import {buildHistoryMessages, buildQueueMessage, buildSessionMessage, buildSessionMessages, type SessionMessagePayload} from '../src/utils/build-session-message.js';
+import {buildQueueEmbed} from '../src/utils/build-embed.js';
+import getProgressBar from '../src/utils/get-progress-bar.js';
 
 const makeTrack = (url: string): QueuedSong => ({
   title: '*_~|'.repeat(60),
@@ -39,7 +41,9 @@ const makeSession = (tracks: QueuedSong[]): ListeningSessionRecord => ({
 
 const makePlayer = (tracks: QueuedSong[], overrides: object = {}) => ({
   getCurrent: () => tracks[0],
-  getQueue: () => tracks,
+  getQueue: () => tracks.slice(1),
+  queueSize: () => Math.max(0, tracks.length - 1),
+  isQueueEmpty: () => tracks.length <= 1,
   getPosition: () => 30,
   getVolume: () => 100,
   canGoBack: () => false,
@@ -55,7 +59,7 @@ const embedTextLength = (embed: ReturnType<SessionMessagePayload['embeds'][numbe
   + (embed.author?.name.length ?? 0) + (embed.fields ?? []).reduce((length, field) => length + field.name.length + field.value.length, 0);
 
 const historyLines = (messages: SessionMessagePayload[]) => messages.flatMap(message => message.embeds
-  .filter(embed => !['Now playing', 'Paused'].includes(embed.data.title ?? ''))
+  .filter(embed => embed.data.title?.startsWith('Session '))
   .flatMap(embed => (embed.data.description ?? '').split('\n').filter(line => /^\d+\. /.test(line))));
 
 const expectBoundedMessages = (messages: SessionMessagePayload[]) => {
@@ -75,7 +79,7 @@ const expectBoundedMessages = (messages: SessionMessagePayload[]) => {
 };
 
 describe('session message URL limits', () => {
-  it('bounds encoded links in live cards, recaps, full history, and queues', () => {
+  it('bounds encoded links in recaps, full history, and private queues', () => {
     const url = `https://radio.example/${'()'.repeat(130)}`;
     expect(url.length).toBeLessThanOrEqual(300);
     expect(new URL(url).href.replace(/\(/g, '%28').replace(/\)/g, '%29').length).toBeGreaterThan(300);
@@ -84,7 +88,6 @@ describe('session message URL limits', () => {
     const player = makePlayer(tracks);
 
     const messages = [
-      buildSessionMessage(session, player),
       buildSessionMessage(session),
       ...buildHistoryMessages(session),
       buildQueueMessage(session, player),
@@ -117,9 +120,125 @@ describe('session loop indicators', () => {
     const render = (flags: object) => buildSessionMessage(session, makePlayer([track], {status, ...flags}))
       .embeds[0].toJSON().description!;
 
-    expect(render({loopCurrentSong: true})).toContain('Loop: song');
-    expect(render({loopCurrentQueue: true})).toContain('Loop: queue');
-    expect(render({})).not.toContain('Loop:');
+    expect(render({loopCurrentSong: true})).toContain('🔂');
+    expect(render({loopCurrentQueue: true})).toContain('🔁');
+    expect(render({})).not.toMatch(/[🔂🔁]/u);
+  });
+});
+
+describe('classic live player', () => {
+  it.each([STATUS.PLAYING, STATUS.PAUSED])('preserves the classic artwork, progress, requester, source, and queue details while %s', status => {
+    const current = {
+      ...makeTrack('abcdefghijk'),
+      title: 'Lake Song',
+      artist: 'Lake Artist',
+      source: MediaSource.Youtube,
+      thumbnailUrl: 'https://images.example/cover.jpg',
+      playlist: {title: 'Evening', url: 'https://music.example/playlist'},
+    };
+    const tracks = [current,
+      {...makeTrack('https://music.example/next-one'), title: 'Next One', length: 210},
+      {...makeTrack('https://music.example/next-two'), title: 'Next Two', length: 240},
+    ];
+    const session = makeSession(tracks);
+    const player = makePlayer(tracks, {status, getVolume: () => 65});
+    const messages = buildSessionMessages(session, player, 1);
+    const embed = messages[0].embeds[0].toJSON();
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0].embeds).toHaveLength(1);
+    expect(embed).toEqual(buildQueueEmbed(player, 1, 1).toJSON());
+    expect(buildSessionMessage(session, player, 1).embeds[0].toJSON()).toEqual(embed);
+    expect(embed.thumbnail?.url).toBe(current.thumbnailUrl);
+    expect(embed.description).toContain('Requested by: <@listener>');
+    expect(embed.description).toContain(getProgressBar(91, 30 / 180));
+    expect(embed.description).toContain('[00:30/03:00]');
+    expect(embed.description).toContain('65%');
+    expect(embed.description).toContain('Next One');
+    expect(embed.description).not.toContain('Next Two');
+    expect(embed.footer?.text).toBe('Source: Lake Artist (Evening)');
+    expect(embed.fields).toEqual([
+      {name: 'In queue', value: '2 songs', inline: true},
+      {name: 'Total length', value: '07:30', inline: true},
+      {name: 'Page', value: '1 out of 2', inline: true},
+    ]);
+    expect(messages[0].components.flatMap(row => row.components).map(button => button.label)).toEqual([
+      'Previous', '−10s', status === STATUS.PAUSED ? 'Resume' : 'Pause', '+10s', 'Next', 'Queue', 'Shuffle', 'Stop',
+    ]);
+    expectBoundedMessages(messages);
+  });
+
+  it('defaults the classic queue display to ten upcoming tracks', () => {
+    const tracks = Array.from({length: 13}, (_, index) => ({...makeTrack(`https://music.example/${index}`), title: `Track ${index}`}));
+    const player = makePlayer(tracks);
+    const session = makeSession(tracks);
+    const expected = buildQueueEmbed(player, 1, 10).toJSON();
+
+    expect(buildSessionMessages(session, player)[0].embeds[0].toJSON()).toEqual(expected);
+    expect(buildSessionMessage(session, player).embeds[0].toJSON()).toEqual(expected);
+    expect(expected.description).toContain('Track 10');
+    expect(expected.description).not.toContain('Track 11');
+  });
+
+  it.each([false, true])('keeps seek, shuffle, and stop on the card and disables unavailable actions for live streams: %s', isLive => {
+    const track = {...makeTrack('https://music.example/current'), title: 'Current song', isLive};
+    const session = makeSession([track]);
+    const payload = buildSessionMessage(session, makePlayer([track], {canGoForward: () => false}));
+    const controls = payload.components.flatMap(row => row.components);
+    const control = (action: string) => controls.find(button => button.custom_id.includes(`:${action}:`))!;
+
+    expect(payload.components.map(row => row.components.length)).toEqual([5, 3]);
+    expect(control('previous').disabled).toBe(true);
+    expect(control('next').disabled).toBe(true);
+    expect(control('backward').disabled).toBe(isLive);
+    expect(control('forward').disabled).toBe(isLive);
+    expect(control('shuffle').disabled).toBe(true);
+    expect(control('stop').disabled).toBe(false);
+    expect(control('stop').style).toBe(4);
+    expect(controls.some(button => button.label === 'More')).toBe(false);
+
+    const withQueue = buildSessionMessage(session, makePlayer([track, track]));
+    expect(withQueue.components[1].components.find(button => button.label === 'Shuffle')?.disabled).toBe(false);
+  });
+
+  it.each([STATUS.PLAYING, STATUS.PAUSED])('hides history and continuations while %s, even after a long session', status => {
+    const tracks = Array.from({length: 125}, (_, index) => ({...makeTrack(`https://music.example/${index}`), title: `Past track ${index + 1}`}));
+    const session = makeSession(tracks);
+    const liveTrack = {...makeTrack('https://music.example/current'), title: 'Current song'};
+    const messages = buildSessionMessages(session, makePlayer([liveTrack], {status}));
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0].embeds).toHaveLength(1);
+    expect(historyLines(messages)).toEqual([]);
+    expect(JSON.stringify(messages)).not.toContain('Session history');
+    expect(JSON.stringify(messages)).not.toContain('Past track');
+    expectBoundedMessages(messages);
+  });
+
+  it('restores the complete recap when idle and returns to the classic player for a new song', () => {
+    const tracks = Array.from({length: 125}, (_, index) => ({...makeTrack(`https://music.example/${index}`), title: `Track ${index + 1}`}));
+    const session = makeSession(tracks);
+    const savedEntries = structuredClone(session.entries);
+    const player = makePlayer([tracks[0]]);
+    expect(buildSessionMessages(session, player)).toHaveLength(1);
+
+    const recap = buildSessionMessages(session, makePlayer([], {getCurrent: () => null}));
+    expect(recap.length).toBeGreaterThan(1);
+    expect(historyLines(recap).map(line => Number(line.match(/^\d+/)![0]))).toEqual(Array.from({length: 125}, (_, index) => index + 1));
+    expect(recap[0].components.flatMap(row => row.components).map(button => button.label)).toEqual(['Queue', 'Shuffle', 'Stop']);
+    expectBoundedMessages(recap);
+
+    const resumed = buildSessionMessages(session, player);
+    expect(resumed).toHaveLength(1);
+    expect(resumed[0].embeds).toHaveLength(1);
+    expect(historyLines(resumed)).toEqual([]);
+    expect(session.entries).toEqual(savedEntries);
+
+    session.endedAt = new Date('2026-10-24T14:00:00Z');
+    const ended = buildSessionMessages(session, player);
+    expect(historyLines(ended)).toHaveLength(125);
+    expect(ended.every(message => message.components.length === 0)).toBe(true);
+    expectBoundedMessages(ended);
   });
 });
 
@@ -135,19 +254,6 @@ describe('complete public listening history', () => {
     expect(historyLines(messages).map(line => Number(line.match(/^\d+/)![0]))).toEqual([1, 2, 3, 4, 5, 6]);
     expect(messages[0].components).toEqual([]);
     expect(JSON.stringify(messages)).not.toContain('View full history');
-  });
-
-  it('keeps every played track visible next to the live player without adding a history control', () => {
-    const tracks = Array.from({length: 6}, (_, index) => ({...makeTrack(`https://music.example/${index}`), title: `Track ${index + 1}`}));
-    const session = makeSession(tracks);
-    const messages = buildSessionMessages(session, makePlayer(tracks));
-
-    expect(messages).toHaveLength(1);
-    expect(messages[0].embeds[0].data.title).toBe('Now playing');
-    expect(messages[0].embeds[1].data.title).toBe('Session history');
-    expect(historyLines(messages)).toHaveLength(6);
-    expect(messages[0].components.flatMap(row => row.components).map(button => button.label)).toEqual(['Previous', 'Pause', 'Next', 'Queue', 'More']);
-    expectBoundedMessages(messages);
   });
 
   it('retains all long Unicode entries and their statuses in chronological order without splitting entry lines', () => {
@@ -175,14 +281,14 @@ describe('complete public listening history', () => {
     expect(session).toEqual(original);
   });
 
-  it('uses the available embed budget before continuing in another message and accounts for player titles and footers', () => {
+  it('uses the available embed budget before continuing in another message and accounts for recap titles', () => {
     const tracks = Array.from({length: 80}, (_, index) => ({
       ...makeTrack(`https://music.example/${'x'.repeat(250)}/${index}`),
       title: `Track${index + 1} ${'*_~|'.repeat(80)}`,
       artist: 'Artist'.repeat(100),
     }));
     const session = makeSession(tracks);
-    const messages = buildSessionMessages(session, makePlayer(tracks));
+    const messages = buildSessionMessages(session);
 
     expect(messages.length).toBeGreaterThan(1);
     expectBoundedMessages(messages);

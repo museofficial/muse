@@ -6,7 +6,9 @@ import type {ListeningSessionRecord} from '../src/services/listening-session.js'
 import {buildHistoryMessages, buildMoreMessage, buildQueueMessage, buildSessionMessage, buildSessionMessages, sessionButtonId} from '../src/utils/build-session-message.js';
 
 const permission = vi.hoisted(() => vi.fn());
+const guildSettings = vi.hoisted(() => vi.fn());
 vi.mock('../src/utils/can-use-playback-command.js', () => ({default: permission}));
+vi.mock('../src/utils/get-guild-settings.js', () => ({getGuildSettings: guildSettings}));
 vi.mock('../src/services/session-history-store.js', () => ({default: class {}}));
 
 import SessionPlayer from '../src/services/session-player.js';
@@ -47,6 +49,7 @@ const fixture = () => {
     guildId: 'guild', listeningSession: controller, status: STATUS.PLAYING,
     voiceConnection: {joinConfig: {channelId: 'voice'}},
     getCurrent: vi.fn(() => track()), getQueue: vi.fn(() => [track('Next song')]), getPosition: () => 30,
+    queueSize: vi.fn(() => 1),
     getVolume: () => 100, canGoBack: () => false, canGoForward: () => true, isQueueEmpty: () => false,
     back: vi.fn(), forward: vi.fn(), pause: vi.fn(), play: vi.fn(), stop: vi.fn(), shuffle: vi.fn(), seek: vi.fn(),
     refreshPlayingMessage: vi.fn(),
@@ -65,14 +68,30 @@ const fixture = () => {
   const service = new SessionPlayer(manager as never, store as never);
   const interaction = (action: string, page = 0) => ({
     customId: sessionButtonId(id, action, page), guild, channelId: 'channel', user: {id: 'listener'},
-    message: {id: 'private-controls'}, deferReply: vi.fn().mockResolvedValue(undefined), editReply: vi.fn().mockResolvedValue(undefined), followUp: vi.fn().mockResolvedValue(undefined),
+    message: {id: 'private-controls'}, deferReply: vi.fn().mockResolvedValue(undefined), editReply: vi.fn().mockResolvedValue(undefined), followUp: vi.fn().mockResolvedValue(undefined), deleteReply: vi.fn().mockResolvedValue(undefined),
   });
   return {state, records, card, member, channel, guild, controller, player, manager, store, service, interaction};
 };
 
-beforeEach(() => { vi.clearAllMocks(); permission.mockResolvedValue(true); });
+beforeEach(() => { vi.clearAllMocks(); permission.mockResolvedValue(true); guildSettings.mockResolvedValue({defaultQueuePageSize: 10}); });
 
 describe('shared session card publication', () => {
+  it('uses the configured classic queue page size on publication and later edits', async () => {
+    const f = fixture();
+    guildSettings.mockResolvedValue({defaultQueuePageSize: 2});
+    f.player.getQueue.mockReturnValue([track('Second song'), track('Third song'), track('Fourth song')]);
+    f.player.queueSize.mockReturnValue(3);
+    await f.service.ensureMessage(f.player as never, f.channel as never);
+    const initial = f.channel.send.mock.calls[0][0].embeds[0].data;
+    expect(initial.description).toContain('Second song');
+    expect(initial.description).toContain('Third song');
+    expect(initial.description).not.toContain('Fourth song');
+    expect(initial.fields.find(field => field.name === 'Page')?.value).toBe('1 out of 2');
+    await f.state.updater!();
+    expect(f.card.edit.mock.calls.at(-1)![0].embeds[0].data).toEqual(initial);
+    expect(guildSettings).toHaveBeenCalledOnce();
+  });
+
   it('serializes simultaneous additions into one public card and returns the same link', async () => {
     const f = fixture();
     const links = await Promise.all([
@@ -256,7 +275,7 @@ describe('shared session card publication', () => {
     const edit = f.card.edit.mock.calls[0][0];
     expect(edit.embeds[0].data.description).toContain('First song');
     expect(edit.embeds[0].data.description).toContain('Played');
-    expect(edit.components.flatMap((row: {components: unknown[]}) => row.components)).toHaveLength(2);
+    expect(edit.components.flatMap((row: {components: unknown[]}) => row.components)).toHaveLength(3);
     expect(f.card.delete).not.toHaveBeenCalled();
   });
 });
@@ -374,7 +393,29 @@ describe('session buttons and durable history', () => {
     expect(f.player.seek).toHaveBeenCalledWith(180, {preservePausedState: true});
   });
 
-  it('waits for saved history before confirming Stop', async () => {
+  it.each(['previous', 'backward', 'pause', 'resume', 'forward', 'next', 'shuffle', 'stop'])('dismisses the private acknowledgement after successful %s without a status reply', async action => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});
+    f.player.canGoBack = () => true;
+    const interaction = f.interaction(action);
+    await f.service.handleButton(interaction as never);
+    expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
+    expect(interaction.deleteReply).toHaveBeenCalledOnce();
+    expect(interaction.editReply).not.toHaveBeenCalled();
+    expect(f.player.refreshPlayingMessage).toHaveBeenCalledOnce();
+  });
+
+  it('leaves the private acknowledgement available for the error handler when an action fails', async () => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});
+    f.player.pause.mockImplementation(() => { throw new Error('Playback failed'); });
+    const interaction = f.interaction('pause');
+    await expect(f.service.handleButton(interaction as never)).rejects.toThrow('Playback failed');
+    expect(interaction.deleteReply).not.toHaveBeenCalled();
+    expect(f.card.edit).not.toHaveBeenCalled();
+  });
+
+  it('waits for saved history before dismissing the Stop acknowledgement', async () => {
     const f = fixture();
     Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});
     let release!: () => void;
@@ -385,9 +426,11 @@ describe('session buttons and durable history', () => {
     const action = f.service.handleButton(interaction as never);
     await vi.waitFor(() => expect(f.player.stop).toHaveBeenCalledOnce());
     expect(interaction.editReply).not.toHaveBeenCalled();
+    expect(interaction.deleteReply).not.toHaveBeenCalled();
     release();
     await action;
-    expect(interaction.editReply).toHaveBeenCalledWith('Playback stopped. The session history is saved.');
+    expect(interaction.deleteReply).toHaveBeenCalledOnce();
+    expect(interaction.editReply).not.toHaveBeenCalled();
   });
 
   it('rejects old session controls after a different session starts', async () => {
@@ -632,7 +675,9 @@ describe('bounded session rendering', () => {
       const embed = payload.embeds[0].toJSON();
       expect(embed.description!.length).toBeLessThanOrEqual(4096);
       expect(JSON.stringify(embed).length).toBeLessThan(6000);
-      expect(embed.description).not.toContain(long.url);
+      // Recaps use shorter history links; the classic live card retains its
+      // existing link format while enforcing the same Discord message limits.
+      if (!embed.title?.startsWith('Now Playing')) expect(embed.description).not.toContain(long.url);
       expect(payload.allowedMentions).toEqual({parse: []});
       for (const button of payload.components.flatMap(row => row.components)) expect(button.custom_id.length).toBeLessThanOrEqual(100);
     }
@@ -655,7 +700,7 @@ describe('bounded session rendering', () => {
     const f = fixture();
     f.player.status = STATUS.PAUSED;
     f.player.getCurrent.mockReturnValue({...track(), isLive: true});
-    expect(buildSessionMessage(f.state.record, f.player as never).components[0].components[1].label).toBe('Resume');
+    expect(buildSessionMessage(f.state.record, f.player as never).components[0].components[2].label).toBe('Resume');
     const controls = buildMoreMessage(f.state.record, f.player as never).components[0].components;
     expect(controls.map(button => button.label)).toEqual(['Back 10 seconds', 'Forward 10 seconds', 'Shuffle', 'Stop and leave']);
     expect(controls.slice(0, 2).every(button => button.disabled)).toBe(true);

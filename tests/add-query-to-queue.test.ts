@@ -179,8 +179,9 @@ describe('AddQueryToQueue skip semantics', () => {
 
     expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
     expect(ensureMessage).toHaveBeenCalledWith(player, interaction.channel);
-    expect(replyContent(interaction)).toContain('New song');
-    expect(replyContent(interaction)).toContain('https://discord.com/channels/guild-id/text-channel-id/session-card-id');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
+    expect(replyContent(interaction)).not.toContain('Go to player');
+    expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({allowedMentions: {parse: []}}));
     expect(interaction.replyMessage.react).not.toHaveBeenCalled();
   });
 
@@ -196,14 +197,14 @@ describe('AddQueryToQueue skip semantics', () => {
     const {service, ensureMessage} = makeService({player});
     const interaction = makeInteraction();
 
-    await addToQueue(service, interaction, {skip: true});
+    await addToQueue(service, interaction, {skip: true, immediate: true});
 
     expect(player.getCurrent()?.title).toBe('New song');
     expect(connect).toHaveBeenCalledOnce();
     expect(play).toHaveBeenCalledOnce();
     expect(forward).not.toHaveBeenCalled();
     expect(ensureMessage).toHaveBeenCalledWith(player, interaction.channel);
-    expect(replyContent(interaction)).toContain('New song');
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the front of the queue');
     expect(replyContent(interaction)).not.toMatch(/skipped/i);
     expect(interaction.replyMessage.react).not.toHaveBeenCalled();
   });
@@ -218,8 +219,7 @@ describe('AddQueryToQueue skip semantics', () => {
 
     expect(forward).toHaveBeenCalledWith(1);
     expect(player.getCurrent()?.title).toBe('New song');
-    expect(replyContent(interaction)).toContain('New song');
-    expect(replyContent(interaction)).toMatch(/skipped/i);
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue and current track skipped');
   });
 
   it('preserves playback startup failures from the skip path', async () => {
@@ -317,7 +317,7 @@ describe('AddQueryToQueue skip semantics', () => {
 });
 
 describe('AddQueryToQueue shared player publication', () => {
-  it('links later requests back to the same public card and reports their queue position', async () => {
+  it('maintains the shared card without adding a player link to every private confirmation', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'), makeQueuedSong('Already queued'));
     const {service, ensureMessage} = makeService({player});
     const first = makeInteraction();
@@ -327,11 +327,10 @@ describe('AddQueryToQueue shared player publication', () => {
     await addToQueue(service, second);
 
     expect(ensureMessage).toHaveBeenCalledTimes(2);
-    expect(replyContent(first)).toContain('#2');
-    expect(replyContent(second)).toContain('#3');
     for (const interaction of [first, second]) {
       expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
-      expect(replyContent(interaction)).toContain('session-card-id');
+      expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue');
+      expect(replyContent(interaction)).not.toContain('session-card-id');
       expect(interaction.replyMessage.react).not.toHaveBeenCalled();
     }
   });
@@ -344,22 +343,21 @@ describe('AddQueryToQueue shared player publication', () => {
     await addToQueue(service, interaction);
 
     expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
-    expect(replyContent(interaction)).toContain('New song');
+    expect(replyContent(interaction)).toMatch(/^u betcha, \*\*New song\*\* added to the queue\n/);
     expect(replyContent(interaction)).toMatch(/card|player/i);
     expect(replyContent(interaction)).toMatch(/could not|couldn't|unavailable/i);
   });
 
-  it('reports a playlist count and its first queue position in one private reply', async () => {
+  it('names the first playlist song and the remaining count in one private reply', async () => {
     const player = makePausedPlayer(makeQueuedSong('Current'), makeQueuedSong('Already queued'));
-    const {service} = makeService({player, songs: [makeSong('First'), makeSong('Second')]});
+    const {service} = makeService({player, songs: [makeSong('*First*'), makeSong('Second')], extraMessage: '1 song was not found'});
     const interaction = makeInteraction();
 
     await addToQueue(service, interaction);
 
     expect(interaction.editReply).toHaveBeenCalledOnce();
-    expect(replyContent(interaction)).toContain('2 songs');
-    expect(replyContent(interaction)).toContain('#2');
-    expect(replyContent(interaction)).toContain('session-card-id');
+    expect(replyContent(interaction)).toBe('u betcha, **\\*First\\*** and 1 other songs were added to the queue (1 song was not found)');
+    expect(replyContent(interaction)).not.toContain('session-card-id');
   });
 });
 
@@ -584,8 +582,7 @@ describe('AddQueryToQueue voice connection failures', () => {
     expect(player.getCurrent()).toBe(current);
     expect(player.getQueue().map(song => song.title)).toEqual(['New song']);
     expect(play).toHaveBeenCalledOnce();
-    expect(replyContent(interaction)).toContain('New song');
-    expect(replyContent(interaction)).toMatch(/resum/i);
+    expect(replyContent(interaction)).toBe('u betcha, **New song** added to the queue (resuming playback)');
   });
 });
 

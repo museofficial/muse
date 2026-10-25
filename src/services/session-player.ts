@@ -9,6 +9,7 @@ import type {ListeningSessionRecord} from './listening-session.js';
 import SessionHistoryStore from './session-history-store.js';
 import SessionHistoryPublisher from './session-history-publisher.js';
 import canUsePlaybackCommand from '../utils/can-use-playback-command.js';
+import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildHistoryMessages, buildMoreMessage, buildQueueMessage, buildSessionMessage, buildSessionMessages, SESSION_BUTTON_PREFIX} from '../utils/build-session-message.js';
 
 const isMissingMessage = (error: unknown): boolean => Boolean(error && typeof error === 'object' && 'code' in error && error.code === 10008);
@@ -47,6 +48,7 @@ export default class SessionPlayer {
     // Pin this request before waiting for another publication or database write.
     // A Stop or new session must not erase the captured session's first recap.
     return this.serialize(this.publications, player.guildId, async () => {
+      const {defaultQueuePageSize} = await getGuildSettings(player.guildId);
       await controller.flush();
       let session = await this.capturedSession(player, captured.id);
       const originalChannelId = session.channelId ?? captured.channelId;
@@ -69,7 +71,7 @@ export default class SessionPlayer {
 
       session = await this.capturedSession(player, captured.id);
       if (!card) {
-        card = await originalChannel.send(buildSessionMessage(session, session.endedAt ? undefined : player));
+        card = await originalChannel.send(buildSessionMessage(session, session.endedAt ? undefined : player, defaultQueuePageSize));
         // Persist a late card on its captured record, never on a newer session.
         if (controller.snapshot()?.id !== captured.id) {
           await this.archivePublication(player, captured.id, card, originalChannel);
@@ -99,9 +101,11 @@ export default class SessionPlayer {
           return;
         }
 
-        await this.publishMessages(published, originalChannel, snapshot, current?.id === captured.id ? player : undefined);
+        await this.publishMessages(published, originalChannel, snapshot, {
+          player: current?.id === captured.id ? player : undefined, queuePageSize: defaultQueuePageSize,
+        });
       }), card.id, {keepAfterFinish: true, retryOnError: true});
-      await this.historyPublisher.publish(originalChannel, bound, buildSessionMessages(bound, player).slice(1), {force: true});
+      await this.historyPublisher.publish(originalChannel, bound, buildSessionMessages(bound, player, defaultQueuePageSize).slice(1), {force: true});
       player.refreshPlayingMessage();
       return `https://discord.com/channels/${player.guildId}/${card.channelId}/${card.id}`;
     });
@@ -276,7 +280,9 @@ export default class SessionPlayer {
     await this.applyAction(active, action);
     active.refreshPlayingMessage();
     await active.listeningSession?.flush();
-    await interaction.editReply(action === 'stop' ? 'Playback stopped. The session history is saved.' : 'Player updated.');
+    // The shared card shows the result. Keep failures private, but leave no
+    // extra confirmation message after a successful control action.
+    await interaction.deleteReply();
   }
 
   private currentPlayer(session: ListeningSessionRecord): Player | undefined {
@@ -323,8 +329,8 @@ export default class SessionPlayer {
     }
   }
 
-  private async publishMessages(card: Message, channel: GuildTextBasedChannel, session: ListeningSessionRecord, player?: Player): Promise<void> {
-    const [first, ...history] = buildSessionMessages(session, player);
+  private async publishMessages(card: Message, channel: GuildTextBasedChannel, session: ListeningSessionRecord, {player, queuePageSize}: {player?: Player; queuePageSize?: number} = {}): Promise<void> {
+    const [first, ...history] = buildSessionMessages(session, player, queuePageSize);
     await card.edit(first);
     await this.historyPublisher.publish(channel, {...session, channelId: card.channelId, messageId: card.id}, history, {force: Boolean(session.endedAt)});
     if (session.endedAt) {

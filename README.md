@@ -118,15 +118,14 @@ npm test
 
 ### Playback display and controls
 
-Muse keeps one shared player card for each listening session. It shows the
-current song, progress, and the next few tracks. Each `/play` or `/favorites use`
-request gets a private confirmation with its queue position and a link to the
-player, so adding music does not fill the channel with acknowledgments. Queue
-confirmations are always private; the former `set-queue-add-response-hidden`
-setting has been removed. The player card is always public in the text channel
-where the session starts. The session's history stays visible below the player
-as music plays. The optional next-song announcements remain separate and are
-off by default.
+Muse keeps one shared player card for each listening session. While music plays,
+it uses the classic display: album art, progress bar, requester, source, upcoming
+tracks, queue count, and queue duration. Each `/play` or `/favorites use` request
+gets a private "u betcha" confirmation, without repeating a link to the player.
+Queue confirmations are always private; the former
+`set-queue-add-response-hidden` setting has been removed. The player card is
+always public in the text channel where the session starts. The optional
+next-song announcements remain separate and are off by default.
 
 When the queue ends, the card becomes a listening history. It lists the songs
 that actually started, in playback order, and marks skipped tracks. Repeat plays
@@ -136,7 +135,8 @@ clicking a button. Longer histories continue in additional messages only when
 Discord's message limits require it.
 
 Adding more music while Muse is still connected continues the same session and
-card. Stopping playback or disconnecting ends the session and leaves its recap
+returns the card to the classic player. The history stays saved for the next
+recap. Stopping playback or disconnecting ends the session and leaves its recap
 in the channel. History is saved in Muse's database and remains available after
 a restart; music and the queue are not resumed automatically.
 
@@ -158,15 +158,16 @@ it does not perform the action.
 | --- | --- |
 | Previous | `/unskip` |
 | Next | `/next` |
-| Back 10 seconds | `/seek` |
-| Forward 10 seconds | `/fseek` |
+| −10s | `/seek` |
+| +10s | `/fseek` |
 | Pause / Resume | `/pause` while playing; `/resume` while paused |
-| Stop and leave | `/stop` |
+| Stop | `/stop` |
 | Shuffle | `/shuffle` |
 
-Back and forward move ten seconds within a song and do not work on livestreams.
-Open **More** for seek, shuffle, and stop controls. Playback controls are removed
-when the session ends. The complete history remains visible in the recap.
+The −10s and +10s buttons move ten seconds within a song and do not work on
+livestreams. Seek, shuffle, and stop controls are directly on the player card.
+Stop also disconnects Muse. Playback controls are removed when the session ends.
+The complete history remains visible in the recap.
 
 Shuffling removes repeated songs from the upcoming queue, including songs
 that are playing now or have already played. When you add a playlist with
