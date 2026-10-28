@@ -10,6 +10,7 @@ import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js'
 import {parseTime} from '../utils/time.js';
 import getYouTubeID from 'get-youtube-id';
 import {buildAudioFallbackQuery, rankAudioFallbackCandidates} from '../utils/youtube-audio-fallback.js';
+import {LocalizedError} from '../i18n/index.js';
 
 interface VideoDetailsResponse {
   id: string;
@@ -134,14 +135,14 @@ export default class {
     const videoId = url.length === 11 ? url : getYouTubeID(url);
 
     if (!videoId) {
-      throw new Error('Video could not be found.');
+      throw new LocalizedError('youtube.error.videoNotFound');
     }
 
     const result = await this.getVideosByID([videoId]);
     const video = result.at(0);
 
     if (!video) {
-      throw new Error('Video could not be found.');
+      throw new LocalizedError('youtube.error.videoNotFound');
     }
 
     return this.getMetadataFromVideo({video, shouldSplitChapters});
@@ -169,7 +170,7 @@ export default class {
     const playlist = playlists.at(0)!;
 
     if (!playlist) {
-      throw new Error('Playlist could not be found.');
+      throw new LocalizedError('youtube.error.playlistNotFound');
     }
 
     const queuedPlaylist = {title: playlist.snippet.title, source: playlist.id};

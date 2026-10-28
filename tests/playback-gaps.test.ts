@@ -661,7 +661,7 @@ describe('CTRL-20 audio-idle advance preservation', () => {
     player.add(makeQueuedSong('Second'));
     player.add(makeQueuedSong('Third'));
     const send = vi.fn().mockResolvedValue(undefined);
-    Object.assign(player, {currentChannel: {send}});
+    Object.assign(player, {currentChannel: {send, guild: {preferredLocale: 'en-US'}}});
     await player.play();
     const priorAudioPlayer = getPrivatePlayer(player).audioPlayer!;
     priorAudioPlayer.stop.mockReturnValue(true);
@@ -696,7 +696,7 @@ describe('CTRL-20 audio-idle advance preservation', () => {
     player.add(current);
     player.add(makeQueuedSong('Upcoming'));
     const send = vi.fn().mockResolvedValue(undefined);
-    Object.assign(player, {currentChannel: {send}});
+    Object.assign(player, {currentChannel: {send, guild: {preferredLocale: 'en-US'}}});
     await player.play();
     const priorAudioPlayer = getPrivatePlayer(player).audioPlayer!;
     let emittedIdle = false;
@@ -747,7 +747,7 @@ describe('CTRL-20 audio-idle advance preservation', () => {
     player.add(makeQueuedSong('Second'));
     player.add(makeQueuedSong('Third'));
     const send = vi.fn().mockResolvedValue(undefined);
-    Object.assign(player, {currentChannel: {send}});
+    Object.assign(player, {currentChannel: {send, guild: {preferredLocale: 'en-US'}}});
     await player.play();
 
     await player.forward(1);
@@ -760,6 +760,7 @@ describe('CTRL-20 audio-idle advance preservation', () => {
     expect(player.getCurrent()?.title).toBe('Third');
     expect(send).toHaveBeenCalledOnce();
     expect(send).toHaveBeenCalledWith({embeds: [{title: 'playing'}]});
+    expect(dependencyMocks.buildPlayingMessageEmbed).toHaveBeenLastCalledWith(player, 'en-US');
   });
 
   it('restarts the same entry from zero when song loop is enabled', async () => {

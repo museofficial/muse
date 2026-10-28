@@ -5,16 +5,16 @@ import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {LocalizedError, t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
     .setName('skip')
-    .setDescription('skip the next songs')
     .addIntegerOption(option => option
       .setName('number')
-      .setDescription('number of songs to skip [default: 1]')
-      .setRequired(false));
+      .setRequired(false)));
 
   public requiresVC = true;
 
@@ -28,7 +28,7 @@ export default class implements Command {
     const numToSkip = interaction.options.getInteger('number') ?? 1;
 
     if (numToSkip < 1) {
-      throw new Error('invalid number of songs to skip');
+      throw new LocalizedError('skip.error.invalidNumber');
     }
 
     const player = this.playerManager.get(interaction.guild!.id);
@@ -37,13 +37,13 @@ export default class implements Command {
     try {
       await player.forward(numToSkip);
       await interaction.followUp({
-        content: 'keep \'er movin\'',
-        embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
+        content: t(interaction.locale, 'skip.done'),
+        embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player, interaction.locale)] : [],
       });
       await interaction.deleteReply().catch(() => undefined);
     } catch (error: unknown) {
       if (error instanceof Error && error.message === 'No songs in queue to forward to.') {
-        throw new Error('no song to skip to');
+        throw new LocalizedError('error.noSongToSkipTo');
       }
 
       throw error;

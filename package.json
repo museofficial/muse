@@ -29,7 +29,8 @@
     "prisma:generate": "prisma generate",
     "env:set-database-url": "tsx src/scripts/run-with-database-url.ts",
     "release": "release-it",
-    "build": "tsc",
+    "build": "tsc && node dist/scripts/copy-locales.js && node dist/scripts/copy-sounds.js",
+    "locale:template": "tsx src/scripts/locale-template.ts",
     "postinstall": "patch-package"
   },
   "devDependencies": {

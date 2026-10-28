@@ -8,6 +8,7 @@ import SpotifyAPI, {SpotifyTrack} from './spotify-api.js';
 import {URL} from 'node:url';
 import {getSoundCloudMetadata, YtDlpMediaUnavailableError} from '../utils/yt-dlp.js';
 import pLimit from 'p-limit';
+import {LocalizedError, t, tCount} from '../i18n/index.js';
 
 @injectable()
 export default class {
@@ -19,7 +20,7 @@ export default class {
     this.spotifyAPI = spotifyAPI;
   }
 
-  async getSongs(query: string, playlistLimit: number, shouldSplitChapters: boolean): Promise<[SongMetadata[], string]> {
+  async getSongs(query: string, playlistLimit: number, shouldSplitChapters: boolean, locale?: string): Promise<[SongMetadata[], string]> {
     const newSongs: SongMetadata[] = [];
     let extraMsg = '';
     let url: URL | undefined;
@@ -40,7 +41,7 @@ export default class {
       if (songs) {
         newSongs.push(...songs);
       } else {
-        throw new Error('that doesn\'t exist');
+        throw new LocalizedError('error.doesNotExist');
       }
 
       return [newSongs, extraMsg];
@@ -66,33 +67,23 @@ export default class {
         if (songs) {
           newSongs.push(...songs);
         } else {
-          throw new Error('that doesn\'t exist');
+          throw new LocalizedError('error.doesNotExist');
         }
       }
     } else if (['soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com', 'on.soundcloud.com', 'snd.sc'].includes(url.host)) {
       newSongs.push(...await this.soundCloudSource(url.href, playlistLimit));
     } else if (url.protocol === 'spotify:' || url.host === 'open.spotify.com') {
       if (this.spotifyAPI === undefined) {
-        throw new Error('Spotify is not enabled!');
+        throw new LocalizedError('error.spotifyDisabled');
       }
 
       const [convertedSongs, nSongsNotFound, totalSongs] = await this.spotifySource(query, playlistLimit, shouldSplitChapters);
 
-      if (totalSongs > playlistLimit) {
-        extraMsg = `a random sample of ${playlistLimit} songs was taken`;
-      }
-
-      if (totalSongs > playlistLimit && nSongsNotFound !== 0) {
-        extraMsg += ' and ';
-      }
-
-      if (nSongsNotFound !== 0) {
-        if (nSongsNotFound === 1) {
-          extraMsg += '1 song was not found';
-        } else {
-          extraMsg += `${nSongsNotFound.toString()} songs were not found`;
-        }
-      }
+      const sampled = totalSongs > playlistLimit ? t(locale, 'queueAdd.sampled', {limit: playlistLimit}) : '';
+      const notFound = nSongsNotFound === 0 ? '' : tCount(locale, 'queueAdd.notFound', nSongsNotFound);
+      extraMsg = sampled && notFound
+        ? t(locale, 'queueAdd.sampledAndNotFound', {sampled, notFound})
+        : sampled || notFound;
 
       newSongs.push(...convertedSongs);
     } else {
@@ -101,7 +92,7 @@ export default class {
       if (song) {
         newSongs.push(song);
       } else {
-        throw new Error('that doesn\'t exist');
+        throw new LocalizedError('error.doesNotExist');
       }
     }
 

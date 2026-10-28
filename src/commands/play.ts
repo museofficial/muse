@@ -11,6 +11,7 @@ import KeyValueCacheProvider from '../services/key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
 import AddQueryToQueue from '../services/add-query-to-queue.js';
 import {truncate} from '../utils/string.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
@@ -27,30 +28,20 @@ export default class implements Command {
     this.cache = cache;
     this.addQueryToQueue = addQueryToQueue;
 
-    const queryDescription = thirdParty === undefined
-      ? 'YouTube URL or search query'
-      : 'YouTube URL, Spotify URL, or search query';
-
-    this.slashCommand = new SlashCommandBuilder()
+    this.slashCommand = localizeCommand(new SlashCommandBuilder()
       .setName('play')
-      .setDescription('play a song')
       .addStringOption(option => option
         .setName('query')
-        .setDescription(queryDescription)
         .setAutocomplete(true)
         .setRequired(true))
       .addBooleanOption(option => option
-        .setName('immediate')
-        .setDescription('add track to the front of the queue'))
+        .setName('immediate'))
       .addBooleanOption(option => option
-        .setName('shuffle')
-        .setDescription('shuffle the input if you\'re adding multiple tracks'))
+        .setName('shuffle'))
       .addBooleanOption(option => option
-        .setName('split')
-        .setDescription('if a track has chapters, split it'))
+        .setName('split'))
       .addBooleanOption(option => option
-        .setName('skip')
-        .setDescription('skip the currently playing track'));
+        .setName('skip')), thirdParty === undefined ? {} : {'play.query': 'command.play.queryWithSpotify'});
   }
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {

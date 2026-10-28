@@ -5,12 +5,13 @@ import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
+import {LocalizedError} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
-    .setName('now-playing')
-    .setDescription('shows the currently played song');
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
+    .setName('now-playing'));
 
   private readonly playerManager: PlayerManager;
 
@@ -22,11 +23,11 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.getCurrent()) {
-      throw new Error('nothing is currently playing');
+      throw new LocalizedError('error.nothingCurrentlyPlaying');
     }
 
     await interaction.reply({
-      embeds: [buildPlayingMessageEmbed(player)],
+      embeds: [buildPlayingMessageEmbed(player, interaction.locale)],
     });
   }
 }

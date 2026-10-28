@@ -132,7 +132,7 @@ export default async (
     }
 
     if (control === 'stop') {
-      player.stop();
+      await player.stop();
       return;
     }
 

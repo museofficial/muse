@@ -818,7 +818,7 @@ describe('Player playing-message updates', () => {
   });
 
   it('uses the configured playing-message refresh interval', async () => {
-    const player = new Player({} as never, GUILD_ID, undefined, 2);
+    const player = new Player({} as never, GUILD_ID, undefined, {playingMessageUpdateIntervalSeconds: 2});
     const voiceConnection = makeVoiceConnection();
     player.voiceConnection = voiceConnection as never;
     Object.assign(player, {getStream: vi.fn().mockResolvedValue(Readable.from([]))});

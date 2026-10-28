@@ -7,12 +7,13 @@ import {STATUS} from '../services/player.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
 import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
+import {LocalizedError, t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
-    .setName('resume')
-    .setDescription('resume playback');
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
+    .setName('resume'));
 
   public requiresVC = true;
 
@@ -26,24 +27,24 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
     const [targetVoiceChannel] = getMemberVoiceChannel(interaction.member as GuildMember) ?? getMostPopularVoiceChannel(interaction.guild!);
     if (player.status === STATUS.PLAYING) {
-      throw new Error('already playing, give me a song name');
+      throw new LocalizedError('resume.error.alreadyPlaying');
     }
 
     // Must be resuming play
     if (!player.getCurrent()) {
-      throw new Error('nothing to play');
+      throw new LocalizedError('resume.error.nothingToPlay');
     }
 
     await interaction.deferReply({ephemeral: true});
     await player.connect(targetVoiceChannel);
     await player.play();
     if (!player.getCurrent()) {
-      throw new Error('no playable songs found');
+      throw new LocalizedError('error.noPlayableSongs');
     }
 
     await interaction.followUp({
-      content: 'the stop-and-go light is now green',
-      embeds: [buildPlayingMessageEmbed(player)],
+      content: t(interaction.locale, 'resume.done'),
+      embeds: [buildPlayingMessageEmbed(player, interaction.locale)],
     });
     await interaction.deleteReply().catch(() => undefined);
   }

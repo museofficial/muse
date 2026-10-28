@@ -4,12 +4,13 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {LocalizedError, t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
-    .setName('replay')
-    .setDescription('replay the current song');
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
+    .setName('replay'));
 
   public requiresVC = true;
 
@@ -25,11 +26,11 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      throw new Error('nothing is playing');
+      throw new LocalizedError('error.nothingPlaying');
     }
 
     if (currentSong.isLive) {
-      throw new Error('can\'t replay a livestream');
+      throw new LocalizedError('replay.error.livestream');
     }
 
     await Promise.all([
@@ -37,6 +38,6 @@ export default class implements Command {
       interaction.deferReply(),
     ]);
 
-    await interaction.editReply('👍 replayed the current song');
+    await interaction.editReply(t(interaction.locale, 'replay.done'));
   }
 }
