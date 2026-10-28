@@ -16,6 +16,10 @@ const firstNonEmpty = (...values: Array<string | undefined>) => values
   .map(value => value?.trim())
   .find((value): value is string => Boolean(value));
 
+// Intro/outro volume as a percentage of the player's current volume.
+const DEFAULT_SOUND_VOLUME = 100;
+const MAX_SOUND_VOLUME = 200;
+
 const CONFIG_MAP = {
   DISCORD_TOKEN: firstNonEmpty(process.env.DISCORD_TOKEN),
   YOUTUBE_API_KEY: firstNonEmpty(process.env.YOUTUBE_API_KEY),
@@ -39,6 +43,9 @@ const CONFIG_MAP = {
   YT_DLP_AUTO_UPDATE: process.env.YT_DLP_AUTO_UPDATE === 'true',
   INTRO_SOUND: process.env.INTRO_SOUND ?? '',
   OUTRO_SOUND: process.env.OUTRO_SOUND ?? '',
+  // An empty value means the default rather than Number('') === 0, which would silence the clip.
+  INTRO_SOUND_VOLUME: process.env.INTRO_SOUND_VOLUME?.trim() ? Number(process.env.INTRO_SOUND_VOLUME) : DEFAULT_SOUND_VOLUME,
+  OUTRO_SOUND_VOLUME: process.env.OUTRO_SOUND_VOLUME?.trim() ? Number(process.env.OUTRO_SOUND_VOLUME) : DEFAULT_SOUND_VOLUME,
 } as const;
 
 const BUNDLED_SOUNDS_DIR = fileURLToPath(new URL('../sounds', import.meta.url));
@@ -128,6 +135,8 @@ export default class Config {
   // Absolute paths to the selected clips, or '' when disabled.
   readonly INTRO_SOUND!: string;
   readonly OUTRO_SOUND!: string;
+  readonly INTRO_SOUND_VOLUME!: number;
+  readonly OUTRO_SOUND_VOLUME!: number;
 
   constructor() {
     for (const [key, value] of Object.entries(CONFIG_MAP)) {
@@ -142,6 +151,18 @@ export default class Config {
       }
 
       if (typeof value === 'number') {
+        if (key === 'INTRO_SOUND_VOLUME' || key === 'OUTRO_SOUND_VOLUME') {
+          // Like a missing clip, a bad volume shouldn't stop startup.
+          if (!Number.isFinite(value) || value < 0 || value > MAX_SOUND_VOLUME) {
+            console.error(`Ignoring ${key}: "${process.env[key] ?? ''}" must be a number from 0 to ${MAX_SOUND_VOLUME}. Using ${DEFAULT_SOUND_VOLUME}.`);
+            this[key] = DEFAULT_SOUND_VOLUME;
+          } else {
+            this[key] = value;
+          }
+
+          continue;
+        }
+
         if (key === 'PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS'
           && (!Number.isInteger(value) || value < 1)) {
           throw new Error('Invalid numeric value for PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS: value must be a positive whole number');

@@ -56,7 +56,8 @@ const VOICE_CONNECTION_ATTEMPT_TIMEOUT_MS = 20_000;
 // Caps how long an intro or outro can hold up playback or leaving.
 const MAX_SOUND_CLIP_MS = 15_000;
 
-export type SoundClips = {intro?: string; outro?: string};
+// Volumes are percentages of the player's current volume; 100 when unset.
+export type SoundClips = {intro?: string; outro?: string; introVolume?: number; outroVolume?: number};
 
 const sanitizeFfmpegError = (error: unknown) => {
   const detail = error instanceof Error ? error.message : String(error);
@@ -261,7 +262,7 @@ export default class {
       }
 
       if (this.soundClips.outro) {
-        await this.playSoundClip(this.soundClips.outro);
+        await this.playSoundClip(this.soundClips.outro, this.soundClips.outroVolume);
       }
 
       this.disconnect();
@@ -291,7 +292,7 @@ export default class {
       this.prefetchMedia(upcoming);
     }
 
-    this.pendingIntro ??= this.playSoundClip(this.soundClips.intro).finally(() => {
+    this.pendingIntro ??= this.playSoundClip(this.soundClips.intro, this.soundClips.introVolume).finally(() => {
       this.pendingIntro = undefined;
     });
 
@@ -1672,7 +1673,7 @@ export default class {
   }
 
   /** Plays a local audio file on its own player. Failures are logged, never thrown. */
-  private async playSoundClip(filePath: string): Promise<void> {
+  private async playSoundClip(filePath: string, volumePercent = 100): Promise<void> {
     const {voiceConnection} = this;
     if (voiceConnection?.state.status !== VoiceConnectionStatus.Ready) {
       return;
@@ -1688,7 +1689,7 @@ export default class {
 
     try {
       resource = createAudioResource(filePath, {inlineVolume: true});
-      resource.volume?.setVolume(this.getVolume() / 100);
+      resource.volume?.setVolume((this.getVolume() / 100) * (volumePercent / 100));
       clipPlayer.play(resource);
       await entersState(clipPlayer, AudioPlayerStatus.Idle, MAX_SOUND_CLIP_MS);
     } catch (error: unknown) {

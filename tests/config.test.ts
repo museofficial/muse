@@ -90,6 +90,42 @@ describe('Config intro and outro sounds', () => {
     expect(consoleError.mock.calls[0][0]).toMatch(/INTRO_SOUND.*"spooky".*bright, chime, dark.*intro is disabled/);
     consoleError.mockRestore();
   });
+
+  it('defaults both clip volumes to 100 when unset or empty', async () => {
+    // Stubbing also stops a developer's .env from leaking in, since dotenv never overrides set variables.
+    vi.stubEnv('INTRO_SOUND_VOLUME', '');
+    vi.stubEnv('OUTRO_SOUND_VOLUME', '');
+    const Config = await loadConfig('2GB');
+    const config = new Config();
+
+    expect(config.INTRO_SOUND_VOLUME).toBe(100);
+    expect(config.OUTRO_SOUND_VOLUME).toBe(100);
+  });
+
+  it('accepts clip volumes from 0 to 200', async () => {
+    vi.stubEnv('INTRO_SOUND_VOLUME', '35');
+    vi.stubEnv('OUTRO_SOUND_VOLUME', '200');
+    const Config = await loadConfig('2GB');
+    const config = new Config();
+
+    expect(config.INTRO_SOUND_VOLUME).toBe(35);
+    expect(config.OUTRO_SOUND_VOLUME).toBe(200);
+  });
+
+  it.each(['loud', '-5', '201'])('logs an error and uses 100 for an invalid clip volume: %s', async volume => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.stubEnv('INTRO_SOUND', '');
+    vi.stubEnv('OUTRO_SOUND', '');
+    vi.stubEnv('INTRO_SOUND_VOLUME', '');
+    vi.stubEnv('OUTRO_SOUND_VOLUME', volume);
+    const Config = await loadConfig('2GB');
+    const config = new Config();
+
+    expect(config.OUTRO_SOUND_VOLUME).toBe(100);
+    expect(consoleError).toHaveBeenCalledOnce();
+    expect(consoleError.mock.calls[0][0]).toMatch(new RegExp(`OUTRO_SOUND_VOLUME: "${volume}" must be a number from 0 to 200`));
+    consoleError.mockRestore();
+  });
 });
 
 describe('bundled sound build step', () => {

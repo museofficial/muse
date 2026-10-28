@@ -226,6 +226,13 @@ path doesn't match anything, Muse still starts but logs an error and leaves
 that jingle off. Leave a variable unset, or set it to `none`, to turn that
 jingle off.
 
+To make a jingle quieter or louder than the music, set `INTRO_SOUND_VOLUME`
+or `OUTRO_SOUND_VOLUME` to a percentage of the current playback volume, from
+`0` to `200`. The default is `100`, so jingles follow `/volume` and the
+server's default volume. For example, `INTRO_SOUND_VOLUME=50` plays the intro
+at half the music's volume, and `OUTRO_SOUND_VOLUME=150` boosts a quiet outro.
+An invalid value logs an error and uses `100`.
+
 ### Cache
 
 By default, Muse limits the total cache size to around 2 GB. If you want to change this, set the environment variable `CACHE_LIMIT`. For example, `CACHE_LIMIT=512MB` or `CACHE_LIMIT=10GB`.
