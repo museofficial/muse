@@ -4,12 +4,13 @@ import {SlashCommandBuilder} from '@discordjs/builders';
 import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
+import {t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
-    .setName('clear')
-    .setDescription('clears all songs in queue except currently playing song');
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
+    .setName('clear'));
 
   public requiresVC = true;
 
@@ -22,6 +23,6 @@ export default class implements Command {
   public async execute(interaction: ChatInputCommandInteraction) {
     this.playerManager.get(interaction.guild!.id).clear();
 
-    await interaction.reply('clearer than a field after a fresh harvest');
+    await interaction.reply(t(interaction.locale, 'clear.done'));
   }
 }

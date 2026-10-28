@@ -164,6 +164,15 @@ that limit; each split chapter counts as one track. Video-detail requests are
 limited to three at a time across imports and lookups. This reduces request
 bursts, but your YouTube API project's daily quota still applies.
 
+### Language and personality
+
+Muse replies in each user's Discord language when a translation exists, and
+falls back to English (Midwestern). To use one language or personality pack
+for everyone, set `BOT_LOCALE` in your `.env` file to a registered pack such as
+`en-US-x-southern` (English with a Southern accent), then restart Muse. To
+change Muse's text without editing code, put JSON packs in `data/locales/`. See
+[src/i18n/README.md](src/i18n/README.md) for adding languages and packs.
+
 ### Favorites
 
 A favorite is a named search or track/playlist URL saved for this server. It
@@ -191,6 +200,31 @@ leave when everyone else leaves the channel.
 
 Use `/help` in Discord for the command list and these usage examples. Its reply
 is visible only to you.
+
+### Intro and outro jingles
+
+Muse can play a short jingle when `/play` starts music from silence (joining
+voice, or after the queue has finished) and another before it leaves voice via
+`/stop`, `/disconnect`, the ⏹ reaction, or the idle timeout. Both are off by
+default. Set either one in your `.env` file to a bundled jingle name:
+
+| Variable | Bundled options |
+| --- | --- |
+| `INTRO_SOUND` | `dark`, `bright`, `chime` |
+| `OUTRO_SOUND` | `dark`, `dark-tapestop`, `bright`, `chime` |
+
+```
+INTRO_SOUND=dark
+OUTRO_SOUND=dark
+```
+
+To use your own clip, set the variable to a file path instead, such as
+`OUTRO_SOUND=./data/sounds/packers.mp3`. Any format ffmpeg can read works.
+In Docker, put the file under the mounted `/data` volume and use
+`/data/sounds/packers.mp3`. Clips are cut off after 15 seconds. If the name or
+path doesn't match anything, Muse still starts but logs an error and leaves
+that jingle off. Leave a variable unset, or set it to `none`, to turn that
+jingle off.
 
 ### Cache
 

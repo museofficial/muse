@@ -55,6 +55,7 @@ const makeInteraction = () => {
 
   return {
     guild: {id: GUILD_ID},
+    locale: 'en-US',
     member: {user: {id: 'requester-id'}},
     channel: {id: 'text-channel-id'},
     deferReply: vi.fn().mockResolvedValue(undefined),
@@ -184,7 +185,7 @@ describe('AddQueryToQueue skip semantics', () => {
     const update = registerUpdater.mock.calls[0][0];
     await update();
     expect(interaction.deferReply).toHaveBeenCalledWith({ephemeral: true});
-    expect(dependencyMocks.buildQueueEmbed).toHaveBeenLastCalledWith(player, 1, 5);
+    expect(dependencyMocks.buildQueueEmbed).toHaveBeenLastCalledWith(player, 1, 5, 'en-US');
     expect(interaction.editReply).toHaveBeenLastCalledWith({embeds: [{title: 'queue'}]});
     expect(player.isPlayingMessage('playing-message-id')).toBe(false);
 
@@ -206,6 +207,8 @@ describe('AddQueryToQueue skip semantics', () => {
       connect: vi.fn(async () => {
         player.voiceConnection = {state: {status: 'ready'}};
       }),
+      waitForPendingLeave: vi.fn().mockResolvedValue(undefined),
+      playIntro: vi.fn().mockResolvedValue(undefined),
       play: vi.fn().mockResolvedValue(undefined),
       forward: vi.fn().mockResolvedValue(undefined),
       setPlayingMessageUpdater: vi.fn(),
@@ -220,12 +223,13 @@ describe('AddQueryToQueue skip semantics', () => {
     expect(player.getCurrent()?.title).toBe('New song');
     expect(player.connect).toHaveBeenCalledOnce();
     expect(player.play).toHaveBeenCalledOnce();
+    expect(player.playIntro.mock.invocationCallOrder[0]).toBeLessThan(player.play.mock.invocationCallOrder[0]);
     expect(player.forward).not.toHaveBeenCalled();
     expect(interaction.editReply).toHaveBeenLastCalledWith({
       content: 'u betcha, **New song** added to the queue',
       embeds: [{title: 'queue'}],
     });
-    expect(dependencyMocks.buildQueueEmbed).toHaveBeenCalledWith(player, 1, 10);
+    expect(dependencyMocks.buildQueueEmbed).toHaveBeenCalledWith(player, 1, 10, 'en-US');
     expect(player.setPlayingMessageUpdater).toHaveBeenCalledOnce();
     expect(player.setPlayingMessageUpdater).toHaveBeenCalledWith(expect.any(Function));
     expect(player.setPlayingMessageId).toHaveBeenCalledWith(expect.any(Function), 'playing-message-id');

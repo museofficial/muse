@@ -4,6 +4,7 @@ import type {Client} from 'discord.js';
 import type Command from '../src/commands/index.js';
 
 const mocks = vi.hoisted(() => ({
+  clientOptions: undefined as unknown,
   login: vi.fn().mockResolvedValue(undefined),
   put: vi.fn().mockResolvedValue(undefined),
 }));
@@ -39,6 +40,11 @@ vi.mock('discord.js', async () => {
       guilds = {cache: new actual.Collection()};
       user = {id: 'application-id', setPresence: vi.fn()};
       login = mocks.login;
+
+      constructor(options: unknown) {
+        super();
+        mocks.clientOptions = options;
+      }
     },
   };
 });
@@ -78,6 +84,10 @@ beforeAll(async () => {
 });
 
 describe('/help integration', () => {
+  it('creates the Discord client so replies can only ping individual users', () => {
+    expect(mocks.clientOptions).toMatchObject({allowedMentions: {parse: ['users']}});
+  });
+
   it('binds help as a singleton and registers it with the complete command set', () => {
     const help = commands.filter(command => command.slashCommand.name === 'help');
     expect(help).toHaveLength(1);

@@ -1,7 +1,9 @@
 import dotenv from 'dotenv';
 import 'reflect-metadata';
 import {injectable} from 'inversify';
+import fs from 'fs';
 import path from 'path';
+import {fileURLToPath} from 'url';
 import xbytes from 'xbytes';
 import {ConditionalKeys} from 'type-fest';
 import {ActivityType, PresenceStatusData} from 'discord.js';
@@ -27,6 +29,7 @@ const CONFIG_MAP = {
   BOT_ACTIVITY_TYPE: process.env.BOT_ACTIVITY_TYPE ?? 'LISTENING',
   BOT_ACTIVITY_URL: process.env.BOT_ACTIVITY_URL ?? '',
   BOT_ACTIVITY: process.env.BOT_ACTIVITY ?? 'music',
+  BOT_LOCALE: process.env.BOT_LOCALE ?? '',
   ENABLE_SPONSORBLOCK: process.env.ENABLE_SPONSORBLOCK === 'true',
   SPONSORBLOCK_TIMEOUT: parseInt(process.env.SPONSORBLOCK_TIMEOUT ?? '5', 10),
   PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS: Number(
@@ -34,7 +37,49 @@ const CONFIG_MAP = {
   ),
   YT_DLP_PATH: firstNonEmpty(process.env.YT_DLP_PATH, process.env.MUSE_BUNDLED_YT_DLP_PATH) ?? 'yt-dlp',
   YT_DLP_AUTO_UPDATE: process.env.YT_DLP_AUTO_UPDATE === 'true',
+  INTRO_SOUND: process.env.INTRO_SOUND ?? '',
+  OUTRO_SOUND: process.env.OUTRO_SOUND ?? '',
 } as const;
+
+const BUNDLED_SOUNDS_DIR = fileURLToPath(new URL('../sounds', import.meta.url));
+
+type SoundSlot = 'intro' | 'outro';
+
+/** Lists the clips shipped with Muse for a slot, such as `dark` for sounds/intro/dark.ogg. */
+export const getBundledSoundNames = (slot: SoundSlot): string[] => {
+  try {
+    return fs.readdirSync(path.join(BUNDLED_SOUNDS_DIR, slot))
+      .filter(fileName => fileName.endsWith('.ogg'))
+      .map(fileName => path.basename(fileName, '.ogg'))
+      .sort();
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Resolves a bundled clip name or a custom file path to an absolute path; empty or `none` disables the clip.
+ * A clip that can't be found is disabled with an error log rather than stopping startup.
+ */
+const resolveSoundClip = (key: string, slot: SoundSlot, value: string): string => {
+  if (value === '' || value.toLowerCase() === 'none') {
+    return '';
+  }
+
+  const bundledNames = getBundledSoundNames(slot);
+  const bundledName = value.toLowerCase();
+  if (bundledNames.includes(bundledName)) {
+    return path.join(BUNDLED_SOUNDS_DIR, slot, `${bundledName}.ogg`);
+  }
+
+  const soundPath = path.resolve(value);
+  if (!fs.existsSync(soundPath)) {
+    console.error(`Ignoring ${key}: "${value}" is not a bundled sound (${bundledNames.join(', ')}) and no file exists at ${soundPath}. The ${slot} is disabled.`);
+    return '';
+  }
+
+  return soundPath;
+};
 
 const BOT_ACTIVITY_TYPE_MAP = {
   PLAYING: ActivityType.Playing,
@@ -57,11 +102,15 @@ export default class Config {
   readonly BOT_ACTIVITY_TYPE!: Exclude<ActivityType, ActivityType.Custom>;
   readonly BOT_ACTIVITY_URL!: string;
   readonly BOT_ACTIVITY!: string;
+  readonly BOT_LOCALE!: string;
   readonly ENABLE_SPONSORBLOCK!: boolean;
   readonly SPONSORBLOCK_TIMEOUT!: number;
   readonly PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS!: number;
   readonly YT_DLP_PATH!: string;
   readonly YT_DLP_AUTO_UPDATE!: boolean;
+  // Absolute paths to the selected clips, or '' when disabled.
+  readonly INTRO_SOUND!: string;
+  readonly OUTRO_SOUND!: string;
 
   constructor() {
     for (const [key, value] of Object.entries(CONFIG_MAP)) {
@@ -91,6 +140,11 @@ export default class Config {
 
         this[key as ConditionalKeys<typeof CONFIG_MAP, number>] = value;
       } else if (typeof value === 'string') {
+        if (key === 'INTRO_SOUND' || key === 'OUTRO_SOUND') {
+          this[key] = resolveSoundClip(key, key === 'INTRO_SOUND' ? 'intro' : 'outro', value.trim());
+          continue;
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         (this as any)[key] = value.trim();
       } else if (typeof value === 'boolean') {

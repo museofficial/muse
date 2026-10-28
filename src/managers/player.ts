@@ -29,7 +29,13 @@ export default class {
         this.fileCache,
         guildId,
         async song => this.youtubeAPI.findAudioFallback(song),
-        this.config.PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
+        {
+          playingMessageUpdateIntervalSeconds: this.config.PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
+          soundClips: {
+            intro: this.config.INTRO_SOUND || undefined,
+            outro: this.config.OUTRO_SOUND || undefined,
+          },
+        },
       );
 
       this.guildPlayers.set(guildId, player);

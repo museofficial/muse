@@ -16,6 +16,7 @@ import {
   entersState,
   joinVoiceChannel,
   NetworkingStatusCode,
+  NoSubscriberBehavior,
   StreamType,
   VoiceConnection,
   VoiceConnectionStatus,
@@ -39,6 +40,7 @@ import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 import {getSoundCloudMediaSource, getYouTubeMediaSource, YtDlpMediaUnavailableError, type YtDlpMediaSource} from '../utils/yt-dlp.js';
 import {Setting} from '@prisma/client';
 import {DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS} from '../utils/constants.js';
+import {LocalizedError} from '../i18n/index.js';
 
 export {DEFAULT_VOLUME, MediaSource, STATUS};
 export type {AgeRestrictedFallbackResolver, PlayerEvents, QueuedPlaylist, QueuedSong, SongMetadata};
@@ -51,6 +53,10 @@ const PREFETCH_LEAD_SECONDS = 60;
 const PREFETCH_MAX_AGE_MS = 10 * 60 * 1000;
 const VOICE_CONNECTION_ATTEMPTS = 3;
 const VOICE_CONNECTION_ATTEMPT_TIMEOUT_MS = 20_000;
+// Caps how long an intro or outro can hold up playback or leaving.
+const MAX_SOUND_CLIP_MS = 15_000;
+
+export type SoundClips = {intro?: string; outro?: string};
 
 const sanitizeFfmpegError = (error: unknown) => {
   const detail = error instanceof Error ? error.message : String(error);
@@ -149,13 +155,20 @@ export default class {
   private voiceActivityVolumeTarget?: number;
   private voiceActivitySessionGeneration = 0;
   private hasRegisteredVoiceActivityListener = false;
+  private readonly soundClips: SoundClips;
+  private pendingIntro?: Promise<void>;
+  private pendingLeave?: Promise<void>;
 
   constructor(
     fileCache: FileCacheProvider,
     guildId: string,
     ageRestrictedFallbackResolver?: AgeRestrictedFallbackResolver,
-    playingMessageUpdateIntervalSeconds = DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
+    {
+      playingMessageUpdateIntervalSeconds = DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
+      soundClips = {},
+    }: {playingMessageUpdateIntervalSeconds?: number; soundClips?: SoundClips} = {},
   ) {
+    this.soundClips = soundClips;
     this.fileCache = fileCache;
     this.guildId = guildId;
     this.ageRestrictedFallbackResolver = ageRestrictedFallbackResolver;
@@ -193,7 +206,7 @@ export default class {
 
     const {voiceConnection} = this;
     if (voiceConnection === null) {
-      throw new Error('Not connected to a voice channel.');
+      throw new LocalizedError('player.error.notConnected');
     }
 
     await this.waitForVoiceConnectionReady(voiceConnection);
@@ -229,6 +242,60 @@ export default class {
       this.voiceActivityVolumeTarget = undefined;
       this.hasRegisteredVoiceActivityListener = false;
     }
+  }
+
+  /**
+   * Plays the configured outro (if any), then disconnects. Paused state and the queue
+   * survive just as with disconnect(), and concurrent callers share one departure.
+   */
+  async leave(): Promise<void> {
+    this.pendingLeave ??= (async () => {
+      if (this.disconnectTimer) {
+        clearTimeout(this.disconnectTimer);
+        this.disconnectTimer = null;
+      }
+
+      this.playbackAttempts.invalidate();
+      if (this.status === STATUS.PLAYING) {
+        this.pause();
+      }
+
+      if (this.soundClips.outro) {
+        await this.playSoundClip(this.soundClips.outro);
+      }
+
+      this.disconnect();
+    })().finally(() => {
+      this.pendingLeave = undefined;
+    });
+
+    return this.pendingLeave;
+  }
+
+  /** Lets a new request rejoin after an in-progress outro instead of racing it. */
+  async waitForPendingLeave(): Promise<void> {
+    await this.pendingLeave;
+  }
+
+  /**
+   * Plays the configured intro (if any). Concurrent requests share one playthrough.
+   * The upcoming song is resolved with yt-dlp while the intro plays, so it doesn't add load time.
+   */
+  async playIntro(): Promise<void> {
+    if (!this.soundClips.intro) {
+      return;
+    }
+
+    const upcoming = this.getCurrent();
+    if (upcoming) {
+      this.prefetchMedia(upcoming);
+    }
+
+    this.pendingIntro ??= this.playSoundClip(this.soundClips.intro).finally(() => {
+      this.pendingIntro = undefined;
+    });
+
+    return this.pendingIntro;
   }
 
   async seek(positionSeconds: number, {preservePausedState = false} = {}): Promise<void> {
@@ -293,7 +360,7 @@ export default class {
 
   pause(): void {
     if (this.status !== STATUS.PLAYING) {
-      throw new Error('Not currently playing.');
+      throw new LocalizedError('player.error.notPlaying');
     }
 
     this.playbackAttempts.invalidate();
@@ -429,7 +496,7 @@ export default class {
       this.positionInSeconds = 0;
       this.stopTrackingPosition();
     } else {
-      throw new Error('No songs in queue to forward to.');
+      throw new LocalizedError('player.error.noNextSong');
     }
   }
 
@@ -439,7 +506,7 @@ export default class {
 
   async back(): Promise<void> {
     if (!this.canGoBack()) {
-      throw new Error('No songs in queue to go back to.');
+      throw new LocalizedError('player.error.noPreviousSong');
     }
 
     const originalPosition = this.positionInSeconds;
@@ -569,8 +636,9 @@ export default class {
     return this.queueSize() === 0;
   }
 
-  stop(): void {
-    this.disconnect();
+  async stop(): Promise<void> {
+    // Without an outro, leave() disconnects before returning its promise.
+    const leaving = this.leave();
     this.queuePosition = 0;
     this.queue = [];
     this.currentQueueEntryVersion++;
@@ -580,11 +648,12 @@ export default class {
     }
 
     this.requestPlayingMessageUpdate();
+    await leaving;
   }
 
   move(from: number, to: number): QueuedSong {
     if (from > this.queueSize() || to > this.queueSize()) {
-      throw new Error('Move index is outside the range of the queue.');
+      throw new LocalizedError('player.error.moveOutOfRange');
     }
 
     this.queue.splice(this.queuePosition + to, 0, this.queue.splice(this.queuePosition + from, 1)[0]);
@@ -686,7 +755,7 @@ export default class {
         }
 
         if (!shouldRetry) {
-          throw new Error(`Failed to connect to the voice channel (${diagnostics}).`);
+          throw new LocalizedError('player.error.connectFailed', {details: diagnostics});
         }
 
         // A fresh join requests new voice-server/session data; rejoin alone can reuse a stalled handshake.
@@ -707,7 +776,7 @@ export default class {
     }
 
     if (!currentSong) {
-      throw new Error('No song currently playing');
+      throw new LocalizedError('player.error.noCurrentSong');
     }
 
     if (currentQueueEntryVersion === null) {
@@ -725,7 +794,7 @@ export default class {
     }
 
     if (positionSeconds > currentSong.length) {
-      throw new Error('Seek position is outside the range of the song.');
+      throw new LocalizedError('player.error.seekOutOfRange');
     }
 
     if (stayPaused) {
@@ -800,7 +869,7 @@ export default class {
     }
 
     if (!currentSong) {
-      throw new Error('Queue empty.');
+      throw new LocalizedError('player.error.queueEmpty');
     }
 
     if (currentQueueEntryVersion === null) {
@@ -1135,15 +1204,24 @@ export default class {
       return;
     }
 
-    if (next.source === MediaSource.HLS || next.isLive || current.length - this.positionInSeconds > PREFETCH_LEAD_SECONDS) {
+    if (current.length - this.positionInSeconds > PREFETCH_LEAD_SECONDS) {
       return;
     }
 
-    const mediaSource = this.fetchMediaSource(next).catch((error: unknown) => {
+    this.prefetchMedia(next);
+  }
+
+  /** Starts yt-dlp resolving a song in the background; getCachedOrRemoteStream() picks up the result. */
+  private prefetchMedia(song: QueuedSong): void {
+    if (song.source === MediaSource.HLS || song.isLive || this.prefetchedMedia?.song === song) {
+      return;
+    }
+
+    const mediaSource = this.fetchMediaSource(song).catch((error: unknown) => {
       debug(`Prefetch failed for guild ${this.guildId}: ${sanitizeFfmpegError(error)}`);
       return null;
     });
-    this.prefetchedMedia = {song: next, fetchedAt: Date.now(), mediaSource};
+    this.prefetchedMedia = {song, fetchedAt: Date.now(), mediaSource};
   }
 
   private async takePrefetchedMediaSource(song: QueuedSong): Promise<YtDlpMediaSource | null> {
@@ -1321,7 +1399,7 @@ export default class {
       const {autoAnnounceNextSong} = settings;
       if (autoAnnounceNextSong && this.currentChannel) {
         await this.currentChannel.send({
-          embeds: [buildPlayingMessageEmbed(this)],
+          embeds: [buildPlayingMessageEmbed(this, this.currentChannel.guild.preferredLocale)],
         });
       }
     }
@@ -1347,7 +1425,9 @@ export default class {
         // Make sure we are not accidentally playing
         // when disconnecting
         if (this.status === STATUS.IDLE) {
-          this.disconnect();
+          void this.leave().catch(error => {
+            console.error(`Leaving idle voice channel failed for guild ${this.guildId}:`, error);
+          });
         }
       }, secondsToWaitAfterQueueEmpties * 1000);
     }
@@ -1589,6 +1669,37 @@ export default class {
         hasReturnedStreamClosed = true;
       });
     });
+  }
+
+  /** Plays a local audio file on its own player. Failures are logged, never thrown. */
+  private async playSoundClip(filePath: string): Promise<void> {
+    const {voiceConnection} = this;
+    if (voiceConnection?.state.status !== VoiceConnectionStatus.Ready) {
+      return;
+    }
+
+    // Stop as soon as the connection drops or another player takes it over.
+    const clipPlayer = createAudioPlayer({behaviors: {noSubscriber: NoSubscriberBehavior.Stop}});
+    clipPlayer.on('error', error => {
+      console.warn(`Sound clip failed for guild ${this.guildId}: ${sanitizeFfmpegError(error)}`);
+    });
+    const subscription = voiceConnection.subscribe(clipPlayer);
+    let resource: AudioResource | undefined;
+
+    try {
+      resource = createAudioResource(filePath, {inlineVolume: true});
+      resource.volume?.setVolume(this.getVolume() / 100);
+      clipPlayer.play(resource);
+      await entersState(clipPlayer, AudioPlayerStatus.Idle, MAX_SOUND_CLIP_MS);
+    } catch (error: unknown) {
+      console.warn(`Sound clip did not finish for guild ${this.guildId}: ${sanitizeFfmpegError(error)}`);
+    } finally {
+      clipPlayer.stop(true);
+      subscription?.unsubscribe();
+      if (resource && !resource.playStream.destroyed) {
+        resource.playStream.destroy();
+      }
+    }
   }
 
   private createAudioStream(stream: Readable) {

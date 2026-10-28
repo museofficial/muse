@@ -31,6 +31,7 @@ vi.mock('@discordjs/voice', () => ({
     Signalling: 'signalling',
   },
   NetworkingStatusCode: {0: 'OpeningWs', 2: 'UdpHandshaking'},
+  NoSubscriberBehavior: {Stop: 'stop'},
   StreamType: {WebmOpus: 'webm-opus'},
   createAudioPlayer: dependencyMocks.createAudioPlayer,
   createAudioResource: dependencyMocks.createAudioResource,
@@ -1261,6 +1262,33 @@ describe('OPS-11 yt-dlp extraction and ffmpeg handoff', () => {
     const stream = await internals.getStream(next);
 
     expect(dependencyMocks.execa).toHaveBeenCalledTimes(2);
+    stream.destroy();
+  });
+
+  it('resolves the first song with yt-dlp while the intro is still playing', async () => {
+    const player = new Player({getEntryFor: vi.fn().mockResolvedValue(null)} as never, GUILD_ID, undefined, {soundClips: {intro: '/sounds/packers.mp3'}});
+    const song = {...makeUncachedYouTubeSong('First'), url: 'firstvideo1'};
+    player.add(song);
+    player.voiceConnection = {state: {status: 'ready'}, subscribe: vi.fn(() => ({unsubscribe: vi.fn()}))} as never;
+    dependencyMocks.createAudioPlayer.mockReturnValueOnce({on: vi.fn(), play: vi.fn(), stop: vi.fn()});
+    dependencyMocks.createAudioResource.mockReturnValueOnce({volume: {setVolume: vi.fn()}, playStream: {destroyed: false, destroy: vi.fn()}});
+    const introFinished = makeDeferred<void>();
+    dependencyMocks.entersState.mockReturnValueOnce(introFinished.promise);
+
+    const intro = player.playIntro();
+    await flushAsyncWork();
+
+    expect(dependencyMocks.createAudioResource).toHaveBeenCalledWith('/sounds/packers.mp3', {inlineVolume: true});
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(dependencyMocks.execa.mock.calls[0][1].at(-1)).toBe('https://www.youtube.com/watch?v=firstvideo1');
+
+    introFinished.resolve();
+    await intro;
+    const stream = await (player as unknown as {getStream(input: QueuedSong): Promise<Readable>}).getStream(song);
+
+    // Playback reuses the URL resolved during the intro instead of running yt-dlp again.
+    expect(dependencyMocks.execa).toHaveBeenCalledOnce();
+    expect(dependencyMocks.ffmpeg).toHaveBeenCalledWith('https://media.example/requested.webm');
     stream.destroy();
   });
 

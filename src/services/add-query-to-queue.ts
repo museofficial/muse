@@ -14,6 +14,7 @@ import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
 import {MUSIC_CONTROL_EMOJIS, ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
 import formatSongReply from '../utils/format-song-reply.js';
+import {LocalizedError, t} from '../i18n/index.js';
 
 const isSameQueueEntry = (capturedId: number | null, currentId: number | null) => (
   capturedId !== null && capturedId === currentId
@@ -21,7 +22,7 @@ const isSameQueueEntry = (capturedId: number | null, currentId: number | null) =
 
 const normalizeSkipError = (error: unknown) => (
   error instanceof Error && error.message === 'No songs in queue to forward to.'
-    ? new Error('no song to skip to')
+    ? new LocalizedError('error.noSongToSkipTo')
     : error
 );
 
@@ -59,6 +60,7 @@ export default class AddQueryToQueue {
     interaction: ChatInputCommandInteraction;
   }): Promise<void> {
     const guildId = interaction.guild!.id;
+    const {locale} = interaction;
     const player = this.playerManager.get(guildId);
     const currentQueueEntryId = player.getCurrentQueueEntryId();
     const wasPlayingSong = currentQueueEntryId !== null;
@@ -71,10 +73,10 @@ export default class AddQueryToQueue {
 
     await interaction.deferReply({ephemeral: queueAddResponseEphemeral});
 
-    let [newSongs, extraMsg] = await this.getSongs.getSongs(query, playlistLimit, shouldSplitChapters);
+    let [newSongs, extraMsg] = await this.getSongs.getSongs(query, playlistLimit, shouldSplitChapters, locale);
 
     if (newSongs.length === 0) {
-      throw new Error('no songs found');
+      throw new LocalizedError('error.noSongsFound');
     }
 
     if (shuffleAdditions) {
@@ -85,6 +87,8 @@ export default class AddQueryToQueue {
       newSongs = await Promise.all(newSongs.map(this.skipNonMusicSegments.bind(this)));
     }
 
+    // A request during the outro rejoins once the bot has left.
+    await player.waitForPendingLeave();
     const needsConnection = player.voiceConnection === null;
     if (needsConnection) {
       // A failed join must not leave an unacknowledged request in the queue.
@@ -112,21 +116,23 @@ export default class AddQueryToQueue {
 
     if (needsConnection) {
       // Resume / start playback
+      await player.playIntro();
       await player.play();
 
       if (wasPlayingSong) {
-        statusMsg = 'resuming playback';
+        statusMsg = t(locale, 'queueAdd.resuming');
       }
 
       shouldShowPlayingEmbed = true;
     } else if (player.status === STATUS.IDLE) {
       // Player is idle, start playback instead
+      await player.playIntro();
       await player.play();
       shouldShowPlayingEmbed = true;
     }
 
     if (!player.getCurrent()) {
-      throw new Error('no playable songs found');
+      throw new LocalizedError('error.noPlayableSongs');
     }
 
     let didSkipCurrentTrack = false;
@@ -141,12 +147,19 @@ export default class AddQueryToQueue {
 
     extraMsg = [statusMsg, extraMsg].filter(Boolean).join(', ');
     if (extraMsg !== '') {
-      extraMsg = ` (${extraMsg})`;
+      extraMsg = t(locale, 'queueAdd.notes', {notes: extraMsg});
     }
 
-    const responseContent = newSongs.length === 1
-      ? formatSongReply(firstSong.title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}`)
-      : formatSongReply(firstSong.title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}`);
+    const responseContent = formatSongReply(firstSong.title, title => {
+      if (newSongs.length > 1) {
+        return t(locale, didSkipCurrentTrack ? 'queueAdd.addedManySkipped' : 'queueAdd.addedMany', {title, count: newSongs.length - 1, notes: extraMsg});
+      }
+
+      const key = addToFrontOfQueue
+        ? (didSkipCurrentTrack ? 'queueAdd.addedFrontSkipped' : 'queueAdd.addedFront')
+        : (didSkipCurrentTrack ? 'queueAdd.addedSkipped' : 'queueAdd.added');
+      return t(locale, key, {title, notes: extraMsg});
+    });
 
     if (!shouldShowPlayingEmbed) {
       await interaction.editReply(responseContent);
@@ -171,11 +184,12 @@ export default class AddQueryToQueue {
     ephemeral: boolean;
   }): Promise<void> {
     const guildId = interaction.guild!.id;
+    const {locale} = interaction;
     // The queue embed supplies both the progress timer and the upcoming list
     // for the live response associated with this playback session.
     const responsePromise = interaction.editReply({
       content,
-      embeds: [buildQueueEmbed(player, 1, pageSize)],
+      embeds: [buildQueueEmbed(player, 1, pageSize, locale)],
     });
     let finishControls!: () => void;
     const controlsFinished = new Promise<void>(resolve => {
@@ -184,10 +198,10 @@ export default class AddQueryToQueue {
     const updatePlayingMessage = async (terminalState?: PlayingMessageTerminalState) => {
       // Capture before yielding: stop() can clear the queue while Discord is pending.
       const update = terminalState === 'stopped'
-        ? {content: 'Playback stopped.', embeds: []}
+        ? {content: t(locale, 'queueAdd.stopped'), embeds: []}
         : terminalState === 'finished'
           ? {content, embeds: []}
-          : {embeds: [buildQueueEmbed(player, 1, pageSize)]};
+          : {embeds: [buildQueueEmbed(player, 1, pageSize, locale)]};
       const response = await responsePromise;
 
       // Public interaction responses become regular channel messages and can

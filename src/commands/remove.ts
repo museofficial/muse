@@ -4,23 +4,22 @@ import {TYPES} from '../types.js';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {LocalizedError, t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
     .setName('remove')
-    .setDescription('remove songs from the queue')
     .addIntegerOption(option =>
       option.setName('position')
-        .setDescription('position of the song to remove [default: 1]')
         .setMinValue(1)
         .setRequired(false),
     )
     .addIntegerOption(option =>
       option.setName('range')
-        .setDescription('number of songs to remove [default: 1]')
         .setMinValue(1)
-        .setRequired(false));
+        .setRequired(false)));
 
   private readonly playerManager: PlayerManager;
 
@@ -35,19 +34,19 @@ export default class implements Command {
     const range = interaction.options.getInteger('range') ?? 1;
 
     if (position < 1) {
-      throw new Error('position must be at least 1');
+      throw new LocalizedError('error.positionTooLow');
     }
 
     if (range < 1) {
-      throw new Error('range must be at least 1');
+      throw new LocalizedError('remove.error.rangeTooLow');
     }
 
     if (position > player.queueSize()) {
-      throw new Error('position is outside the range of the queue');
+      throw new LocalizedError('remove.error.outOfRange');
     }
 
     player.removeFromQueue(position, range);
 
-    await interaction.reply(':wastebasket: removed');
+    await interaction.reply(t(interaction.locale, 'remove.done'));
   }
 }

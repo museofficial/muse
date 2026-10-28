@@ -5,12 +5,13 @@ import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import {STATUS} from '../services/player.js';
+import {LocalizedError, t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
-    .setName('loop-queue')
-    .setDescription('toggle looping the entire queue');
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
+    .setName('loop-queue'));
 
   public requiresVC = true;
 
@@ -24,11 +25,11 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (player.status === STATUS.IDLE) {
-      throw new Error('no songs to loop!');
+      throw new LocalizedError('loopQueue.error.nothingToLoop');
     }
 
     if (!player.loopCurrentQueue && player.queueSize() < 1) {
-      throw new Error('not enough songs to loop a queue!');
+      throw new LocalizedError('loopQueue.error.notEnoughSongs');
     }
 
     if (player.loopCurrentSong) {
@@ -38,6 +39,6 @@ export default class implements Command {
     player.loopCurrentQueue = !player.loopCurrentQueue;
     player.refreshPlayingMessage();
 
-    await interaction.reply((player.loopCurrentQueue ? 'looped queue :)' : 'stopped looping queue :('));
+    await interaction.reply(t(interaction.locale, player.loopCurrentQueue ? 'loopQueue.on' : 'loopQueue.off'));
   }
 }
