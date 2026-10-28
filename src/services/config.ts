@@ -45,17 +45,35 @@ const BUNDLED_SOUNDS_DIR = fileURLToPath(new URL('../sounds', import.meta.url));
 
 type SoundSlot = 'intro' | 'outro';
 
-/** Lists the clips shipped with Muse for a slot, such as `dark` for sounds/intro/dark.ogg. */
-export const getBundledSoundNames = (slot: SoundSlot): string[] => {
+const listOggFiles = (directory: string): string[] => {
   try {
-    return fs.readdirSync(path.join(BUNDLED_SOUNDS_DIR, slot))
-      .filter(fileName => fileName.endsWith('.ogg'))
-      .map(fileName => path.basename(fileName, '.ogg'))
-      .sort();
+    return fs.readdirSync(directory, {withFileTypes: true})
+      .filter(entry => entry.isFile() && entry.name.endsWith('.ogg'))
+      .map(entry => path.basename(entry.name, '.ogg'));
   } catch {
     return [];
   }
 };
+
+/**
+ * Finds a bundled clip's file. Slot-specific clips live in sounds/intro/ or sounds/outro/;
+ * clips directly in sounds/ work for both slots, and a slot-specific clip wins on a name clash.
+ */
+const getBundledSoundPath = (slot: SoundSlot, name: string): string | undefined => {
+  for (const directory of [path.join(BUNDLED_SOUNDS_DIR, slot), BUNDLED_SOUNDS_DIR]) {
+    if (listOggFiles(directory).includes(name)) {
+      return path.join(directory, `${name}.ogg`);
+    }
+  }
+
+  return undefined;
+};
+
+/** Lists the clips shipped with Muse for a slot, such as `dark` for sounds/intro/dark.ogg. */
+export const getBundledSoundNames = (slot: SoundSlot): string[] => [...new Set([
+  ...listOggFiles(path.join(BUNDLED_SOUNDS_DIR, slot)),
+  ...listOggFiles(BUNDLED_SOUNDS_DIR),
+])].sort();
 
 /**
  * Resolves a bundled clip name or a custom file path to an absolute path; empty or `none` disables the clip.
@@ -66,15 +84,14 @@ const resolveSoundClip = (key: string, slot: SoundSlot, value: string): string =
     return '';
   }
 
-  const bundledNames = getBundledSoundNames(slot);
-  const bundledName = value.toLowerCase();
-  if (bundledNames.includes(bundledName)) {
-    return path.join(BUNDLED_SOUNDS_DIR, slot, `${bundledName}.ogg`);
+  const bundledPath = getBundledSoundPath(slot, value.toLowerCase());
+  if (bundledPath) {
+    return bundledPath;
   }
 
   const soundPath = path.resolve(value);
   if (!fs.existsSync(soundPath)) {
-    console.error(`Ignoring ${key}: "${value}" is not a bundled sound (${bundledNames.join(', ')}) and no file exists at ${soundPath}. The ${slot} is disabled.`);
+    console.error(`Ignoring ${key}: "${value}" is not a bundled sound (${getBundledSoundNames(slot).join(', ')}) and no file exists at ${soundPath}. The ${slot} is disabled.`);
     return '';
   }
 

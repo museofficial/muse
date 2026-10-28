@@ -55,11 +55,19 @@ describe('Config intro and outro sounds', () => {
     expect(fs.existsSync(config.OUTRO_SOUND)).toBe(true);
   });
 
+  it('uses one shared file for a clip that works as both intro and outro', async () => {
+    const Config = await loadWithSounds('packers', 'Packers');
+    const config = new Config();
+
+    expect(path.relative(path.resolve('src', 'sounds', 'packers.ogg'), config.INTRO_SOUND)).toBe('');
+    expect(config.OUTRO_SOUND).toBe(config.INTRO_SOUND);
+  });
+
   it('only offers outro-only clips as outros', async () => {
     const {getBundledSoundNames} = await import('../src/services/config.js');
 
-    expect(getBundledSoundNames('intro')).toEqual(['bright', 'chime', 'dark']);
-    expect(getBundledSoundNames('outro')).toEqual(['bright', 'chime', 'dark', 'dark-tapestop']);
+    expect(getBundledSoundNames('intro')).toEqual(['bright', 'chime', 'dark', 'packers']);
+    expect(getBundledSoundNames('outro')).toEqual(['bright', 'chime', 'dark', 'dark-tapestop', 'packers']);
   });
 
   it('accepts a custom file path', async () => {

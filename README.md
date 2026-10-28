@@ -210,8 +210,8 @@ default. Set either one in your `.env` file to a bundled jingle name:
 
 | Variable | Bundled options |
 | --- | --- |
-| `INTRO_SOUND` | `dark`, `bright`, `chime` |
-| `OUTRO_SOUND` | `dark`, `dark-tapestop`, `bright`, `chime` |
+| `INTRO_SOUND` | `dark`, `bright`, `chime`, `packers` |
+| `OUTRO_SOUND` | `dark`, `dark-tapestop`, `bright`, `chime`, `packers` |
 
 ```
 INTRO_SOUND=dark
@@ -219,9 +219,9 @@ OUTRO_SOUND=dark
 ```
 
 To use your own clip, set the variable to a file path instead, such as
-`OUTRO_SOUND=./data/sounds/packers.mp3`. Any format ffmpeg can read works.
+`OUTRO_SOUND=./data/sounds/my-chant.mp3`. Any format ffmpeg can read works.
 In Docker, put the file under the mounted `/data` volume and use
-`/data/sounds/packers.mp3`. Clips are cut off after 15 seconds. If the name or
+`/data/sounds/my-chant.mp3`. Clips are cut off after 15 seconds. If the name or
 path doesn't match anything, Muse still starts but logs an error and leaves
 that jingle off. Leave a variable unset, or set it to `none`, to turn that
 jingle off.
