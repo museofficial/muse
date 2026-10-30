@@ -36,8 +36,9 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 
 The shared player card uses labeled buttons for previous track, rewind,
-pause/resume, fast-forward, next track, stop, and shuffle. If Muse is already in
-your server, make sure its role has **View Channel**, **Send Messages**,
+pause/resume, fast-forward, next track, queue, and shuffle. Use `/stop` to stop
+playback and disconnect Muse. If Muse is already in your server, make sure its
+role has **View Channel**, **Send Messages**,
 **Embed Links**, and **Read Message History** permissions. Check the text
 channel's permission overrides too. Button controls do not require **Add
 Reactions** or **Manage Messages**.
@@ -127,9 +128,10 @@ the command reply, so the receipt does not repeat their name or mention them.
 Playlists get one receipt for the whole request. The newest receipt in the
 session's text channel carries the player card and controls; older receipts keep
 only their short confirmation. Requests in other channels leave the card in the
-channel where the session started. The former `set-queue-add-response-hidden`
-setting has been removed. Optional next-song announcements remain separate and
-are off by default.
+channel where the session started. Starting with v2.12.0, queue confirmations
+are always public. The former `set-queue-add-response-hidden` setting has been
+removed, and previously saved values no longer apply. Optional next-song
+announcements remain separate and are off by default.
 
 When the queue ends, the card becomes a listening history. It lists the songs
 that actually started, in playback order, and marks skipped tracks. Repeat plays

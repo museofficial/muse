@@ -6,46 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Keep one shared player card per listening session, with labeled playback buttons and private queue confirmations linked to the card.
-- Keep an ordered listening history when the queue ends. Mark skipped tracks, preserve repeat plays, and omit songs that never started.
-- Continue the same history when more music is added before disconnecting. Save completed session recaps and full histories across restarts.
+## [2.12.0] - 2026-10-30
 
-- Keep configured bot status and activity when Discord reconnects.
-- Keep long search suggestions within Discord autocomplete limits.
-- Keep long stream URLs and metadata from breaking playback cards and queue replies.
-- Stop loading YouTube playlist pages once enough playable tracks have been found, counting split chapters toward the playlist limit.
-- Limit concurrent YouTube video-detail requests to three across imports and lookups. Keep the HTTP client's built-in retries for temporary failures; daily API quota limits still apply.
-- Add a private `/help` command listing the available commands, with examples for favorites and the queue-empty delay.
-- Explain that favorites save named searches or URLs for the server and that the queue-empty delay uses seconds, with 0 disabling that timeout.
-
-- Keep the retained song available when the queue is cleared during a failed next or previous track request.
-- Allow queue looping to be turned off after the upcoming songs are cleared or removed.
-- Refresh volume and loop indicators immediately, including while playback is paused.
-- Validate favorite names and queries, and keep autocomplete and favorite lists within Discord's message limits without changing saved queries.
-- Fix fresh Node.js installs by using compatible pagination and Node type dependencies.
-
-- Remove playback controls even when the final message edit fails.
-- Validate extracted media formats before starting FFmpeg to avoid URLs that immediately return HTTP 403.
-
-- Show the current song and upcoming songs in the shared player card with nearly real-time updates (configurable).
-- Update the timer every five seconds by default, and pause it when the music is paused. Change the update interval with `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS` in `.env`, then restart Muse.
-- Make the progress bar move in smaller steps so it is easier to see how far a song has played.
-- Add labeled controls for pause/resume, stop, rewind, and fast-forward. Rewind and fast-forward move ten seconds within a song, keep paused music paused, and do not work on livestreams.
-- Add separate Previous and Next controls, matching `/unskip` and `/next`.
-- Show the new song order after shuffling.
-- Require listeners to be in the same voice channel as Muse and have permission to use the matching command. Keep role, member, and channel restrictions in place. If Muse cannot check permissions, it ignores the click.
-- Handle quick clicks in order, and ignore clicks on old playback messages or from listeners who have left the voice channel.
-- Keep music paused when seeking while audio is still buffering, and prevent an older seek from pausing newer playback.
-- Keep message updates in order and stop updating a message if an edit fails.
-- Preserve the session recap if playback ends while the shared card is being sent.
+- Keep one shared player card per listening session, with the classic artwork, requester, source, progress bar, and upcoming songs. Move the card and its controls to the latest queue receipt in the session's text channel; older receipts keep their confirmation text.
+- Queue confirmations are now always public. Remove `set-queue-add-response-hidden`; previously saved values no longer apply. Keep the "u betcha" reply and use Discord's command header to identify the requester without an extra mention.
+- Add labeled Previous, −10s, Pause / Resume, +10s, Next, Queue, and Shuffle buttons. Previous and Next match `/unskip` and `/next`; use `/stop` to stop playback and disconnect.
+- Make the Queue button use the same display and configured page size as `/queue`, with page navigation when needed. Hide empty queue counts, duration, and page numbers on the player card.
+- Leave an ordered session recap when the queue ends, with no buttons. Mark skipped tracks, preserve repeat plays, and omit songs that never started. Show the full history in the channel, continuing in additional messages when needed.
+- Continue the same history when more music is added before disconnecting. Save session recaps and histories across restarts, marking unfinished playback as interrupted. Music and the queue do not resume automatically after a restart.
+- Update the timer every five seconds by default, with a smoother progress bar, and pause it with the music. Change the interval with `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS` in `.env`, then restart Muse. Refresh volume, loop, and shuffle changes immediately, including while paused.
+- To change playback, require listeners to share Muse's voice channel and have permission to use the matching command. Preserve role, member, and channel restrictions; ignore the click if permissions cannot be checked. Button controls do not require Add Reactions or Manage Messages.
+- Handle quick clicks and message updates in order. Ignore stale controls and listeners who have left voice, stop updates after failed edits, remove controls when playback ends, and preserve recaps if playback finishes while a card is being sent.
+- Keep paused music paused when seeking, including while audio is buffering, and prevent an older seek from pausing newer playback. The seek buttons move ten seconds within a song and do not work on livestreams.
 - Redact interaction webhook tokens from playback message error logs.
-- Remove repeated songs when shuffling the upcoming queue, including songs that are playing now or have already played. Keep the current song and previously played songs in place. Different chapters and tracks from different sources stay separate.
-- When adding a playlist with shuffle enabled, remove repeats within that playlist without changing songs already queued.
-- Explain the permissions needed to display the shared player card. Button controls do not require Add Reactions or Manage Messages.
-- Add tests for the playback display, controls, permissions, update interval, and duplicate removal. Fix playback tests that failed on Windows.
-- Wait until the `available_at` time reported by yt-dlp before starting FFmpeg, and retry the same media URL (after 5s, then 10s) when it returns 403 Forbidden at startup.
-- Prevent cancelled playback from starting FFmpeg after an availability wait or a 403 retry delay.
-- Resolve the next queued song's media URL during the last minute of the current song so transitions skip the extraction and availability wait.
+- Remove repeated songs when shuffling the upcoming queue, including songs already playing or played. Keep the current song and playback history in place. Playlist imports with shuffle enabled remove repeats within the import; different chapters and sources stay separate.
+- Validate extracted media formats before starting FFmpeg. Wait for the availability time reported by yt-dlp, then retry startup HTTP 403 failures after five and ten seconds. Cancelled playback cannot start FFmpeg after a wait or retry.
+- Resolve audio while the voice connection opens, and prefetch the next queued song's media URL during the current song's last minute to reduce startup and transition delays.
+- Keep the retained song available when the queue is cleared during a failed next or previous request. Allow queue looping to be turned off after upcoming songs are cleared or removed.
+- Keep configured bot status and activity when Discord reconnects.
+- Keep long search suggestions, stream URLs, and metadata within Discord's display limits without changing playback URLs. Validate favorite names and queries, and bound autocomplete and favorite lists without changing saved queries.
+- Stop loading YouTube playlist pages once enough playable tracks are found, counting split chapters toward the playlist limit. Limit concurrent video-detail requests to three across imports and lookups; temporary failures retain the HTTP client's retries, and daily API quota limits still apply.
+- Add a private `/help` command with command examples. Explain that favorites save named searches or URLs for the server, and that the queue-empty delay uses seconds with 0 disabling the timeout.
+- Fix fresh Node.js installs with compatible pagination and Node type dependencies.
 
 ## [2.11.8] - 2026-09-20
 
@@ -463,7 +445,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[unreleased]: https://github.com/museofficial/muse/compare/v2.11.7...HEAD
+[unreleased]: https://github.com/museofficial/muse/compare/v2.12.0...HEAD
+[2.12.0]: https://github.com/museofficial/muse/compare/v2.11.8...v2.12.0
 [2.11.8]: https://github.com/museofficial/muse/compare/v2.11.7...v2.11.8
 [2.11.7]: https://github.com/museofficial/muse/compare/v2.11.6...v2.11.7
 [2.11.6]: https://github.com/museofficial/muse/compare/v2.11.5...v2.11.6
