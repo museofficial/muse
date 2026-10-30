@@ -4,7 +4,6 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
-import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
 
 @injectable()
 export default class implements Command {
@@ -36,11 +35,7 @@ export default class implements Command {
 
     try {
       await player.forward(numToSkip);
-      await interaction.followUp({
-        content: 'keep \'er movin\'',
-        embeds: player.getCurrent() ? [buildPlayingMessageEmbed(player)] : [],
-      });
-      await interaction.deleteReply().catch(() => undefined);
+      await interaction.editReply(player.getCurrent() ? 'Skipped.' : 'Queue complete.');
     } catch (error: unknown) {
       if (error instanceof Error && error.message === 'No songs in queue to forward to.') {
         throw new Error('no song to skip to');

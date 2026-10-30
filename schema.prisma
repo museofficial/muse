@@ -49,3 +49,51 @@ model FavoriteQuery {
 
   @@unique([guildId, name])
 }
+
+model ListeningSession {
+  id              String                    @id
+  guildId         String
+  voiceChannelId  String
+  channelId       String?
+  messageId       String?
+  startedAt       DateTime
+  endedAt         DateTime?
+  endReason       String?
+  recoveryPending Boolean                   @default(false)
+  entries         ListeningSessionEntry[]
+  historyMessages ListeningSessionMessage[]
+
+  @@index([guildId, startedAt])
+  @@index([endedAt])
+  @@index([recoveryPending])
+}
+
+model ListeningSessionEntry {
+  id          String           @id
+  sessionId   String
+  position    Int
+  title       String
+  artist      String
+  url         String
+  source      String
+  length      Float
+  offset      Float
+  requestedBy String
+  startedAt   DateTime
+  endedAt     DateTime?
+  status      String
+  session     ListeningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, position])
+}
+
+model ListeningSessionMessage {
+  sessionId      String
+  position       Int
+  messageId      String?
+  afterMessageId String?
+  nonce          String?
+  session        ListeningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, position])
+}

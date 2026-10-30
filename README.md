@@ -35,14 +35,12 @@ Muse is written in TypeScript. You can either run Muse with Docker (recommended)
 
 Muse will log a URL when run. Open this URL in a browser to invite Muse to your server. Muse will DM the server owner after it's added with setup instructions.
 
-The `/play` message has emoji controls for previous track, rewind, pause/resume,
-fast-forward, next track, stop, and shuffle. If Muse is already in your server,
-make sure its role has **View Channel**, **Send Messages**, **Embed Links**,
-**Read Message History**, **Add Reactions**, and **Manage Messages** permissions.
-**Manage Messages** lets Muse clear your reaction so you can click the same
-control again. Without it, remove your own reaction before clicking that control
-again. Check the text channel's permission overrides too. The invite link includes
-these permissions for new installations.
+The shared player card uses labeled buttons for previous track, rewind,
+pause/resume, fast-forward, next track, stop, and shuffle. If Muse is already in
+your server, make sure its role has **View Channel**, **Send Messages**,
+**Embed Links**, and **Read Message History** permissions. Check the text
+channel's permission overrides too. Button controls do not require **Add
+Reactions** or **Manage Messages**.
 
 A 64-bit OS is required to run Muse.
 
@@ -120,38 +118,60 @@ npm test
 
 ### Playback display and controls
 
-The `/play` message shows the current song, progress bar, and upcoming songs
-with nearly real-time updates (configurable). The timer updates every five
-seconds by default. To change this, set `PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS`
-in your `.env` file to a whole number of seconds greater than zero, then restart
-Muse.
+Muse keeps one shared player card for each listening session. While music plays,
+it uses the classic display: album art, progress bar, requester, source, and
+upcoming tracks. Queue count and duration appear only when songs are waiting;
+page numbers appear only in the full queue view. Each `/play` or `/favorites use`
+request gets a public "u betcha" receipt. Discord identifies the requester above
+the command reply, so the receipt does not repeat their name or mention them.
+Playlists get one receipt for the whole request. The newest receipt in the
+session's text channel carries the player card and controls; older receipts keep
+only their short confirmation. Requests in other channels leave the card in the
+channel where the session started. The former `set-queue-add-response-hidden`
+setting has been removed. Optional next-song announcements remain separate and
+are off by default.
 
-When the queue finishes, Muse removes the card and controls and keeps the
-original queue acknowledgment. Stopping playback shows "Playback stopped."
-Volume and loop changes update the card immediately, including while paused.
-Long titles, source labels, and stream URLs are shortened for display when needed
-to fit Discord messages; playback uses the full URL.
+When the queue ends, the card becomes a listening history. It lists the songs
+that actually started, in playback order, and marks skipped tracks. Repeat plays
+appear separately. Songs removed before they played, and songs that could not
+start, are not listed. The full history is visible in the channel without
+clicking a button. Longer histories continue in additional messages only when
+Discord's message limits require it.
 
-To use the emoji controls, you must be in the same voice channel as Muse and
-be allowed to use the matching command in the text channel containing the
-message. Being a listener does not grant extra permissions. You can change who
+Adding more music while Muse is still connected continues the same session and
+returns the card to the classic player. The history stays saved for the next
+recap. Stopping playback or disconnecting ends the session and leaves its recap
+in the channel. History is saved in Muse's database and remains available after
+a restart; music and the queue are not resumed automatically.
+
+The timer updates every five seconds by default. Set
+`PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS` in `.env` to a whole number of seconds
+greater than zero, then restart Muse to change this. Volume and loop changes
+update the card immediately, including while paused. Long titles, source labels,
+and stream URLs are shortened for display when needed to fit Discord messages;
+playback uses the full URL.
+
+The card has labeled buttons. To control playback, you must be in the same voice
+channel as Muse and be allowed to use the matching command in the card's text
+channel. Being a listener does not grant extra permissions. You can change who
 can use commands and where under **Server Settings > Integrations > Muse**.
 Muse checks permissions each time you click a control. If it cannot check them,
-it ignores the click.
+it does not perform the action.
 
 | Control | Command you need permission to use |
 | --- | --- |
-| Previous Track | `/unskip` |
-| Next Track | `/next` |
-| Rewind | `/seek` |
-| Fast-forward | `/fseek` |
+| Previous | `/unskip` |
+| Next | `/next` |
+| −10s | `/seek` |
+| +10s | `/fseek` |
 | Pause / Resume | `/pause` while playing; `/resume` while paused |
-| Stop | `/stop` |
 | Shuffle | `/shuffle` |
 
-Rewind and fast-forward move ten seconds within a song and do not work on
-livestreams. Private messages that only you can see keep updating for as long
-as Discord allows, but do not have emoji controls.
+The −10s and +10s buttons move ten seconds within a song and do not work on
+livestreams. Previous, seek, Pause / Resume, and Next form the first row; Queue
+and Shuffle form the second. Use `/stop` to stop playback and disconnect Muse.
+Recaps have no buttons, including while Muse stays connected with an empty queue.
+The complete history remains visible.
 
 Shuffling removes repeated songs from the upcoming queue, including songs
 that are playing now or have already played. When you add a playlist with

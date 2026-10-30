@@ -27,7 +27,11 @@ vi.mock('../src/services/config.js', () => ({
   },
 }));
 
-vi.mock('../src/utils/db.js', () => ({prisma: {}}));
+vi.mock('../src/utils/db.js', () => ({prisma: {
+  $transaction: async (run: (transaction: object) => Promise<unknown>) => run({
+    listeningSession: {findMany: async () => []},
+  }),
+}}));
 
 vi.mock('discord.js', async () => {
   const actual = await vi.importActual<typeof import('discord.js')>('discord.js');
@@ -39,6 +43,7 @@ vi.mock('discord.js', async () => {
       guilds = {cache: new actual.Collection()};
       user = {id: 'application-id', setPresence: vi.fn()};
       login = mocks.login;
+      destroy = vi.fn();
     },
   };
 });
@@ -96,6 +101,7 @@ describe('/help integration', () => {
       guild: {id: 'guild-id'},
       member: {user: {id: 'user-id'}},
       isCommand: () => true,
+      isButton: () => false,
       isChatInputCommand: () => true,
       reply,
     };
@@ -110,6 +116,8 @@ describe('/help integration', () => {
     for (const command of commands) {
       expect(payload.content).toContain(`**/${command.slashCommand.name}** — ${command.slashCommand.description}`);
     }
+    expect(payload.content).toContain('Your confirmation is private');
+    expect(payload.content).toContain('View full history');
     expect(payload.content).toContain('named search or track/playlist URL for this server');
     expect(payload.content).toContain('not audio or a copy of the queue');
     expect(payload.content).toContain('/favorites create name:lofi query:lofi hip hop');

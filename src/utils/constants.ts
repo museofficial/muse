@@ -16,6 +16,6 @@ export const MUSIC_CONTROLS = {
 export const MUSIC_CONTROL_EMOJIS = Object.values(MUSIC_CONTROLS);
 export const MUSIC_CONTROL_SEEK_SECONDS = 10;
 
-// In addition to voice access, reaction controls need Add Reactions, View
-// Channel, Send Messages, Manage Messages, Embed Links, and Message History.
-export const BOT_INVITE_PERMISSIONS = '36793408';
+// Native player buttons need no reaction-cleanup permissions. Keep channel,
+// message-history, embed, and voice access for the shared player.
+export const BOT_INVITE_PERMISSIONS = '36785152';

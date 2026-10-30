@@ -1,18 +1,18 @@
-import {ChatInputCommandInteraction, GuildMember} from 'discord.js';
+import {ChatInputCommandInteraction, GuildMember, GuildTextBasedChannel, escapeMarkdown} from 'discord.js';
 import {inject, injectable} from 'inversify';
 import shuffle from 'array-shuffle';
 import uniqueSongs from '../utils/unique-songs.js';
 import {TYPES} from '../types.js';
 import GetSongs from '../services/get-songs.js';
-import Player, {MediaSource, type PlayingMessageTerminalState, SongMetadata, STATUS} from './player.js';
+import {MediaSource, SongMetadata, STATUS} from './player.js';
+import SessionPlayer from './session-player.js';
 import PlayerManager from '../managers/player.js';
-import {buildQueueEmbed} from '../utils/build-embed.js';
 import {getMemberVoiceChannel, getMostPopularVoiceChannel} from '../utils/channels.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {SponsorBlock} from 'sponsorblock-api';
 import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
-import {MUSIC_CONTROL_EMOJIS, ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
+import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
 import formatSongReply from '../utils/format-song-reply.js';
 
 const isSameQueueEntry = (capturedId: number | null, currentId: number | null) => (
@@ -35,7 +35,8 @@ export default class AddQueryToQueue {
   constructor(@inject(TYPES.Services.GetSongs) private readonly getSongs: GetSongs,
     @inject(TYPES.Managers.Player) private readonly playerManager: PlayerManager,
     @inject(TYPES.Config) private readonly config: Config,
-    @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider) {
+    @inject(TYPES.KeyValueCache) cache: KeyValueCacheProvider,
+    @inject(TYPES.Services.SessionPlayer) private readonly sessionPlayer: SessionPlayer) {
     this.sponsorBlockTimeoutDelay = config.SPONSORBLOCK_TIMEOUT;
     this.sponsorBlock = config.ENABLE_SPONSORBLOCK
       ? new SponsorBlock('muse-sb-integration') // UserID matters only for submissions
@@ -67,9 +68,9 @@ export default class AddQueryToQueue {
 
     const settings = await getGuildSettings(guildId);
 
-    const {playlistLimit, queueAddResponseEphemeral, defaultQueuePageSize = 10} = settings;
+    const {playlistLimit} = settings;
 
-    await interaction.deferReply({ephemeral: queueAddResponseEphemeral});
+    await interaction.deferReply({ephemeral: false});
 
     let [newSongs, extraMsg] = await this.getSongs.getSongs(query, playlistLimit, shouldSplitChapters);
 
@@ -85,30 +86,30 @@ export default class AddQueryToQueue {
       newSongs = await Promise.all(newSongs.map(this.skipNonMusicSegments.bind(this)));
     }
 
+    const queuedSongs = newSongs.map(song => ({
+      ...song,
+      addedInChannelId: interaction.channel!.id,
+      requestedBy: interaction.member!.user.id,
+    }));
     const needsConnection = player.voiceConnection === null;
     if (needsConnection) {
       // A failed join must not leave an unacknowledged request in the queue.
-      await player.connect(targetVoiceChannel);
+      // Resolve audio during the handshake without changing the saved queue.
+      const connection = player.connect(targetVoiceChannel);
+      player.prepareAudio(player.getCurrent() ?? queuedSongs[0]);
+      await connection;
     } else {
       // Let an existing session recover without changing its channel or paused state.
       await player.ensureVoiceConnectionReady();
     }
 
-    newSongs.forEach((song, index) => {
-      player.add({
-        ...song,
-        addedInChannelId: interaction.channel!.id,
-        requestedBy: interaction.member!.user.id,
-      }, {
-        immediate: addToFrontOfQueue,
-        immediateOffset: index,
-      });
+    queuedSongs.forEach((song, index) => {
+      player.add(song, {immediate: addToFrontOfQueue, immediateOffset: index});
     });
 
     const firstSong = newSongs[0];
 
     let statusMsg = '';
-    let shouldShowPlayingEmbed = false;
 
     if (needsConnection) {
       // Resume / start playback
@@ -117,12 +118,9 @@ export default class AddQueryToQueue {
       if (wasPlayingSong) {
         statusMsg = 'resuming playback';
       }
-
-      shouldShowPlayingEmbed = true;
     } else if (player.status === STATUS.IDLE) {
       // Player is idle, start playback instead
       await player.play();
-      shouldShowPlayingEmbed = true;
     }
 
     if (!player.getCurrent()) {
@@ -144,97 +142,28 @@ export default class AddQueryToQueue {
       extraMsg = ` (${extraMsg})`;
     }
 
-    const responseContent = newSongs.length === 1
-      ? formatSongReply(firstSong.title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}`)
-      : formatSongReply(firstSong.title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}`);
-
-    if (!shouldShowPlayingEmbed) {
-      await interaction.editReply(responseContent);
-      return;
-    }
-
-    await this.sendPlayingMessage({
-      interaction,
-      player,
-      content: responseContent,
-      pageSize: defaultQueuePageSize,
-      ephemeral: queueAddResponseEphemeral,
-    });
-  }
-
-  /** Attach a single live response to the session, using the appropriate Discord edit API. */
-  private async sendPlayingMessage({interaction, player, content, pageSize, ephemeral}: {
-    interaction: ChatInputCommandInteraction;
-    player: Player;
-    content: string;
-    pageSize: number;
-    ephemeral: boolean;
-  }): Promise<void> {
-    const guildId = interaction.guild!.id;
-    // The queue embed supplies both the progress timer and the upcoming list
-    // for the live response associated with this playback session.
-    const responsePromise = interaction.editReply({
-      content,
-      embeds: [buildQueueEmbed(player, 1, pageSize)],
-    });
-    let finishControls!: () => void;
-    const controlsFinished = new Promise<void>(resolve => {
-      finishControls = resolve;
-    });
-    const updatePlayingMessage = async (terminalState?: PlayingMessageTerminalState) => {
-      // Capture before yielding: stop() can clear the queue while Discord is pending.
-      const update = terminalState === 'stopped'
-        ? {content: 'Playback stopped.', embeds: []}
-        : terminalState === 'finished'
-          ? {content, embeds: []}
-          : {embeds: [buildQueueEmbed(player, 1, pageSize)]};
-      const response = await responsePromise;
-
-      // Public interaction responses become regular channel messages and can
-      // use Message.edit. Ephemeral responses must remain on the interaction webhook.
-      try {
-        if (ephemeral) {
-          await interaction.editReply(update);
-        } else {
-          await response.edit(update);
-        }
-      } finally {
-        if (terminalState && !ephemeral) {
-          // Wait for any pending addition, without delaying the terminal text.
-          // Clear controls even if Discord rejected the final message edit.
-          await controlsFinished;
-          await response.reactions.removeAll().catch(error => {
-            console.warn(`Could not remove music controls for guild ${guildId}:`, error);
-          });
-        }
-      }
+    const title = escapeMarkdown(firstSong.title);
+    const responseContent = (publicationWarning = '') => {
+      const suffix = `${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}${publicationWarning}`;
+      return newSongs.length === 1
+        ? formatSongReply(title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${suffix}`)
+        : formatSongReply(title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${suffix}`);
     };
 
-    // Register before Discord publishes the response so stop/finish cannot be lost.
-    player.setPlayingMessageUpdater(updatePlayingMessage);
+    const receipt = interaction.editReply({content: responseContent(), allowedMentions: {parse: []}});
+    // Capture this session before the reply resolves, so a delayed Discord
+    // response cannot move a later session's player onto an older request.
+    const publication = this.sessionPlayer.attachToReply(player, interaction.channel as GuildTextBasedChannel, receipt).then(() => '', () => {
+      // The tracks have already been added. A Discord/persistence failure must
+      // not make the requester retry and accidentally enqueue them twice.
+      console.warn(`Could not publish the session player for guild ${guildId}.`);
+      return '\nThe player card could not be shown. Check my channel permissions, then use /now-playing.';
+    });
 
-    try {
-      const response = await responsePromise;
-      if (ephemeral || !player.setPlayingMessageId(updatePlayingMessage, response.id)) {
-        return;
-      }
-
-      // Add controls sequentially so Discord displays them in transport order.
-      for (const emoji of MUSIC_CONTROL_EMOJIS) {
-        if (!player.isPlayingMessage(response.id)) {
-          break;
-        }
-
-        try {
-          // Reaction order is part of the transport-control layout.
-          // eslint-disable-next-line no-await-in-loop
-          await response.react(emoji);
-        } catch (error: unknown) {
-          console.warn(`Could not add music control ${emoji} for guild ${guildId}:`, error);
-        }
-      }
-    } finally {
-      finishControls();
+    await receipt;
+    const publicationWarning = await publication;
+    if (publicationWarning) {
+      await interaction.editReply({content: responseContent(publicationWarning), allowedMentions: {parse: []}});
     }
   }
 

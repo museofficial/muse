@@ -7,6 +7,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import prismMedia from 'prism-media';
 import shuffle from 'array-shuffle';
 import uniqueSongs from '../utils/unique-songs.js';
+import type ListeningSession from './listening-session.js';
 import {
   AudioPlayer,
   AudioPlayerState,
@@ -102,7 +103,7 @@ const getFfmpegStartupError = (error: unknown) => {
 };
 
 type PlayerPlaybackAttemptContext = PlaybackAttemptContext<QueuedSong, VoiceConnection>;
-export type PlayingMessageTerminalState = 'finished' | 'stopped';
+export type PlayingMessageTerminalState = 'finished' | 'stopped' | 'disconnected';
 type PlayingMessageUpdater = (terminalState?: PlayingMessageTerminalState) => Promise<void>;
 type PlayingMessageState = {
   updater: PlayingMessageUpdater;
@@ -111,6 +112,10 @@ type PlayingMessageState = {
   updateInFlight: boolean;
   updateQueued: boolean;
   retired: boolean;
+  keepAfterFinish: boolean;
+  retryOnError: boolean;
+  retryAttempts: number;
+  retryTimer?: NodeJS.Timeout;
 };
 
 export default class {
@@ -155,6 +160,7 @@ export default class {
     guildId: string,
     ageRestrictedFallbackResolver?: AgeRestrictedFallbackResolver,
     playingMessageUpdateIntervalSeconds = DEFAULT_PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
+    public readonly listeningSession?: ListeningSession,
   ) {
     this.fileCache = fileCache;
     this.guildId = guildId;
@@ -185,6 +191,29 @@ export default class {
     }
   }
 
+  /** Resolve known audio while an initial voice connection becomes ready. */
+  prepareAudio(song: QueuedSong): void {
+    if (song.source === MediaSource.HLS || song.isLive || this.prefetchedMedia) {
+      return;
+    }
+
+    const generation = this.voiceConnectionGeneration;
+    const mediaSource = (async () => {
+      const to = song.offset === undefined ? undefined : song.length + song.offset;
+      const cacheKey = this.getAudioCacheKey(song, to);
+      const cachedEntry = await this.fileCache.getEntryFor(this.getHashForCache(cacheKey));
+      if (cachedEntry || generation !== this.voiceConnectionGeneration) {
+        return null;
+      }
+
+      return this.fetchMediaSource(song);
+    })().catch((error: unknown) => {
+      debug(`Audio preparation failed for guild ${this.guildId}: ${sanitizeFfmpegError(error)}`);
+      return null;
+    });
+    this.prefetchedMedia = {song, fetchedAt: Date.now(), mediaSource};
+  }
+
   async ensureVoiceConnectionReady(): Promise<VoiceConnection> {
     // An initial join may replace a timed-out connection before it succeeds.
     if (this.pendingConnection) {
@@ -204,7 +233,7 @@ export default class {
     return voiceConnection;
   }
 
-  disconnect(): void {
+  disconnect(reason: 'disconnected' | 'stopped' = 'disconnected'): void {
     this.voiceConnectionGeneration++;
     this.pendingConnection = undefined;
     this.prefetchedMedia = undefined;
@@ -228,6 +257,12 @@ export default class {
       this.volumeBeforeVoiceActivity = undefined;
       this.voiceActivityVolumeTarget = undefined;
       this.hasRegisteredVoiceActivityListener = false;
+    }
+
+    this.listeningSession?.finish(reason);
+    if (this.playingMessage?.keepAfterFinish) {
+      this.playingMessage.terminalState = reason;
+      this.requestPlayingMessageUpdate();
     }
   }
 
@@ -253,13 +288,16 @@ export default class {
    * Registers the renderer for the live response created when /play starts a
    * playback session. Older responses can still finish their terminal edits.
    */
-  setPlayingMessageUpdater(updater: PlayingMessageUpdater, messageId?: string): void {
+  setPlayingMessageUpdater(updater: PlayingMessageUpdater, messageId?: string, {keepAfterFinish = false, retryOnError = false} = {}): void {
     this.playingMessage = {
       updater,
       id: messageId,
       updateInFlight: false,
       updateQueued: false,
       retired: false,
+      keepAfterFinish,
+      retryOnError,
+      retryAttempts: 0,
     };
     this.secondsSincePlayingMessageUpdate = 0;
   }
@@ -267,7 +305,8 @@ export default class {
   /** Binds a published response only while its renderer still owns the session. */
   setPlayingMessageId(updater: PlayingMessageUpdater, messageId: string): boolean {
     const message = this.playingMessage;
-    if (!message || message.updater !== updater || message.terminalState !== undefined) {
+    if (!message || message.updater !== updater
+      || (message.terminalState !== undefined && !(message.keepAfterFinish && message.terminalState === 'finished'))) {
       return false;
     }
 
@@ -281,6 +320,10 @@ export default class {
     return this.playingMessage?.terminalState === undefined && this.playingMessage?.id === messageId;
   }
 
+  getPlayingMessageId(): string | undefined {
+    return this.playingMessage?.retired ? undefined : this.playingMessage?.id;
+  }
+
   /** Requests an immediate render after an externally initiated control. */
   refreshPlayingMessage(): void {
     this.requestPlayingMessageUpdate();
@@ -289,6 +332,11 @@ export default class {
   async play(allowAgeRestrictedFallback = true): Promise<void> {
     const attempt = this.playbackAttempts.begin();
     await this.playWithAttempt(attempt, allowAgeRestrictedFallback);
+  }
+
+  async replay(): Promise<void> {
+    this.listeningSession?.endTrack('skipped');
+    await this.seek(0);
   }
 
   pause(): void {
@@ -424,6 +472,7 @@ export default class {
 
   manualForward(skip: number): void {
     if (this.canGoForward(skip)) {
+      this.listeningSession?.endTrack('skipped');
       this.queuePosition += skip;
       this.currentQueueEntryVersion++;
       this.positionInSeconds = 0;
@@ -441,6 +490,8 @@ export default class {
     if (!this.canGoBack()) {
       throw new Error('No songs in queue to go back to.');
     }
+
+    this.listeningSession?.endTrack('skipped');
 
     const originalPosition = this.positionInSeconds;
     const originalQueuePosition = this.queuePosition;
@@ -556,6 +607,7 @@ export default class {
   }
 
   removeCurrent(): void {
+    this.listeningSession?.endTrack('skipped');
     this.queue = [...this.queue.slice(0, this.queuePosition), ...this.queue.slice(this.queuePosition + 1)];
     this.currentQueueEntryVersion++;
     this.requestPlayingMessageUpdate();
@@ -570,7 +622,7 @@ export default class {
   }
 
   stop(): void {
-    this.disconnect();
+    this.disconnect('stopped');
     this.queuePosition = 0;
     this.queue = [];
     this.currentQueueEntryVersion++;
@@ -933,6 +985,12 @@ export default class {
     return hasha(url);
   }
 
+  private getAudioCacheKey(song: QueuedSong, to?: number): string {
+    // Cached audio starts at zero but may end at a chapter or SponsorBlock boundary.
+    // Version the key to avoid reusing legacy URL-only entries with unknown bounds.
+    return JSON.stringify(['audio-v2', song.source, song.url, to ?? null]);
+  }
+
   private async getStream(
     song: QueuedSong,
     options: {seek?: number; to?: number} = {},
@@ -965,9 +1023,7 @@ export default class {
     const ffmpegInputOptions: string[] = [];
     let shouldCacheVideo = false;
 
-    // Cached audio starts at zero but may end at a chapter or SponsorBlock boundary.
-    // Version the key to avoid reusing legacy URL-only entries with unknown bounds.
-    const cacheKey = JSON.stringify(['audio-v2', song.source, song.url, options.to ?? null]);
+    const cacheKey = this.getAudioCacheKey(song, options.to);
     const cacheHash = this.getHashForCache(cacheKey);
     const cachedEntry = await this.fileCache.getEntryFor(cacheHash);
     if (!isCurrent()) {
@@ -1071,6 +1127,13 @@ export default class {
     }, 1000);
   }
 
+  private recordStartedTrack(song: QueuedSong, queueEntryId: number, connection: VoiceConnection): void {
+    this.listeningSession?.startTrack(song, connection.joinConfig.channelId!, queueEntryId);
+    if (this.playingMessage?.keepAfterFinish && this.playingMessage.terminalState === 'finished') {
+      this.playingMessage.terminalState = undefined;
+    }
+  }
+
   /**
    * Serializes edits for each response. Replaced responses may finish their
    * terminal update, but must not render progress from the new session.
@@ -1090,11 +1153,15 @@ export default class {
       return;
     }
 
+    clearTimeout(message.retryTimer);
+    message.retryTimer = undefined;
     message.updateInFlight = true;
     const {terminalState} = message;
     void message.updater(terminalState)
       .then(() => {
-        if (terminalState && message.terminalState === terminalState) {
+        message.retryAttempts = 0;
+        if (terminalState && message.terminalState === terminalState
+          && !(terminalState === 'finished' && message.keepAfterFinish)) {
           // Terminal responses no longer receive timer edits or controls.
           message.retired = true;
           if (this.playingMessage === message) {
@@ -1103,10 +1170,23 @@ export default class {
         }
       })
       .catch((error: unknown) => {
-        // A failed old response must not retire the new session's response.
-        message.retired = true;
-        if (this.playingMessage === message) {
-          this.playingMessage = undefined;
+        if (message.retryOnError) {
+          // Public history can fail independently of the primary card. Keep
+          // its renderer, including a stopped session's final recap. Bound
+          // automatic retries; ordinary progress/control updates can retry too.
+          if (message.retryAttempts < 3) {
+            message.retryAttempts++;
+            message.retryTimer = setTimeout(() => {
+              this.requestPlayingMessageUpdate(message);
+            }, 3000);
+            message.retryTimer.unref();
+          }
+        } else {
+          // A failed old response must not retire the new session's response.
+          message.retired = true;
+          if (this.playingMessage === message) {
+            this.playingMessage = undefined;
+          }
         }
 
         const detail = error instanceof Error ? `${error.name}: ${error.message}` : error;
@@ -1116,7 +1196,11 @@ export default class {
         message.updateInFlight = false;
         if (message.updateQueued) {
           message.updateQueued = false;
-          this.requestPlayingMessageUpdate(message);
+          // A failed render's scheduled retry reads the latest state. Avoid
+          // bypassing its delay when Stop queued the same terminal edit twice.
+          if (!message.retryTimer) {
+            this.requestPlayingMessageUpdate(message);
+          }
         }
       });
   }
@@ -1174,7 +1258,7 @@ export default class {
       return;
     }
 
-    const {audioPlayer} = this;
+    const {audioPlayer, voiceConnection} = this;
     if (audioPlayer.listeners('error').length === 0) {
       audioPlayer.on('error', error => {
         // The voice library transitions failed resources to Idle after emitting
@@ -1184,6 +1268,24 @@ export default class {
     }
 
     const queueEntryVersion = this.currentQueueEntryVersion;
+    const song = this.getCurrent();
+    if (this.listeningSession && song) {
+      this.listeningSession.prepare(voiceConnection.joinConfig.channelId!, song.addedInChannelId);
+      audioPlayer.on(AudioPlayerStatus.Playing, (_oldState, newState) => {
+        // Playback may only enter Buffering. Count the owned resource once it
+        // actually plays, and ignore late events from stopped/replaced audio.
+        if (this.programmaticallyStoppedAudioPlayers.has(audioPlayer)
+          || this.audioPlayer !== audioPlayer || this.voiceConnection !== voiceConnection
+          || this.currentQueueEntryVersion !== queueEntryVersion || this.getCurrent() !== song
+          || newState.resource !== this.audioResource) {
+          return;
+        }
+
+        this.recordStartedTrack(song, queueEntryVersion, voiceConnection);
+        this.requestPlayingMessageUpdate();
+      });
+    }
+
     if (audioPlayer.listeners(AudioPlayerStatus.Idle).length === 0) {
       audioPlayer.on(AudioPlayerStatus.Idle, (oldState, newState) => {
         if (this.programmaticallyStoppedAudioPlayers.has(audioPlayer)
@@ -1287,6 +1389,10 @@ export default class {
   }
 
   private async onAudioPlayerIdle(_oldState: AudioPlayerState, newState: AudioPlayerState): Promise<void> {
+    if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
+      this.listeningSession?.endTrack('completed');
+    }
+
     // Automatically advance queued song at end
     if (this.loopCurrentSong && newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
       await this.seek(0);

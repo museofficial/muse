@@ -303,7 +303,8 @@ describe('SQLite persistence', () => {
         finished_at: Date | null;
         migration_name: string;
       }>>('SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY migration_name');
-      expect(appliedMigrations).toHaveLength(19);
+      expect(appliedMigrations).toHaveLength(21);
+      expect(appliedMigrations.map(migration => migration.migration_name)).toContain('20261024170000_add_listening_sessions');
       expect(appliedMigrations.every(({finished_at: finishedAt}) => finishedAt !== null)).toBe(true);
       expect(appliedMigrations.map(({migration_name: name}) => name))
         .toContain('20220101155430_migrate_from_sequelize');
@@ -704,6 +705,7 @@ describe('key-value cache TTL call-site contracts', () => {
         {} as never,
         {ENABLE_SPONSORBLOCK: true, SPONSORBLOCK_TIMEOUT: 5} as never,
         sponsorBlockCache as never,
+        {attachToReply: vi.fn()} as never,
       );
       await (addQueryToQueue as unknown as {
         skipNonMusicSegments(song: object): Promise<object>;
