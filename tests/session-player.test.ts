@@ -13,6 +13,10 @@ vi.mock('../src/utils/get-guild-settings.js', () => ({getGuildSettings: guildSet
 vi.mock('../src/services/session-history-store.js', () => ({default: class {}}));
 
 import SessionPlayer from '../src/services/session-player.js';
+import {LocalizedError} from '../src/i18n/index.js';
+import {loadBundledLocales} from '../src/i18n/custom.js';
+
+await loadBundledLocales();
 
 const id = 'f4d70da3-1b9f-4e13-a962-2156db953d73';
 const track = (title = 'First song') => ({
@@ -990,5 +994,66 @@ describe('bounded session rendering', () => {
     expect(controls.map(button => button.label)).toEqual(['Back 10 seconds', 'Forward 10 seconds', 'Shuffle']);
     expect(controls.slice(0, 2).every(button => button.disabled)).toBe(true);
     expect(controls.every(button => !('emoji' in button))).toBe(true);
+  });
+});
+
+describe('session player localization', () => {
+  const spanishServer = () => {
+    const f = fixture();
+    Object.assign(f.channel.guild, {preferredLocale: 'es-ES'});
+    return f;
+  };
+
+  it('publishes the shared card and its later edits in the server language', async () => {
+    const f = spanishServer();
+    await f.service.ensureMessage(f.player as never, f.channel as never);
+    const sent = f.channel.send.mock.calls[0][0];
+    expect(sent.embeds[0].data.fields.map((field: {name: string}) => field.name)).toEqual(['En cola', 'Duración total']);
+    expect(sent.components[1].components[0].label).toBe('Cola');
+    await f.state.updater!();
+    expect(f.card.edit.mock.calls.at(-1)![0].components[1].components[0].label).toBe('Cola');
+  });
+
+  it('recovers an interrupted session in the server language', async () => {
+    const f = spanishServer();
+    const session = {...f.state.record, channelId: 'channel', endedAt: new Date(), endReason: 'interrupted' as const};
+    f.store.interruptOpenSessions.mockResolvedValue([session]);
+    f.channel.messages.fetch.mockRejectedValue({code: 10008});
+    await f.service.prepareRecovery();
+    await f.service.recover(f.channel.client as never);
+    expect(f.channel.send.mock.calls[0][0].embeds[0].data.title).toBe('Resumen de la sesión');
+  });
+
+  it('answers a click in the language of the user who clicked, not the server', async () => {
+    const f = spanishServer();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});
+    const queue = {...f.interaction('queue'), locale: 'en-US'};
+    await f.service.handleButton(queue as never);
+    expect(queue.editReply.mock.calls[0][0].embeds[0].data.fields.map((field: {name: string}) => field.name)).toContain('In queue');
+
+    const spanishClick = {...f.interaction('queue'), locale: 'es-ES'};
+    await f.service.handleButton(spanishClick as never);
+    expect(spanishClick.editReply.mock.calls[0][0].embeds[0].data.fields.map((field: {name: string}) => field.name)).toContain('En cola');
+  });
+
+  it('localizes private control errors', async () => {
+    const f = fixture();
+    Object.assign(f.state.record, {channelId: 'channel', messageId: 'message'});
+    permission.mockResolvedValue(false);
+    const denied = {...f.interaction('next'), locale: 'es-ES'};
+    await f.service.handleButton(denied as never);
+    expect(denied.editReply).toHaveBeenCalledWith('Entra en el canal de voz del bot y comprueba que tienes permiso para usar este comando.');
+
+    const invalid = {...f.interaction('next'), customId: 'muse-session:bad', locale: 'es-ES'};
+    await f.service.handleButton(invalid as never);
+    expect(invalid.editReply).toHaveBeenCalledWith('Este control del reproductor ya no está disponible.');
+  });
+
+  it('throws errors that /now-playing and /resume can show in the requester language', async () => {
+    const f = fixture();
+    const error = await f.service.ensureMessage(f.player as never, f.channel as never, '00000000-0000-4000-8000-000000000000').catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(LocalizedError);
+    expect((error as LocalizedError).message).toBe('This listening session has ended.');
+    expect((error as LocalizedError).localize('es-ES')).toBe('Esta sesión de escucha ha terminado.');
   });
 });

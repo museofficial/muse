@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Reply in the Discord language of the user who ran a command, and use the server's language for messages Muse sends on its own. Anything without a translation uses the original English (Midwestern) text.
+- Translate the shared player card, session recaps and session history into the server's language, and private button replies into the language of the user who clicked.
 - Add a Spanish translation (also used for Latin American Spanish) and an English (Southern) personality pack.
 - Translate slash command names and descriptions in the `/` menu, and show them in `/help`. Commands still work the same way whatever language you use.
 - Add `BOT_LOCALE` to use one language pack for everyone, for example `BOT_LOCALE=en-US-x-southern`.

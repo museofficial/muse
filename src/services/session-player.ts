@@ -11,6 +11,7 @@ import SessionHistoryPublisher from './session-history-publisher.js';
 import canUsePlaybackCommand from '../utils/can-use-playback-command.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildHistoryMessages, buildMoreMessage, buildQueueMessage, buildSessionMessage, buildSessionMessages, SESSION_BUTTON_PREFIX} from '../utils/build-session-message.js';
+import {LocalizedError, t} from '../i18n/index.js';
 
 const isMissingMessage = (error: unknown): boolean => Boolean(error && typeof error === 'object' && 'code' in error && error.code === 10008);
 const playbackCommands: Record<string, string> = {
@@ -34,7 +35,7 @@ export default class SessionPlayer {
   public async ensureMessage(player: Player, channel: GuildTextBasedChannel, expectedSessionId?: string): Promise<string> {
     const controller = player.listeningSession;
     if (expectedSessionId && controller?.snapshot()?.id !== expectedSessionId) {
-      throw new Error('This listening session has ended.');
+      throw new LocalizedError('session.error.ended');
     }
 
     // Save the origin before publication can fail. A later recovery request in
@@ -42,7 +43,7 @@ export default class SessionPlayer {
     controller?.setChannel(channel.id);
     const captured = controller?.snapshot();
     if (!controller || !captured) {
-      throw new Error('No listening session is available.');
+      throw new LocalizedError('session.error.unavailable');
     }
 
     // Pin this request before waiting for another publication or database write.
@@ -55,9 +56,11 @@ export default class SessionPlayer {
       const originalChannel = !originalChannelId || originalChannelId === channel.id
         ? channel : await channel.client.channels.fetch(originalChannelId);
       if (!originalChannel?.isTextBased() || !('guild' in originalChannel) || originalChannel.guild.id !== player.guildId) {
-        throw new Error('The player channel is no longer accessible.');
+        throw new LocalizedError('session.error.channelUnavailable');
       }
 
+      // The card is shared, so it uses the server's language rather than one requester's.
+      const locale = originalChannel.guild.preferredLocale;
       let card: Message | undefined;
       if (session.messageId) {
         try {
@@ -71,7 +74,7 @@ export default class SessionPlayer {
 
       session = await this.capturedSession(player, captured.id);
       if (!card) {
-        card = await originalChannel.send(buildSessionMessage(session, session.endedAt ? undefined : player, defaultQueuePageSize));
+        card = await originalChannel.send(buildSessionMessage(session, session.endedAt ? undefined : player, defaultQueuePageSize, locale));
         // Persist a late card on its captured record, never on a newer session.
         if (controller.snapshot()?.id !== captured.id) {
           await this.archivePublication(player, captured.id, card, originalChannel);
@@ -93,7 +96,7 @@ export default class SessionPlayer {
       }
 
       this.installUpdater(player, originalChannel, card, {sessionId: captured.id, queuePageSize: defaultQueuePageSize});
-      await this.historyPublisher.publish(originalChannel, bound, buildSessionMessages(bound, player, defaultQueuePageSize).slice(1), {force: true});
+      await this.historyPublisher.publish(originalChannel, bound, buildSessionMessages(bound, player, defaultQueuePageSize, locale).slice(1), {force: true});
       player.refreshPlayingMessage();
       return `https://discord.com/channels/${player.guildId}/${card.channelId}/${card.id}`;
     });
@@ -130,6 +133,7 @@ export default class SessionPlayer {
       }
 
       const {defaultQueuePageSize} = await getGuildSettings(player.guildId);
+      const locale = channel.guild.preferredLocale;
       let previous: Message | undefined;
       if (session.messageId) {
         try {
@@ -146,7 +150,7 @@ export default class SessionPlayer {
       let rendered: ListeningSessionRecord;
       try {
         session = await this.capturedSession(player, captured.id);
-        const payload = buildSessionMessage(session, session.endedAt ? undefined : player, defaultQueuePageSize);
+        const payload = buildSessionMessage(session, session.endedAt ? undefined : player, defaultQueuePageSize, locale);
         // First prove the new message is editable without enabling its controls.
         await card.edit({...payload, content: undefined, components: []});
         if (previous) {
@@ -159,7 +163,7 @@ export default class SessionPlayer {
         }
 
         rendered = await this.capturedSession(player, captured.id);
-        await card.edit({...buildSessionMessage(rendered, rendered.endedAt ? undefined : player, defaultQueuePageSize), content: undefined});
+        await card.edit({...buildSessionMessage(rendered, rendered.endedAt ? undefined : player, defaultQueuePageSize, locale), content: undefined});
       } catch (error) {
         await this.restorePublication(player, channel, {card, previous, previousId, captured, queuePageSize: defaultQueuePageSize});
         throw error;
@@ -171,7 +175,7 @@ export default class SessionPlayer {
       }
 
       try {
-        await this.historyPublisher.publish(channel, rendered, buildSessionMessages(rendered, rendered.endedAt ? undefined : player, defaultQueuePageSize).slice(1), {force: true});
+        await this.historyPublisher.publish(channel, rendered, buildSessionMessages(rendered, rendered.endedAt ? undefined : player, defaultQueuePageSize, locale).slice(1), {force: true});
         if (rendered.endedAt) {
           await this.store.markRecovered(rendered.id);
           this.historyPublisher.forget(rendered.id);
@@ -219,7 +223,7 @@ export default class SessionPlayer {
         if (!card) {
           // A crash before publication or a deleted card must not leave saved
           // history without a reachable entry point after restart.
-          const replacement = await channel.send(buildSessionMessage(session));
+          const replacement = await channel.send(buildSessionMessage(session, undefined, undefined, channel.guild.preferredLocale));
           try {
             await this.store.save({...session, channelId: channel.id, messageId: replacement.id});
             card = replacement;
@@ -270,10 +274,12 @@ export default class SessionPlayer {
   private async handleAcknowledgedButton(interaction: ButtonInteraction): Promise<void> {
     const parts = interaction.customId.slice(SESSION_BUTTON_PREFIX.length).split(':');
     const [sessionId, action, rawPage] = parts;
+    // Button replies are private, so they use the language of whoever clicked.
+    const {locale} = interaction;
     const page = Number(rawPage);
     if (parts.length !== 3 || !/^[\da-f-]{36}$/i.test(sessionId) || !Number.isSafeInteger(page) || page < 0
       || !interaction.guild || !['history', 'queue', 'more', ...Object.keys(playbackCommands)].includes(action)) {
-      await interaction.editReply('This player control is no longer available.');
+      await interaction.editReply(t(locale, 'session.error.controlUnavailable'));
       return;
     }
 
@@ -281,13 +287,13 @@ export default class SessionPlayer {
     await existingPlayer?.listeningSession?.flush();
     const session = await this.store.load(sessionId, interaction.guild.id);
     if (!session || !await this.canReadSession(interaction, session)) {
-      await interaction.editReply('This listening session is not available in this channel.');
+      await interaction.editReply(t(locale, 'session.error.notInChannel'));
       return;
     }
 
     if (action === 'history') {
       // Old deployed buttons remain readable, but never require pagination.
-      const [first, ...rest] = buildHistoryMessages(session);
+      const [first, ...rest] = buildHistoryMessages(session, locale);
       await interaction.editReply(first);
       for (const payload of rest) {
         // eslint-disable-next-line no-await-in-loop
@@ -298,7 +304,7 @@ export default class SessionPlayer {
     }
 
     if (!interaction.message.flags.has(MessageFlags.Ephemeral) && interaction.message.id !== session.messageId) {
-      await interaction.editReply('The player moved. Use the controls on its latest queue receipt.');
+      await interaction.editReply(t(locale, 'session.error.playerMoved'));
       return;
     }
 
@@ -306,17 +312,17 @@ export default class SessionPlayer {
       ? (await getGuildSettings(interaction.guild.id)).defaultQueuePageSize : undefined;
     const player = this.currentPlayer(session);
     if (!player) {
-      await interaction.editReply('This listening session has ended. Its history is still available.');
+      await interaction.editReply(t(locale, 'session.error.endedWithHistory'));
       return;
     }
 
     if (action === 'queue' && !player.getCurrent()) {
-      await interaction.editReply('The queue is empty.');
+      await interaction.editReply(t(locale, 'session.error.queueEmpty'));
       return;
     }
 
     if (action === 'queue' || action === 'more') {
-      await interaction.editReply(action === 'queue' ? buildQueueMessage(session, player, page, queuePageSize) : buildMoreMessage(session, player));
+      await interaction.editReply(action === 'queue' ? buildQueueMessage(session, player, {page, pageSize: queuePageSize, locale}) : buildMoreMessage(session, player, locale));
       return;
     }
 
@@ -324,16 +330,16 @@ export default class SessionPlayer {
   }
 
   private async handleTransportButton(interaction: ButtonInteraction, session: ListeningSessionRecord, action: string): Promise<void> {
-    const {guild} = interaction;
+    const {guild, locale} = interaction;
     const active = this.currentPlayer(session);
     if (!guild || !active || !session.messageId || !session.channelId) {
-      await interaction.editReply('This listening session has ended.');
+      await interaction.editReply(t(locale, 'session.error.ended'));
       return;
     }
 
     const channel = await guild.channels.fetch(session.channelId, {force: true});
     if (!channel?.isTextBased()) {
-      await interaction.editReply('The player channel is no longer accessible.');
+      await interaction.editReply(t(locale, 'session.error.channelUnavailable'));
       return;
     }
 
@@ -346,12 +352,12 @@ export default class SessionPlayer {
       }
 
       if (this.currentPlayer(session) !== active) {
-        await interaction.editReply('This listening session has ended.');
+        await interaction.editReply(t(locale, 'session.error.ended'));
         return;
       }
 
       await this.ensureMessage(active, channel, session.id);
-      await interaction.editReply('The player card was replaced. Use its new controls.');
+      await interaction.editReply(t(locale, 'session.error.cardReplaced'));
       return;
     }
 
@@ -362,7 +368,7 @@ export default class SessionPlayer {
       && Boolean(active.voiceConnection?.joinConfig.channelId);
     const command = playbackCommands[action];
     if (!canControl() || !await canUsePlaybackCommand(card, interaction.user.id, command) || !canControl()) {
-      await interaction.editReply('Join the bot\'s voice channel and check your permission to use this command.');
+      await interaction.editReply(t(locale, 'session.error.controlDenied'));
       return;
     }
 
@@ -389,7 +395,7 @@ export default class SessionPlayer {
     await player.listeningSession?.flush();
     const saved = await this.store.load(sessionId, player.guildId);
     if (!saved) {
-      throw new Error('The listening-session history is not available.');
+      throw new LocalizedError('session.error.historyUnavailable');
     }
 
     return saved;
@@ -425,7 +431,7 @@ export default class SessionPlayer {
         this.installUpdater(player, channel, retained, {sessionId: captured.id, queuePageSize});
       }
 
-      const payload = buildSessionMessage(restored ?? captured, current?.id === captured.id ? player : undefined, queuePageSize);
+      const payload = buildSessionMessage(restored ?? captured, current?.id === captured.id ? player : undefined, queuePageSize, channel.guild.preferredLocale);
       await retained.edit({...payload, content: undefined}).catch(() => {
         if (current?.id === captured.id) {
           player.refreshPlayingMessage();
@@ -465,7 +471,7 @@ export default class SessionPlayer {
 
     const archived = await this.capturedSession(player, sessionId);
     if (!archived.endedAt) {
-      throw new Error('The completed listening-session history is not available.');
+      throw new LocalizedError('session.error.completedHistoryUnavailable');
     }
 
     await this.store.save({...archived, channelId, messageId});
@@ -476,7 +482,7 @@ export default class SessionPlayer {
       await player.listeningSession?.flush();
       const completed = await this.store.load(sessionId, player.guildId);
       if (!completed?.endedAt) {
-        throw new Error('The completed listening-session history is not available.');
+        throw new LocalizedError('session.error.completedHistoryUnavailable');
       }
 
       // The controller now owns a different session. Bind only the completed
@@ -495,7 +501,7 @@ export default class SessionPlayer {
   }
 
   private async publishMessages(card: Message, channel: GuildTextBasedChannel, session: ListeningSessionRecord, {player, queuePageSize}: {player?: Player; queuePageSize?: number} = {}): Promise<void> {
-    const [first, ...history] = buildSessionMessages(session, player, queuePageSize);
+    const [first, ...history] = buildSessionMessages(session, player, queuePageSize, channel.guild.preferredLocale);
     await card.edit({...first, content: undefined});
     await this.historyPublisher.publish(channel, {...session, channelId: card.channelId, messageId: card.id}, history, {force: Boolean(session.endedAt)});
     if (session.endedAt) {

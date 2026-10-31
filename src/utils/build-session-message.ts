@@ -4,12 +4,12 @@ import {MediaSource, STATUS} from '../services/player-types.js';
 import type {ListeningSessionEntry, ListeningSessionRecord} from '../services/listening-session.js';
 import {buildQueueEmbed} from './build-embed.js';
 import {truncate} from './string.js';
+import {t} from '../i18n/index.js';
 
 export const SESSION_BUTTON_PREFIX = 'muse-session:';
 const MAX_DESCRIPTION_LENGTH = 4096;
 const MAX_MESSAGE_EMBED_TEXT = 6000;
 const MAX_MESSAGE_EMBEDS = 10;
-const CONTINUED_HISTORY_TITLE = 'Session history (continued)';
 
 export const sessionButtonId = (sessionId: string, action: string, page = 0): string => `${SESSION_BUTTON_PREFIX}${sessionId}:${action}:${page}`;
 
@@ -29,8 +29,8 @@ const row = (...buttons: SessionButton[]): SessionRow => ({type: 1, components: 
 type Track = {title: string; url: string; source: string | MediaSource; offset: number};
 
 /** Display URLs are bounded independently of the original playback source. */
-const trackLink = (track: Track, titleLimit = 120): string => {
-  const title = escapeMarkdown(truncate(track.title.replace(/[\r\n\t]/g, ' ').trim() || 'Untitled track', titleLimit));
+const trackLink = (track: Track, locale?: string, titleLimit = 120): string => {
+  const title = escapeMarkdown(truncate(track.title.replace(/[\r\n\t]/g, ' ').trim() || t(locale, 'session.untitledTrack'), titleLimit));
   let {url} = track;
   if (track.source === 'Youtube' || track.source === MediaSource.Youtube) {
     if (/^[\w-]{11}$/.test(url)) {
@@ -55,13 +55,8 @@ const trackLink = (track: Track, titleLimit = 120): string => {
   }
 };
 
-const entryLine = (entry: ListeningSessionEntry, index: number): string => {
-  const labels: Record<ListeningSessionEntry['status'], string> = {
-    playing: 'Playing', completed: 'Played', skipped: 'Skipped', stopped: 'Stopped',
-    disconnected: 'Disconnected', interrupted: 'Interrupted',
-  };
-  return `${index + 1}. ${trackLink(entry)} — ${labels[entry.status]}`;
-};
+const entryLine = (entry: ListeningSessionEntry, index: number, locale?: string): string =>
+  `${index + 1}. ${trackLink(entry, locale)} — ${t(locale, `session.status.${entry.status}`)}`;
 
 export type SessionMessagePayload = {
   content: string;
@@ -83,8 +78,10 @@ const embedTextLength = (embed: EmbedBuilder): number => {
 const historyEmbed = (title: string) => new EmbedBuilder().setColor(0x365c65).setTitle(title);
 
 /** Fill the current message before adding another, keeping each entry intact. */
-const appendHistory = (messages: SessionMessagePayload[], session: ListeningSessionRecord): SessionMessagePayload[] => {
-  const lines = session.entries.length > 0 ? session.entries.map(entryLine) : ['No tracks played.'];
+const appendHistory = (messages: SessionMessagePayload[], session: ListeningSessionRecord, locale?: string): SessionMessagePayload[] => {
+  const lines = session.entries.length > 0
+    ? session.entries.map((entry, index) => entryLine(entry, index, locale))
+    : [t(locale, 'session.noTracks')];
   for (const line of lines) {
     let current = messages[messages.length - 1];
     let embed = current.embeds[current.embeds.length - 1];
@@ -96,7 +93,7 @@ const appendHistory = (messages: SessionMessagePayload[], session: ListeningSess
       continue;
     }
 
-    embed = historyEmbed(CONTINUED_HISTORY_TITLE);
+    embed = historyEmbed(t(locale, 'session.historyContinued'));
     if (current.embeds.length >= MAX_MESSAGE_EMBEDS || messageLength + embedTextLength(embed) + line.length > MAX_MESSAGE_EMBED_TEXT) {
       current = message(embed, []);
       messages.push(current);
@@ -110,69 +107,69 @@ const appendHistory = (messages: SessionMessagePayload[], session: ListeningSess
   return messages;
 };
 
-const recapDescription = (session: ListeningSessionRecord): string => {
+const recapDescription = (session: ListeningSessionRecord, locale?: string): string => {
   const summary = session.endedAt
-    ? `Session ended <t:${Math.floor(session.endedAt.getTime() / 1000)}:R>.`
-    : 'Queue complete. Add a song to keep listening.';
-  return `${summary}\n\n**Session history**`;
+    ? t(locale, 'session.ended', {time: `<t:${Math.floor(session.endedAt.getTime() / 1000)}:R>`})
+    : t(locale, 'session.queueComplete');
+  return `${summary}\n\n**${t(locale, 'session.history')}**`;
 };
 
-export const buildSessionMessages = (session: ListeningSessionRecord, player?: Player, queuePageSize = 10): SessionMessagePayload[] => {
+export const buildSessionMessages = (session: ListeningSessionRecord, player?: Player, queuePageSize = 10, locale?: string): SessionMessagePayload[] => {
   const active = !session.endedAt && player !== undefined;
   const current = active ? player.getCurrent() : null;
   const components: SessionRow[] = [];
 
   if (current && player) {
     components.push(row(
-      button(session, 'previous', 'Previous', {disabled: !player.canGoBack()}),
-      button(session, 'backward', '−10s', {disabled: current.isLive}),
-      button(session, player.status === STATUS.PAUSED ? 'resume' : 'pause', player.status === STATUS.PAUSED ? 'Resume' : 'Pause', {style: ButtonStyle.Primary}),
-      button(session, 'forward', '+10s', {disabled: current.isLive}),
-      button(session, 'next', 'Next', {disabled: !player.canGoForward(1)}),
+      button(session, 'previous', t(locale, 'session.button.previous'), {disabled: !player.canGoBack()}),
+      button(session, 'backward', t(locale, 'session.button.backward'), {disabled: current.isLive}),
+      button(session, player.status === STATUS.PAUSED ? 'resume' : 'pause', t(locale, player.status === STATUS.PAUSED ? 'session.button.resume' : 'session.button.pause'), {style: ButtonStyle.Primary}),
+      button(session, 'forward', t(locale, 'session.button.forward'), {disabled: current.isLive}),
+      button(session, 'next', t(locale, 'session.button.next'), {disabled: !player.canGoForward(1)}),
     ));
     components.push(row(
-      button(session, 'queue', 'Queue'),
-      button(session, 'shuffle', 'Shuffle', {disabled: player.isQueueEmpty()}),
+      button(session, 'queue', t(locale, 'session.button.queue')),
+      button(session, 'shuffle', t(locale, 'session.button.shuffle'), {disabled: player.isQueueEmpty()}),
     ));
   }
 
   if (current && player) {
-    const embed = buildQueueEmbed(player, 1, queuePageSize);
+    const embed = buildQueueEmbed(player, 1, queuePageSize, locale);
     // Pagination belongs to the full queue view; an empty preview needs no summary.
-    embed.setFields(player.isQueueEmpty() ? [] : (embed.data.fields ?? []).filter(field => field.name !== 'Page'));
+    embed.setFields(player.isQueueEmpty() ? [] : (embed.data.fields ?? []).filter(field => field.name !== t(locale, 'embed.page')));
     return [message(embed, components)];
   }
 
-  const recap = historyEmbed('Session recap').setDescription(recapDescription(session));
-  return appendHistory([message(recap, components)], session);
+  const recap = historyEmbed(t(locale, 'session.recap')).setDescription(recapDescription(session, locale));
+  return appendHistory([message(recap, components)], session, locale);
 };
 
-export const buildSessionMessage = (session: ListeningSessionRecord, player?: Player, queuePageSize = 10): SessionMessagePayload => buildSessionMessages(session, player, queuePageSize)[0];
+export const buildSessionMessage = (session: ListeningSessionRecord, player?: Player, queuePageSize = 10, locale?: string): SessionMessagePayload => buildSessionMessages(session, player, queuePageSize, locale)[0];
 
-const pagination = (session: ListeningSessionRecord, action: string, page: number, pages: number) => row(
-  button(session, action, 'Previous page', {page: page - 1, disabled: page === 0}),
-  button(session, action, 'Next page', {page: page + 1, disabled: page + 1 >= pages}),
+const pagination = (session: ListeningSessionRecord, action: string, {page, pages, locale}: {page: number; pages: number; locale?: string}) => row(
+  button(session, action, t(locale, 'session.button.previousPage'), {page: page - 1, disabled: page === 0}),
+  button(session, action, t(locale, 'session.button.nextPage'), {page: page + 1, disabled: page + 1 >= pages}),
 );
 
-export const buildHistoryMessages = (session: ListeningSessionRecord): SessionMessagePayload[] => appendHistory([
-  message(historyEmbed('Session history'), []),
-], session);
+export const buildHistoryMessages = (session: ListeningSessionRecord, locale?: string): SessionMessagePayload[] => appendHistory([
+  message(historyEmbed(t(locale, 'session.history')), []),
+], session, locale);
 
-export const buildQueueMessage = (session: ListeningSessionRecord, player: Player, requestedPage = 0, pageSize = 10) => {
+export const buildQueueMessage = (session: ListeningSessionRecord, player: Player, {page: requestedPage = 0, pageSize = 10, locale}: {page?: number; pageSize?: number; locale?: string} = {}) => {
   const pages = Math.max(1, Math.ceil(player.queueSize() / pageSize));
   const page = Math.max(0, Math.min(requestedPage, pages - 1));
-  const embed = buildQueueEmbed(player, page + 1, pageSize);
-  return message(embed, pages > 1 ? [pagination(session, 'queue', page, pages)] : []);
+  const embed = buildQueueEmbed(player, page + 1, pageSize, locale);
+  return message(embed, pages > 1 ? [pagination(session, 'queue', {page, pages, locale})] : []);
 };
 
-export const buildMoreMessage = (session: ListeningSessionRecord, player: Player) => {
+export const buildMoreMessage = (session: ListeningSessionRecord, player: Player, locale?: string) => {
   const current = player.getCurrent();
   const seekDisabled = !current || current.isLive;
-  const embed = new EmbedBuilder().setColor(0x365c65).setTitle('Playback controls')
-    .setDescription('Playback controls are available to listeners in the bot\'s voice channel.');
+  const embed = new EmbedBuilder().setColor(0x365c65).setTitle(t(locale, 'session.controls'))
+    .setDescription(t(locale, 'session.controlsDescription'));
   return message(embed, [row(
-    button(session, 'backward', 'Back 10 seconds', {disabled: seekDisabled}),
-    button(session, 'forward', 'Forward 10 seconds', {disabled: seekDisabled}),
-    button(session, 'shuffle', 'Shuffle', {disabled: player.isQueueEmpty()}),
+    button(session, 'backward', t(locale, 'session.button.back10'), {disabled: seekDisabled}),
+    button(session, 'forward', t(locale, 'session.button.forward10'), {disabled: seekDisabled}),
+    button(session, 'shuffle', t(locale, 'session.button.shuffle'), {disabled: player.isQueueEmpty()}),
   )]);
 };

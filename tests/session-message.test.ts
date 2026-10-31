@@ -6,6 +6,9 @@ import type {ListeningSessionRecord} from '../src/services/listening-session.js'
 import {buildHistoryMessages, buildQueueMessage, buildSessionMessage, buildSessionMessages, type SessionMessagePayload} from '../src/utils/build-session-message.js';
 import {buildQueueEmbed} from '../src/utils/build-embed.js';
 import getProgressBar from '../src/utils/get-progress-bar.js';
+import {loadBundledLocales} from '../src/i18n/custom.js';
+
+await loadBundledLocales();
 
 const makeTrack = (url: string): QueuedSong => ({
   title: '*_~|'.repeat(60),
@@ -355,5 +358,70 @@ describe('complete public listening history', () => {
     expect(messages[0].embeds[0].data.description).toContain('No tracks played.');
     expectBoundedMessages(messages);
     expect(buildHistoryMessages(session)[0].embeds[0].data.description).toBe('No tracks played.');
+  });
+});
+
+describe('session message localization', () => {
+  const labels = (message: SessionMessagePayload) => message.components.flatMap(row => row.components.map(button => button.label));
+
+  it('renders the live card controls in the given language', () => {
+    const track = makeTrack('https://example.test/a');
+    const session = makeSession([track]);
+
+    expect(labels(buildSessionMessage(session, makePlayer([track, track]), 10, 'es-ES')))
+      .toEqual(['Anterior', '−10 s', 'Pausar', '+10 s', 'Siguiente', 'Cola', 'Mezclar']);
+    expect(labels(buildSessionMessage(session, makePlayer([track, track], {status: STATUS.PAUSED}), 10, 'es-ES'))).toContain('Reanudar');
+  });
+
+  it('hides the page field from the card in any language', () => {
+    const track = makeTrack('https://example.test/a');
+    const session = makeSession([track]);
+
+    const fields = buildSessionMessage(session, makePlayer([track, track]), 10, 'es-ES').embeds[0].toJSON().fields!;
+    expect(fields.map(field => field.name)).toEqual(['En cola', 'Duración total']);
+  });
+
+  it('renders the recap and history in the given language', () => {
+    const track = makeTrack('https://example.test/a');
+    const session = makeSession([track]);
+    session.entries[0].status = 'skipped';
+
+    const active = buildSessionMessages(session, undefined, 10, 'es-ES')[0].embeds[0].toJSON();
+    expect(active.title).toBe('Resumen de la sesión');
+    expect(active.description).toContain('Cola terminada.');
+    expect(active.description).toContain('**Historial de la sesión**');
+    expect(active.description).toContain('— Saltada');
+
+    session.endedAt = new Date('2026-10-24T12:03:00Z');
+    expect(buildSessionMessages(session, undefined, 10, 'es-ES')[0].embeds[0].toJSON().description)
+      .toContain(`La sesión terminó <t:${Math.floor(session.endedAt.getTime() / 1000)}:R>.`);
+    expect(buildHistoryMessages(makeSession([]), 'es-ES')[0].embeds[0].toJSON()).toMatchObject({
+      title: 'Historial de la sesión',
+      description: 'No se ha reproducido ninguna pista.',
+    });
+  });
+
+  it('titles history continuations in the given language', () => {
+    const tracks = Array.from({length: 120}, (_, index) => ({...makeTrack(`https://example.test/${index}`), title: 'T'.repeat(100)}));
+    const titles = buildHistoryMessages(makeSession(tracks), 'es-ES').flatMap(message => message.embeds.map(embed => embed.data.title));
+
+    expect(titles[0]).toBe('Historial de la sesión');
+    expect(titles.slice(1)).not.toHaveLength(0);
+    expect(new Set(titles.slice(1))).toEqual(new Set(['Historial de la sesión (continuación)']));
+  });
+
+  it('renders queue pagination and the queue embed in the given language', () => {
+    const track = makeTrack('https://example.test/a');
+    const message = buildQueueMessage(makeSession([track]), makePlayer([track, track, track]), {pageSize: 1, locale: 'es-ES'});
+
+    expect(labels(message)).toEqual(['Página anterior', 'Página siguiente']);
+    expect(message.embeds[0].toJSON().fields!.map(field => field.name)).toContain('Página');
+  });
+
+  it('keeps the English text without a language', () => {
+    const track = makeTrack('https://example.test/a');
+    expect(labels(buildSessionMessage(makeSession([track]), makePlayer([track, track]))))
+      .toEqual(['Previous', '−10s', 'Pause', '+10s', 'Next', 'Queue', 'Shuffle']);
+    expect(buildSessionMessages(makeSession([]))[0].embeds[0].toJSON().title).toBe('Session recap');
   });
 });
