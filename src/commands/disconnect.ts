@@ -4,12 +4,13 @@ import {TYPES} from '../types.js';
 import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
+import {LocalizedError, t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
-    .setName('disconnect')
-    .setDescription('pause and disconnect Muse');
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
+    .setName('disconnect'));
 
   public requiresVC = true;
 
@@ -23,11 +24,13 @@ export default class implements Command {
     const player = this.playerManager.get(interaction.guild!.id);
 
     if (!player.voiceConnection) {
-      throw new Error('not connected');
+      throw new LocalizedError('error.notConnected');
     }
 
-    player.disconnect();
+    // Reply before the outro finishes so the interaction doesn't time out.
+    const leaving = player.leave();
 
-    await interaction.reply('u betcha, disconnected');
+    await interaction.reply(t(interaction.locale, 'disconnect.done'));
+    await leaving;
   }
 }

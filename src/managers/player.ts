@@ -32,8 +32,16 @@ export default class {
         this.fileCache,
         guildId,
         async song => this.youtubeAPI.findAudioFallback(song),
-        this.config.PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
-        this.sessionHistoryStore ? new ListeningSession(guildId, this.sessionHistoryStore) : undefined,
+        {
+          playingMessageUpdateIntervalSeconds: this.config.PLAYING_MESSAGE_UPDATE_INTERVAL_SECONDS,
+          soundClips: {
+            intro: this.config.INTRO_SOUND || undefined,
+            outro: this.config.OUTRO_SOUND || undefined,
+            introVolume: this.config.INTRO_SOUND_VOLUME,
+            outroVolume: this.config.OUTRO_SOUND_VOLUME,
+          },
+          listeningSession: this.sessionHistoryStore ? new ListeningSession(guildId, this.sessionHistoryStore) : undefined,
+        },
       );
 
       this.guildPlayers.set(guildId, player);

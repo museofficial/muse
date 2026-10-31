@@ -2,12 +2,13 @@ import {ChatInputCommandInteraction} from 'discord.js';
 import {injectable} from 'inversify';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
-    .setName('help')
-    .setDescription('shows all available commands');
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
+    .setName('help'));
 
   private commands: Command[] = [];
 
@@ -16,24 +17,18 @@ export default class implements Command {
   }
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+    const {locale} = interaction;
     const commandList = this.commands
-      .map(c => `**/${c.slashCommand.name ?? ''}** — ${c.slashCommand.description ?? ''}`)
+      .map(({slashCommand}) => {
+        const json = slashCommand.toJSON();
+        const names: Partial<Record<string, string | null>> = json.name_localizations ?? {};
+        const translated: Partial<Record<string, string | null>> = json.description_localizations ?? {};
+        const description = 'description' in json ? json.description : '';
+        return `**/${names[locale] ?? json.name}** — ${translated[locale] ?? description}`;
+      })
       .join('\n');
 
-    const usage = [
-      '**Listening sessions**',
-      'Add music with `/play`. Your confirmation is private; the shared card shows playback and controls.',
-      'When the queue ends, the card keeps the songs that played. Use **View full history** for the complete list.',
-      '',
-      '**Favorites**',
-      'A favorite saves a named search or track/playlist URL for this server, not audio or a copy of the queue.',
-      'Create one with `/favorites create name:lofi query:lofi hip hop`, then play it with `/favorites use name:lofi`.',
-      'Use `/favorites list` to see this server\'s favorites.',
-      '',
-      '**Leaving after the queue ends**',
-      '`/config set-wait-after-queue-empties delay:60` waits 60 seconds before leaving voice.',
-      'Set `delay:0` to never leave because the queue is empty. `/config set-leave-if-no-listeners` is a separate setting.',
-    ].join('\n');
+    const usage = t(interaction.locale, 'help.usage');
 
     await interaction.reply({content: `${commandList}\n\n${usage}`, ephemeral: true});
   }

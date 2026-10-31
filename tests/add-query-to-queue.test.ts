@@ -50,6 +50,7 @@ const makeInteraction = () => {
 
   return {
     guild: {id: GUILD_ID},
+    locale: 'en-US',
     member: {user: {id: 'requester-id'}},
     channel: {id: 'text-channel-id'},
     deferReply: vi.fn().mockResolvedValue(undefined),
@@ -98,6 +99,7 @@ const makeService = ({
   cacheWrap,
   getSongs,
   attachToReply = vi.fn().mockResolvedValue(undefined),
+  introSoundTrigger = 'join',
 }: {
   player: object;
   songs?: SongMetadata[];
@@ -105,6 +107,7 @@ const makeService = ({
   cacheWrap?: (fetchValue: () => Promise<unknown>) => Promise<unknown>;
   getSongs?: ReturnType<typeof vi.fn>;
   attachToReply?: ReturnType<typeof vi.fn>;
+  introSoundTrigger?: 'join' | 'queue-start';
 }) => {
   const songProvider = {
     getSongs: getSongs ?? vi.fn().mockResolvedValue([songs, extraMessage]),
@@ -115,6 +118,7 @@ const makeService = ({
   const config = {
     ENABLE_SPONSORBLOCK: false,
     SPONSORBLOCK_TIMEOUT: 5,
+    INTRO_SOUND_TRIGGER: introSoundTrigger,
   };
   const cache = {
     wrap: vi.fn(cacheWrap ?? (async (fetchValue: () => Promise<unknown>) => fetchValue())),
@@ -193,6 +197,7 @@ describe('AddQueryToQueue skip semantics', () => {
     const connect = vi.spyOn(player, 'connect').mockImplementation(async () => {
       player.voiceConnection = {state: {status: 'ready'}} as never;
     });
+    const playIntro = vi.spyOn(player, 'playIntro');
     const play = vi.spyOn(player, 'play').mockResolvedValue(undefined);
     const forward = vi.spyOn(player, 'forward');
     const {service, attachToReply} = makeService({player});
@@ -203,11 +208,57 @@ describe('AddQueryToQueue skip semantics', () => {
     expect(player.getCurrent()?.title).toBe('New song');
     expect(connect).toHaveBeenCalledOnce();
     expect(play).toHaveBeenCalledOnce();
+    expect(playIntro.mock.invocationCallOrder[0]).toBeLessThan(play.mock.invocationCallOrder[0]);
     expect(forward).not.toHaveBeenCalled();
     expect(attachToReply).toHaveBeenCalledWith(player, interaction.channel, expect.any(Promise));
     expect(replyContent(interaction)).toBe('u betcha, **New song** added to the front of the queue');
     expect(replyContent(interaction)).not.toMatch(/skipped/i);
     expect(interaction.replyMessage.react).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['join', 0],
+    ['queue-start', 1],
+  ] as const)('with INTRO_SOUND_TRIGGER=%s, restarting a finished queue in voice plays the intro %i time(s)', async (introSoundTrigger, intros) => {
+    const player = makePausedPlayer();
+    player.status = STATUS.IDLE;
+    vi.spyOn(player, 'ensureVoiceConnectionReady').mockResolvedValue(player.voiceConnection!);
+    const playIntro = vi.spyOn(player, 'playIntro').mockResolvedValue(undefined);
+    const play = vi.spyOn(player, 'play').mockResolvedValue(undefined);
+    const {service} = makeService({player, introSoundTrigger});
+
+    await addToQueue(service, makeInteraction());
+
+    expect(playIntro).toHaveBeenCalledTimes(intros);
+    expect(play).toHaveBeenCalledOnce();
+  });
+
+  it.each(['join', 'queue-start'] as const)('with INTRO_SOUND_TRIGGER=%s, joining voice plays the intro', async introSoundTrigger => {
+    const player = makePausedPlayer();
+    player.status = STATUS.IDLE;
+    player.voiceConnection = null;
+    vi.spyOn(player, 'connect').mockImplementation(async () => {
+      player.voiceConnection = {state: {status: 'ready'}} as never;
+    });
+    const playIntro = vi.spyOn(player, 'playIntro').mockResolvedValue(undefined);
+    vi.spyOn(player, 'play').mockResolvedValue(undefined);
+    const {service} = makeService({player, introSoundTrigger});
+
+    await addToQueue(service, makeInteraction());
+
+    expect(playIntro).toHaveBeenCalledOnce();
+  });
+
+  it('does not play the intro when adding to a queue that is already playing', async () => {
+    const player = makePausedPlayer(makeQueuedSong('Existing song'));
+    player.status = STATUS.PLAYING;
+    vi.spyOn(player, 'ensureVoiceConnectionReady').mockResolvedValue(player.voiceConnection!);
+    const playIntro = vi.spyOn(player, 'playIntro').mockResolvedValue(undefined);
+    const {service} = makeService({player, introSoundTrigger: 'queue-start'});
+
+    await addToQueue(service, makeInteraction());
+
+    expect(playIntro).not.toHaveBeenCalled();
   });
 
   it('skips a pre-existing current track and reports the skip with correct spacing', async () => {

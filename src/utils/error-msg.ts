@@ -1,11 +1,13 @@
-export default (error?: string | Error): string => {
-  let str = 'unknown error';
+import {t} from '../i18n/index.js';
+
+export default (error?: string | Error, locale?: string | null): string => {
+  let str = t(locale, 'error.unknown');
 
   if (error) {
     if (typeof error === 'string') {
-      str = `🚫 ope: ${error}`;
+      str = t(locale, 'error.prefix', {message: error});
     } else if (error instanceof Error) {
-      str = `🚫 ope: ${error.message}`;
+      str = t(locale, 'error.prefix', {message: error.message});
     }
   }
 

@@ -54,7 +54,8 @@ intents.push(GatewayIntentBits.GuildVoiceStates); // To listen for voice state c
 
 // Bot
 container.bind<Bot>(TYPES.Bot).to(Bot).inSingletonScope();
-container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents}));
+// Song titles and custom language packs end up in replies, so only user mentions may ping.
+container.bind<Client>(TYPES.Client).toConstantValue(new Client({intents, allowedMentions: {parse: ['users']}}));
 
 // Managers
 container.bind<PlayerManager>(TYPES.Managers.Player).to(PlayerManager).inSingletonScope();

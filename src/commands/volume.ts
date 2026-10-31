@@ -4,19 +4,19 @@ import {inject, injectable} from 'inversify';
 import PlayerManager from '../managers/player.js';
 import Command from './index.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
+import {LocalizedError, t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
     .setName('volume')
-    .setDescription('set current player volume level')
     .addIntegerOption(option =>
       option.setName('level')
-        .setDescription('volume percentage (0 is muted, 100 is max & default)')
         .setMinValue(0)
         .setMaxValue(100)
         .setRequired(true),
-    );
+    ));
 
   public requiresVC = true;
 
@@ -32,11 +32,11 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      throw new Error('nothing is playing');
+      throw new LocalizedError('error.nothingPlaying');
     }
 
     const level = interaction.options.getInteger('level') ?? 100;
     player.setVolume(level);
-    await interaction.reply(`Set volume to ${level}%`);
+    await interaction.reply(t(interaction.locale, 'volume.done', {level}));
   }
 }

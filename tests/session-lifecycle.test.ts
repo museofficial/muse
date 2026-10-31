@@ -54,7 +54,7 @@ const makeHarness = (...songs: QueuedSong[]) => {
     saved.set(record.id, record);
   });
   const session = new ListeningSession('guild-id', {save});
-  const player = new Player({} as never, 'guild-id', undefined, 5, session);
+  const player = new Player({} as never, 'guild-id', undefined, {playingMessageUpdateIntervalSeconds: 5, listeningSession: session});
   player.voiceConnection = makeConnection() as never;
   songs.forEach(song => player.add(song));
   const getStream = vi.fn().mockImplementation(async () => new Readable({read() {}}));

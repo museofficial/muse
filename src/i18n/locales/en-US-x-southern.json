@@ -1,0 +1,38 @@
+{
+  "name": "English (Southern)",
+  "messages": {
+    "error.prefix": "🚫 well shoot: {message}",
+    "error.guildOnly": "bless your heart, I don't work in DMs",
+    "error.voiceRequired": "y'all gotta hop in a voice channel first",
+    "error.doesNotExist": "that ain't out there",
+    "error.nothingPlaying": "ain't nothin' playin'",
+    "error.nothingCurrentlyPlaying": "ain't nothin' playin' right now",
+
+    "guild.welcome": "👋 Hey y'all! Somebody (probably you) just invited me to a server you own. By default, I'm usable by all guild members in all guild channels. To change that, check out the wiki page on permissions: https://github.com/museofficial/muse/wiki/Configuring-Bot-Permissions.",
+
+    "clear.done": "swept the porch clean",
+    "disconnect.done": "alright y'all, I'm headed out",
+    "favorites.empty": "there ain't any favorites yet",
+    "loop.on": "loopin' it :)",
+    "loop.off": "quit loopin' :(",
+    "loopQueue.on": "loopin' the whole queue :)",
+    "loopQueue.off": "quit loopin' the queue :(",
+    "pause.done": "hold your horses",
+    "remove.done": ":wastebasket: tossed it",
+    "replay.done": "👍 runnin' it back from the top",
+    "resume.error.alreadyPlaying": "already playin', hon, give me a song name",
+    "resume.done": "giddy up. [Go to player]({url})",
+    "shuffle.done": "shuffled up like a square dance",
+    "skip.done": "movin' right along",
+    "stop.done": "you got it, stopped",
+    "unskip.done": "backin' it up a piece",
+    "volume.done": "turned 'er to {level}%",
+
+    "queueAdd.added": "you got it, **{title}** added to the queue{notes}",
+    "queueAdd.addedSkipped": "you got it, **{title}** added to the queue and current track skipped{notes}",
+    "queueAdd.addedFront": "you got it, **{title}** added to the front of the queue{notes}",
+    "queueAdd.addedFrontSkipped": "you got it, **{title}** added to the front of the queue and current track skipped{notes}",
+    "queueAdd.addedMany": "you got it, **{title}** and {count} other songs were added to the queue{notes}",
+    "queueAdd.addedManySkipped": "you got it, **{title}** and {count} other songs were added to the queue and current track skipped{notes}"
+  }
+}

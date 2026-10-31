@@ -5,6 +5,7 @@ import {MediaSource, STATUS, type QueuedSong} from '../services/player-types.js'
 import getProgressBar from './get-progress-bar.js';
 import {prettyTime} from './time.js';
 import {truncate} from './string.js';
+import {LocalizedError, t, tCount} from '../i18n/index.js';
 
 const getMaxSongTitleLength = (title: string) => {
   // eslint-disable-next-line no-control-regex
@@ -34,16 +35,16 @@ const setBoundedFooter = (message: EmbedBuilder, text: string) => {
   message.setFooter({text: truncate(text, Math.min(2048, 6000 - contentLength))});
 };
 
-const getQueueInfo = (player: Player) => {
+const getQueueInfo = (player: Player, locale?: string) => {
   const queueSize = player.queueSize();
   if (queueSize === 0) {
     return '-';
   }
 
-  return queueSize === 1 ? '1 song' : `${queueSize} songs`;
+  return tCount(locale, 'embed.songCount', queueSize);
 };
 
-const getPlayerUI = (player: Player) => {
+const getPlayerUI = (player: Player, locale?: string) => {
   const song = player.getCurrent();
 
   if (!song) {
@@ -55,7 +56,7 @@ const getPlayerUI = (player: Player) => {
   // Ninety-one narrow rail positions fit in about the same visual width as the
   // original ten-glyph bar, while allowing five-second motion on most songs.
   const progressBar = getProgressBar(91, position / song.length);
-  const elapsedTime = song.isLive ? 'live' : `${prettyTime(position)}/${prettyTime(song.length)}`;
+  const elapsedTime = song.isLive ? t(locale, 'embed.live') : `${prettyTime(position)}/${prettyTime(song.length)}`;
   const loop = player.loopCurrentSong ? '🔂' : player.loopCurrentQueue ? '🔁' : '';
   const vol: string = typeof player.getVolume() === 'number' ? `${player.getVolume()!}%` : '';
   // Keep the slider outside inline code so Discord renders its emoji and rail
@@ -63,7 +64,7 @@ const getPlayerUI = (player: Player) => {
   return `${button} ${progressBar} \`[${elapsedTime}]\`🔉 ${vol} ${loop}`;
 };
 
-export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
+export const buildPlayingMessageEmbed = (player: Player, locale?: string): EmbedBuilder => {
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
@@ -74,13 +75,13 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   const message = new EmbedBuilder();
   message
     .setColor(player.status === STATUS.PLAYING ? 'DarkGreen' : 'DarkRed')
-    .setTitle(player.status === STATUS.PLAYING ? 'Now Playing' : 'Paused')
+    .setTitle(t(locale, player.status === STATUS.PLAYING ? 'embed.nowPlaying' : 'embed.paused'))
     .setDescription(`
       **${getSongTitle(currentlyPlaying)}**
-      Requested by: <@${requestedBy}>\n
-      ${getPlayerUI(player)}
+      ${t(locale, 'embed.requestedBy', {user: requestedBy})}\n
+      ${getPlayerUI(player, locale)}
     `);
-  setBoundedFooter(message, `Source: ${artist}`);
+  setBoundedFooter(message, t(locale, 'embed.source', {artist}));
 
   if (thumbnailUrl) {
     message.setThumbnail(thumbnailUrl);
@@ -89,22 +90,22 @@ export const buildPlayingMessageEmbed = (player: Player): EmbedBuilder => {
   return message;
 };
 
-export const buildQueueEmbed = (player: Player, page: number, pageSize: number): EmbedBuilder => {
+export const buildQueueEmbed = (player: Player, page: number, pageSize: number, locale?: string): EmbedBuilder => {
   if (page < 1) {
-    throw new Error('page must be at least 1');
+    throw new LocalizedError('embed.error.pageTooLow');
   }
 
   const currentlyPlaying = player.getCurrent();
 
   if (!currentlyPlaying) {
-    throw new Error('queue is empty');
+    throw new LocalizedError('embed.error.queueEmpty');
   }
 
   const queueSize = player.queueSize();
   const maxQueuePage = Math.max(1, Math.ceil(queueSize / pageSize));
 
   if (page > maxQueuePage) {
-    throw new Error('the queue isn\'t that big');
+    throw new LocalizedError('embed.error.pageTooHigh');
   }
 
   const queuePageBegin = (page - 1) * pageSize;
@@ -114,26 +115,26 @@ export const buildQueueEmbed = (player: Player, page: number, pageSize: number):
     .slice(queuePageBegin, queuePageEnd)
     .map((song, index) => {
       const songNumber = index + 1 + queuePageBegin;
-      const duration = song.isLive ? 'live' : prettyTime(song.length);
+      const duration = song.isLive ? t(locale, 'embed.live') : prettyTime(song.length);
 
       return `\`${songNumber}.\` ${getSongTitle(song, true)} \`[${duration}]\``;
     });
 
   const {artist, thumbnailUrl, playlist, requestedBy} = currentlyPlaying;
-  const playlistTitle = playlist ? `(${playlist.title})` : '';
+  const playlistTitle = playlist ? t(locale, 'embed.playlist', {title: playlist.title}) : '';
   const totalLength = player.getQueue().reduce((accumulator, current) => accumulator + current.length, 0);
 
   const message = new EmbedBuilder();
 
   let description = `**${getSongTitle(currentlyPlaying)}**\n`;
-  description += `Requested by: <@${requestedBy}>\n\n`;
-  description += `${getPlayerUI(player)}\n\n`;
+  description += `${t(locale, 'embed.requestedBy', {user: requestedBy})}\n\n`;
+  description += `${getPlayerUI(player, locale)}\n\n`;
 
   if (player.getQueue().length > 0) {
-    description += '**Up next:**\n';
+    description += `${t(locale, 'embed.upNext')}\n`;
     for (const [index, song] of queuedSongs.entries()) {
       // Leave room for a useful hint instead of rejecting the entire /queue response.
-      const overflowMessage = `… ${queuedSongs.length - index} more on this page; use a smaller page-size to view them.`;
+      const overflowMessage = t(locale, 'embed.overflow', {count: queuedSongs.length - index});
       if (description.length + song.length + 1 + overflowMessage.length > 4096) {
         description += overflowMessage;
         break;
@@ -143,14 +144,18 @@ export const buildQueueEmbed = (player: Player, page: number, pageSize: number):
     }
   }
 
+  const title = player.status === STATUS.PLAYING
+    ? t(locale, player.loopCurrentSong ? 'embed.nowPlayingLooped' : 'embed.nowPlaying')
+    : t(locale, 'embed.queued');
+
   message
-    .setTitle(player.status === STATUS.PLAYING ? `Now Playing ${player.loopCurrentSong ? '(loop on)' : ''}` : 'Queued songs')
+    .setTitle(title)
     .setColor(player.status === STATUS.PLAYING ? 'DarkGreen' : 'NotQuiteBlack')
     .setDescription(description)
-    .addFields([{name: 'In queue', value: getQueueInfo(player), inline: true}, {
-      name: 'Total length', value: `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, inline: true,
-    }, {name: 'Page', value: `${page} out of ${maxQueuePage}`, inline: true}]);
-  setBoundedFooter(message, `Source: ${artist} ${playlistTitle}`);
+    .addFields([{name: t(locale, 'embed.inQueue'), value: getQueueInfo(player, locale), inline: true}, {
+      name: t(locale, 'embed.totalLength'), value: `${totalLength > 0 ? prettyTime(totalLength) : '-'}`, inline: true,
+    }, {name: t(locale, 'embed.page'), value: t(locale, 'embed.pageOf', {page, total: maxQueuePage}), inline: true}]);
+  setBoundedFooter(message, t(locale, 'embed.queueSource', {artist, playlist: playlistTitle}));
 
   if (thumbnailUrl) {
     message.setThumbnail(thumbnailUrl);

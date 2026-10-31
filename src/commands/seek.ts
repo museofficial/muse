@@ -6,17 +6,17 @@ import Command from './index.js';
 import {parseTime, prettyTime} from '../utils/time.js';
 import {SlashCommandBuilder} from '@discordjs/builders';
 import durationStringToSeconds from '../utils/duration-string-to-seconds.js';
+import {LocalizedError, t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
     .setName('seek')
-    .setDescription('seek to a position from beginning of song')
     .addStringOption(option =>
       option.setName('time')
-        .setDescription('an interval expression or number of seconds (1m, 30s, 100)')
         .setRequired(true),
-    );
+    ));
 
   public requiresVC = true;
 
@@ -32,11 +32,11 @@ export default class implements Command {
     const currentSong = player.getCurrent();
 
     if (!currentSong) {
-      throw new Error('nothing is playing');
+      throw new LocalizedError('error.nothingPlaying');
     }
 
     if (currentSong.isLive) {
-      throw new Error('can\'t seek in a livestream');
+      throw new LocalizedError('seek.error.livestream');
     }
 
     const time = interaction.options.getString('time')!.trim();
@@ -45,7 +45,7 @@ export default class implements Command {
 
     if (time.includes(':')) {
       if (!/^\+?\d+(?::\d+)+$/.test(time)) {
-        throw new Error('invalid seek value');
+        throw new LocalizedError('seek.error.invalidValue');
       }
 
       seekTime = parseTime(time);
@@ -54,11 +54,11 @@ export default class implements Command {
     }
 
     if (!Number.isFinite(seekTime) || seekTime < 0) {
-      throw new Error('invalid seek value');
+      throw new LocalizedError('seek.error.invalidValue');
     }
 
     if (seekTime > currentSong.length) {
-      throw new Error('can\'t seek past the end of the song');
+      throw new LocalizedError('seek.error.pastEnd');
     }
 
     await Promise.all([
@@ -66,6 +66,6 @@ export default class implements Command {
       interaction.deferReply(),
     ]);
 
-    await interaction.editReply(`👍 seeked to ${prettyTime(player.getPosition())}`);
+    await interaction.editReply(t(interaction.locale, 'seek.done', {position: prettyTime(player.getPosition())}));
   }
 }

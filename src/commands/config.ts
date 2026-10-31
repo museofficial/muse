@@ -4,81 +4,67 @@ import {injectable} from 'inversify';
 import {prisma} from '../utils/db.js';
 import Command from './index.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
+import {LocalizedError, t} from '../i18n/index.js';
+import {localizeCommand} from '../i18n/commands.js';
 
 @injectable()
 export default class implements Command {
-  public readonly slashCommand = new SlashCommandBuilder()
+  public readonly slashCommand = localizeCommand(new SlashCommandBuilder()
     .setName('config')
-    .setDescription('configure bot settings')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString())
     .addSubcommand(subcommand => subcommand
       .setName('set-playlist-limit')
-      .setDescription('set the maximum number of tracks that can be added from a playlist')
       .addIntegerOption(option => option
         .setName('limit')
-        .setDescription('maximum number of tracks')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-wait-after-queue-empties')
-      .setDescription('set seconds to wait before leaving voice when the queue empties (0 to never leave)')
       .addIntegerOption(option => option
         .setName('delay')
-        .setDescription('delay in seconds (set to 0 to never leave)')
         .setRequired(true)
         .setMinValue(0)))
     .addSubcommand(subcommand => subcommand
       .setName('set-leave-if-no-listeners')
-      .setDescription('set whether to leave when all other participants leave')
       .addBooleanOption(option => option
         .setName('value')
-        .setDescription('whether to leave when everyone else leaves')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-reduce-vol-when-voice')
-      .setDescription('set whether to turn down the volume when people speak')
       .addBooleanOption(option => option
         .setName('value')
-        .setDescription('whether to turn down the volume when people speak')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-reduce-vol-when-voice-target')
-      .setDescription('set the target volume when people speak')
       .addIntegerOption(option => option
         .setName('volume')
-        .setDescription('volume percentage (0 is muted, 100 is max & default)')
         .setMinValue(0)
         .setMaxValue(100)
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-auto-announce-next-song')
-      .setDescription('set whether to announce the next song in the queue automatically')
       .addBooleanOption(option => option
         .setName('value')
-        .setDescription('whether to announce the next song in the queue automatically')
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-default-volume')
-      .setDescription('set default volume used when entering the voice channel')
       .addIntegerOption(option => option
         .setName('level')
-        .setDescription('volume percentage (0 is muted, 100 is max & default)')
         .setMinValue(0)
         .setMaxValue(100)
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('set-default-queue-page-size')
-      .setDescription('set the default page size of the /queue command')
       .addIntegerOption(option => option
         .setName('page-size')
-        .setDescription('page size of the /queue command')
         .setMinValue(1)
         .setMaxValue(30)
         .setRequired(true)))
     .addSubcommand(subcommand => subcommand
-      .setName('get')
-      .setDescription('show all settings'));
+      .setName('get')));
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const {locale} = interaction;
+
     // Ensure guild settings exist before trying to update
     await getGuildSettings(interaction.guild!.id);
 
@@ -87,7 +73,7 @@ export default class implements Command {
         const limit: number = interaction.options.getInteger('limit')!;
 
         if (limit < 1) {
-          throw new Error('invalid limit');
+          throw new LocalizedError('config.error.invalidLimit');
         }
 
         await prisma.setting.update({
@@ -99,7 +85,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 limit updated');
+        await interaction.reply(t(locale, 'config.updated.playlistLimit'));
 
         break;
       }
@@ -116,7 +102,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 wait delay updated');
+        await interaction.reply(t(locale, 'config.updated.waitAfterQueueEmpties'));
 
         break;
       }
@@ -133,7 +119,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 leave setting updated');
+        await interaction.reply(t(locale, 'config.updated.leaveIfNoListeners'));
 
         break;
       }
@@ -150,7 +136,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 auto announce setting updated');
+        await interaction.reply(t(locale, 'config.updated.autoAnnounceNextSong'));
 
         break;
       }
@@ -167,7 +153,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 volume setting updated');
+        await interaction.reply(t(locale, 'config.updated.defaultVolume'));
 
         break;
       }
@@ -184,7 +170,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 default queue page size updated');
+        await interaction.reply(t(locale, 'config.updated.defaultQueuePageSize'));
 
         break;
       }
@@ -201,7 +187,7 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 turn down volume setting updated');
+        await interaction.reply(t(locale, 'config.updated.reduceVolWhenVoice'));
 
         break;
       }
@@ -218,27 +204,28 @@ export default class implements Command {
           },
         });
 
-        await interaction.reply('👍 turn down volume target setting updated');
+        await interaction.reply(t(locale, 'config.updated.reduceVolWhenVoiceTarget'));
 
         break;
       }
 
       case 'get': {
-        const embed = new EmbedBuilder().setTitle('Config');
+        const embed = new EmbedBuilder().setTitle(t(locale, 'config.title'));
 
         const config = await getGuildSettings(interaction.guild!.id);
+        const yesNo = (value: boolean) => t(locale, value ? 'config.value.yes' : 'config.value.no');
 
         const settingsToShow = {
-          'Playlist Limit': config.playlistLimit,
-          'Wait before leaving after queue empty': config.secondsToWaitAfterQueueEmpties === 0
-            ? 'never leave'
-            : `${config.secondsToWaitAfterQueueEmpties}s`,
-          'Leave if there are no listeners': config.leaveIfNoListeners ? 'yes' : 'no',
-          'Auto announce next song in queue': config.autoAnnounceNextSong ? 'yes' : 'no',
-          'Default Volume': config.defaultVolume,
-          'Default queue page size': config.defaultQueuePageSize,
-          'Reduce volume when people speak': config.turnDownVolumeWhenPeopleSpeak ? 'yes' : 'no',
-          'Reduce volume when people speak target': config.turnDownVolumeWhenPeopleSpeakTarget,
+          [t(locale, 'config.label.playlistLimit')]: config.playlistLimit,
+          [t(locale, 'config.label.waitAfterQueueEmpties')]: config.secondsToWaitAfterQueueEmpties === 0
+            ? t(locale, 'config.value.neverLeave')
+            : t(locale, 'config.value.seconds', {seconds: config.secondsToWaitAfterQueueEmpties}),
+          [t(locale, 'config.label.leaveIfNoListeners')]: yesNo(config.leaveIfNoListeners),
+          [t(locale, 'config.label.autoAnnounceNextSong')]: yesNo(config.autoAnnounceNextSong),
+          [t(locale, 'config.label.defaultVolume')]: config.defaultVolume,
+          [t(locale, 'config.label.defaultQueuePageSize')]: config.defaultQueuePageSize,
+          [t(locale, 'config.label.reduceVolWhenVoice')]: yesNo(config.turnDownVolumeWhenPeopleSpeak),
+          [t(locale, 'config.label.reduceVolWhenVoiceTarget')]: config.turnDownVolumeWhenPeopleSpeakTarget,
         };
 
         let description = '';
@@ -254,7 +241,7 @@ export default class implements Command {
       }
 
       default:
-        throw new Error('unknown subcommand');
+        throw new LocalizedError('error.unknownSubcommand');
     }
   }
 }

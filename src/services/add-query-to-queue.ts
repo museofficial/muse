@@ -14,6 +14,7 @@ import Config from './config.js';
 import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS} from '../utils/constants.js';
 import formatSongReply from '../utils/format-song-reply.js';
+import {LocalizedError, t} from '../i18n/index.js';
 
 const isSameQueueEntry = (capturedId: number | null, currentId: number | null) => (
   capturedId !== null && capturedId === currentId
@@ -21,7 +22,7 @@ const isSameQueueEntry = (capturedId: number | null, currentId: number | null) =
 
 const normalizeSkipError = (error: unknown) => (
   error instanceof Error && error.message === 'No songs in queue to forward to.'
-    ? new Error('no song to skip to')
+    ? new LocalizedError('error.noSongToSkipTo')
     : error
 );
 
@@ -60,6 +61,7 @@ export default class AddQueryToQueue {
     interaction: ChatInputCommandInteraction;
   }): Promise<void> {
     const guildId = interaction.guild!.id;
+    const {locale} = interaction;
     const player = this.playerManager.get(guildId);
     const currentQueueEntryId = player.getCurrentQueueEntryId();
     const wasPlayingSong = currentQueueEntryId !== null;
@@ -72,10 +74,10 @@ export default class AddQueryToQueue {
 
     await interaction.deferReply({ephemeral: false});
 
-    let [newSongs, extraMsg] = await this.getSongs.getSongs(query, playlistLimit, shouldSplitChapters);
+    let [newSongs, extraMsg] = await this.getSongs.getSongs(query, playlistLimit, shouldSplitChapters, locale);
 
     if (newSongs.length === 0) {
-      throw new Error('no songs found');
+      throw new LocalizedError('error.noSongsFound');
     }
 
     if (shuffleAdditions) {
@@ -86,6 +88,8 @@ export default class AddQueryToQueue {
       newSongs = await Promise.all(newSongs.map(this.skipNonMusicSegments.bind(this)));
     }
 
+    // A request during the outro rejoins once the bot has left.
+    await player.waitForPendingLeave();
     const queuedSongs = newSongs.map(song => ({
       ...song,
       addedInChannelId: interaction.channel!.id,
@@ -113,18 +117,23 @@ export default class AddQueryToQueue {
 
     if (needsConnection) {
       // Resume / start playback
+      await player.playIntro();
       await player.play();
 
       if (wasPlayingSong) {
-        statusMsg = 'resuming playback';
+        statusMsg = t(locale, 'queueAdd.resuming');
       }
     } else if (player.status === STATUS.IDLE) {
       // Player is idle, start playback instead
+      if (this.config.INTRO_SOUND_TRIGGER === 'queue-start') {
+        await player.playIntro();
+      }
+
       await player.play();
     }
 
     if (!player.getCurrent()) {
-      throw new Error('no playable songs found');
+      throw new LocalizedError('error.noPlayableSongs');
     }
 
     let didSkipCurrentTrack = false;
@@ -139,15 +148,22 @@ export default class AddQueryToQueue {
 
     extraMsg = [statusMsg, extraMsg].filter(Boolean).join(', ');
     if (extraMsg !== '') {
-      extraMsg = ` (${extraMsg})`;
+      extraMsg = t(locale, 'queueAdd.notes', {notes: extraMsg});
     }
 
-    const title = escapeMarkdown(firstSong.title);
+    const songTitle = escapeMarkdown(firstSong.title);
     const responseContent = (publicationWarning = '') => {
-      const suffix = `${didSkipCurrentTrack ? ' and current track skipped' : ''}${extraMsg}${publicationWarning}`;
-      return newSongs.length === 1
-        ? formatSongReply(title, 'u betcha, **', `** added to the${addToFrontOfQueue ? ' front of the' : ''} queue${suffix}`)
-        : formatSongReply(title, 'u betcha, **', `** and ${newSongs.length - 1} other songs were added to the queue${suffix}`);
+      const notes = `${extraMsg}${publicationWarning}`;
+      return formatSongReply(songTitle, title => {
+        if (newSongs.length > 1) {
+          return t(locale, didSkipCurrentTrack ? 'queueAdd.addedManySkipped' : 'queueAdd.addedMany', {title, count: newSongs.length - 1, notes});
+        }
+
+        const key = addToFrontOfQueue
+          ? (didSkipCurrentTrack ? 'queueAdd.addedFrontSkipped' : 'queueAdd.addedFront')
+          : (didSkipCurrentTrack ? 'queueAdd.addedSkipped' : 'queueAdd.added');
+        return t(locale, key, {title, notes});
+      });
     };
 
     const receipt = interaction.editReply({content: responseContent(), allowedMentions: {parse: []}});
@@ -157,7 +173,7 @@ export default class AddQueryToQueue {
       // The tracks have already been added. A Discord/persistence failure must
       // not make the requester retry and accidentally enqueue them twice.
       console.warn(`Could not publish the session player for guild ${guildId}.`);
-      return '\nThe player card could not be shown. Check my channel permissions, then use /now-playing.';
+      return t(locale, 'queueAdd.playerCardFailed');
     });
 
     await receipt;

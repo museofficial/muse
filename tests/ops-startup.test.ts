@@ -7,6 +7,7 @@ const CONFIG_ENV_KEYS = [
   'BOT_ACTIVITY',
   'BOT_ACTIVITY_TYPE',
   'BOT_ACTIVITY_URL',
+  'BOT_LOCALE',
   'BOT_STATUS',
   'CACHE_LIMIT',
   'DATA_DIR',
@@ -244,9 +245,10 @@ describe('OPS-01 environment and config loading', () => {
 
 interface StartHarnessOptions {
   failAt?: string;
+  botLocale?: string;
 }
 
-const loadStartHarness = async ({failAt}: StartHarnessOptions = {}) => {
+const loadStartHarness = async ({failAt, botLocale}: StartHarnessOptions = {}) => {
   vi.resetModules();
   const events: string[] = [];
   const dataDirectory = path.join(temporaryRoot, 'runtime-data');
@@ -286,6 +288,7 @@ const loadStartHarness = async ({failAt}: StartHarnessOptions = {}) => {
     fail('register');
   });
   const config = {
+    BOT_LOCALE: botLocale,
     CACHE_DIR: cacheDirectory,
     DATA_DIR: dataDirectory,
   };
@@ -354,6 +357,16 @@ describe('OPS-02 startup ordering and short-circuiting', () => {
 
     await expect(harness.startBot()).rejects.toThrow(`${failAt} failed`);
     expect(harness.events).toEqual(expected);
+  });
+
+  it('starts with a warning when BOT_LOCALE names a pack that does not exist', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const harness = await loadStartHarness({botLocale: 'en-US-x-southren'});
+
+    await harness.startBot();
+
+    expect(harness.register).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/^Unknown BOT_LOCALE "en-US-x-southren".*Following each user's Discord language instead\.$/));
   });
 });
 

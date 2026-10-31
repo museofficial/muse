@@ -81,11 +81,11 @@ vi.mock('../src/services/player.js', () => ({
     readonly guildId: string;
     readonly playingMessageUpdateIntervalSeconds: number;
 
-    constructor(fileCache: unknown, guildId: string, findAudioFallback: (song: unknown) => Promise<unknown>, playingMessageUpdateIntervalSeconds: number) {
+    constructor(fileCache: unknown, guildId: string, findAudioFallback: (song: unknown) => Promise<unknown>, options: {playingMessageUpdateIntervalSeconds: number}) {
       this.fileCache = fileCache;
       this.guildId = guildId;
       this.findAudioFallback = findAudioFallback;
-      this.playingMessageUpdateIntervalSeconds = playingMessageUpdateIntervalSeconds;
+      this.playingMessageUpdateIntervalSeconds = options.playingMessageUpdateIntervalSeconds;
       mocks.playerConstructions.push(this);
     }
   },

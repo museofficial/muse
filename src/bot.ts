@@ -8,6 +8,7 @@ import debug from './utils/debug.js';
 import handleGuildCreate from './events/guild-create.js';
 import handleVoiceStateUpdate from './events/voice-state-update.js';
 import errorMsg from './utils/error-msg.js';
+import {LocalizedError, t} from './i18n/index.js';
 import {isUserInVoice} from './utils/channels.js';
 import Config from './services/config.js';
 import {generateDependencyReport} from '@discordjs/voice';
@@ -90,13 +91,13 @@ export default class {
           }
 
           if (!interaction.guild) {
-            await interaction.reply(errorMsg('you can\'t use this bot in a DM'));
+            await interaction.reply(errorMsg(t(interaction.locale, 'error.guildOnly'), interaction.locale));
             return;
           }
 
           const requiresVC = command.requiresVC instanceof Function ? command.requiresVC(interaction) : command.requiresVC;
           if (requiresVC && interaction.member && !isUserInVoice(interaction.guild, interaction.member.user as User)) {
-            await interaction.reply({content: errorMsg('gotta be in a voice channel'), ephemeral: true});
+            await interaction.reply({content: errorMsg(t(interaction.locale, 'error.voiceRequired'), interaction.locale), ephemeral: true});
             return;
           }
 
@@ -138,14 +139,14 @@ export default class {
             ? `button:${interaction.customId}`
             : interaction.type.toString();
         console.error(`Discord interaction failed (${interactionName}, guild=${interaction.guildId ?? 'dm'}, channel=${interaction.channelId ?? 'unknown'}, user=${interaction.user.id}): ${sanitizedError}`);
-        const userSafeError = new Error(sanitizeErrorDetail(error));
+        const userSafeError = new Error(sanitizeErrorDetail(error instanceof LocalizedError ? error.localize(interaction.locale) : error));
 
         // This can fail if the message was deleted, and we don't want to crash the whole bot
         try {
           if ((interaction.isCommand() || interaction.isButton()) && (interaction.replied || interaction.deferred)) {
-            await interaction.editReply(errorMsg(userSafeError));
+            await interaction.editReply(errorMsg(userSafeError, interaction.locale));
           } else if (interaction.isCommand() || interaction.isButton()) {
-            await interaction.reply({content: errorMsg(userSafeError), ephemeral: true});
+            await interaction.reply({content: errorMsg(userSafeError, interaction.locale), ephemeral: true});
           }
         } catch {}
       }
