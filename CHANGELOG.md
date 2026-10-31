@@ -13,7 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `BOT_LOCALE` to use one language pack for everyone, for example `BOT_LOCALE=en-US-x-southern`.
 - Load custom language packs from `data/locales/` after a restart, and add `yarn locale:template <code>` to create one with every English line. Mistakes in a pack log a warning and fall back to English instead of stopping Muse.
 - Never ping `@everyone`, `@here` or roles from bot messages, even when a song title or language pack contains them.
-- Copy language packs into `dist/` as part of `yarn build`.
+- Add optional intro and outro jingles with `INTRO_SOUND` and `OUTRO_SOUND`, using a bundled clip or your own audio file. Both are off by default. The outro plays before Muse leaves via `/stop`, `/disconnect`, or the idle timeout.
+- Play the intro when `/play` makes Muse join voice. Set `INTRO_SOUND_TRIGGER=queue-start` to also play it when `/play` restarts a finished queue.
+- Add `INTRO_SOUND_VOLUME` and `OUTRO_SOUND_VOLUME` to set each jingle's volume as a percentage of the music's volume, from 0 to 200.
+- Copy language packs and sounds into `dist/` as part of `yarn build`.
 
 ## [2.12.0] - 2026-10-30
 
