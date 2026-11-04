@@ -117,6 +117,22 @@ describe('session message URL limits', () => {
   });
 });
 
+describe('session recap unplayable tracks', () => {
+  it('labels tracks that never played with the reason they were skipped', () => {
+    const session = makeSession(['a', 'b', 'c', 'd'].map(url => makeTrack(`https://radio.example/${url}`)));
+    session.endedAt = new Date('2026-10-24T12:30:00Z');
+    session.entries[1].status = 'age-restricted';
+    session.entries[2].status = 'unavailable';
+    session.entries[3].status = 'failed';
+
+    const lines = historyLines(buildSessionMessages(session));
+
+    expect(lines.map(line => line.split(' — ').at(-1))).toEqual([
+      'Played', 'Skipped (age-restricted)', 'Skipped (unavailable)', 'Couldn\'t play',
+    ]);
+  });
+});
+
 describe('session loop indicators', () => {
   it.each([STATUS.PLAYING, STATUS.PAUSED])('shows enabled song and queue looping while %s', status => {
     const track = makeTrack('https://radio.example/live');

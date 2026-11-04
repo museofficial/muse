@@ -60,6 +60,33 @@ describe('listening sessions', () => {
     expect(new Set(session.snapshot()!.entries.map(entry => entry.id)).size).toBe(3);
   });
 
+  it('records tracks that never played between normal entries, without disturbing the next start', async () => {
+    const store = {save: vi.fn().mockResolvedValue(undefined)};
+    const session = new ListeningSession('guild', store);
+    session.startTrack(song, 'voice', 1);
+    session.endTrack('completed');
+    session.recordUnplayable({...song, title: 'Gated'}, 'voice', 'age-restricted');
+    session.recordUnplayable({...song, title: 'Gone'}, 'voice', 'unavailable');
+    session.startTrack(song, 'voice', 4);
+    await session.flush();
+
+    const {entries} = session.snapshot()!;
+    expect(entries.map(entry => [entry.title, entry.status])).toEqual([
+      ['Original song', 'completed'],
+      ['Gated', 'age-restricted'],
+      ['Gone', 'unavailable'],
+      ['Original song', 'playing'],
+    ]);
+    expect(entries[1].endedAt).toEqual(entries[1].startedAt);
+  });
+
+  it('exposes the bound text channel', () => {
+    const session = new ListeningSession('guild', {save: vi.fn().mockResolvedValue(undefined)});
+    expect(session.channelId).toBeNull();
+    session.prepare('voice', 'text');
+    expect(session.channelId).toBe('text');
+  });
+
   it('retains the original private channel after failed first writes and a later request', async () => {
     const error = new Error('SQLite is busy');
     const store = {save: vi.fn().mockRejectedValue(error)};

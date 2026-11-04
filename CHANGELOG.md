@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Recognize YouTube's newer "this content is age-restricted" error, so those tracks get the audio fallback or are skipped instead of stopping playback.
-- Post a message in the voice channel's chat when a track is skipped as unplayable, or when playback stops because the next track couldn't start.
+- Post a message in the session's text channel when a track is skipped as unplayable, or when playback stops because the next track couldn't start. The session recap now lists these tracks as "Skipped (age-restricted)", "Skipped (unavailable)", or "Couldn't play".
 
 ## [2.12.0] - 2026-10-30
 

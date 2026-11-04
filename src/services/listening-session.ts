@@ -3,7 +3,9 @@ import debug from '../utils/debug.js';
 import {MediaSource, type QueuedSong} from './player-types.js';
 import type SessionHistoryStore from './session-history-store.js';
 
-export type ListeningSessionEntryStatus = 'playing' | 'completed' | 'skipped' | 'stopped' | 'disconnected' | 'interrupted';
+/** Tracks that never started: blocked by an age gate, gone from the source, or failed unexpectedly. */
+export type ListeningSessionUnplayableStatus = 'age-restricted' | 'unavailable' | 'failed';
+export type ListeningSessionEntryStatus = 'playing' | 'completed' | 'skipped' | 'stopped' | 'disconnected' | 'interrupted' | ListeningSessionUnplayableStatus;
 export type ListeningSessionEndReason = 'stopped' | 'disconnected' | 'interrupted';
 
 export interface ListeningSessionEntry {
@@ -64,34 +66,26 @@ export default class ListeningSession {
     }
   }
 
+  /** The text channel that hosts this session's player card, once known. */
+  get channelId(): string | null {
+    return this.record?.channelId ?? null;
+  }
+
   startTrack(song: TrackMetadata, voiceChannelId: string, queueEntryId: number): void {
     if (this.currentQueueEntryId === queueEntryId && this.record?.entries.at(-1)?.status === 'playing') {
       return;
     }
 
-    const now = new Date();
-    const record = this.ensureRecord(voiceChannelId);
-
-    const previous = record.entries.at(-1);
-    if (previous?.status === 'playing') {
-      previous.status = 'interrupted';
-      previous.endedAt = now;
-    }
-
-    record.entries.push({
-      id: randomUUID(),
-      title: song.title,
-      artist: song.artist,
-      url: song.url,
-      source: MediaSource[song.source],
-      length: song.length,
-      offset: song.offset,
-      requestedBy: song.requestedBy,
-      startedAt: now,
-      endedAt: null,
-      status: 'playing',
-    });
+    this.pushEntry(song, voiceChannelId, 'playing');
     this.currentQueueEntryId = queueEntryId;
+    this.scheduleSave();
+  }
+
+  /** Note a track that left the queue without ever playing, so the recap can show it. */
+  recordUnplayable(song: TrackMetadata, voiceChannelId: string, status: ListeningSessionUnplayableStatus): void {
+    const entry = this.pushEntry(song, voiceChannelId, status);
+    entry.endedAt = entry.startedAt;
+    this.currentQueueEntryId = undefined;
     this.scheduleSave();
   }
 
@@ -183,6 +177,33 @@ export default class ListeningSession {
     if (failure) {
       throw failure.error;
     }
+  }
+
+  private pushEntry(song: TrackMetadata, voiceChannelId: string, status: ListeningSessionEntryStatus): ListeningSessionEntry {
+    const now = new Date();
+    const record = this.ensureRecord(voiceChannelId);
+
+    const previous = record.entries.at(-1);
+    if (previous?.status === 'playing') {
+      previous.status = 'interrupted';
+      previous.endedAt = now;
+    }
+
+    const entry: ListeningSessionEntry = {
+      id: randomUUID(),
+      title: song.title,
+      artist: song.artist,
+      url: song.url,
+      source: MediaSource[song.source],
+      length: song.length,
+      offset: song.offset,
+      requestedBy: song.requestedBy,
+      startedAt: now,
+      endedAt: null,
+      status,
+    };
+    record.entries.push(entry);
+    return entry;
   }
 
   private ensureRecord(voiceChannelId: string, channelId?: string): ListeningSessionRecord {

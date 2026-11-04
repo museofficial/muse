@@ -70,6 +70,7 @@ import Play from '../src/commands/play.js';
 import AddQueryToQueue from '../src/services/add-query-to-queue.js';
 import Player, {FfmpegMediaUnavailableError, MediaSource, QueuedSong, SongMetadata, STATUS} from '../src/services/player.js';
 import {getYouTubeMediaSource, YtDlpMediaUnavailableError} from '../src/utils/yt-dlp.js';
+import ListeningSession from '../src/services/listening-session.js';
 
 const GUILD_ID = 'guild-id';
 const ORIGINAL_YT_DLP_COOKIES_PATH = process.env.YT_DLP_COOKIES_PATH;
@@ -606,11 +607,19 @@ describe('PLAY-14 unplayable queue continuation preservation', () => {
   it.each([
     [new YtDlpMediaUnavailableError('content is age-restricted', 'age-restricted'), 'it\'s age-restricted on YouTube'],
     [new YtDlpMediaUnavailableError('video unavailable', 'unavailable'), 'it isn\'t available'],
-  ])('tells the channel why a track was skipped (%s)', async (playbackError, why) => {
+  ])('tells the session text channel why a track was skipped and records it in the recap (%s)', async (playbackError, why) => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const {getStream, player} = makeReadyPlayer();
+    const {getStream, player, voiceConnection} = makeReadyPlayer();
+    Object.assign(voiceConnection, {joinConfig: {channelId: 'voice-channel'}});
+    const session = new ListeningSession(GUILD_ID, {save: vi.fn().mockResolvedValue(undefined)});
+    session.prepare('voice-channel', 'session-text-channel');
     const send = vi.fn().mockResolvedValue(undefined);
-    Object.assign(player, {currentChannel: {id: 'voice-channel', members: new Map(), send}});
+    const voiceSend = vi.fn();
+    const fetch = vi.fn().mockResolvedValue({isTextBased: () => true, send});
+    Object.assign(player, {
+      listeningSession: session,
+      currentChannel: {id: 'voice-channel', members: new Map(), send: voiceSend, guild: {channels: {fetch}}},
+    });
     player.add(makeQueuedSong('Gated *song*'));
     player.add(makeQueuedSong('Next playable'));
     getStream
@@ -620,10 +629,34 @@ describe('PLAY-14 unplayable queue continuation preservation', () => {
     await player.play();
     await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
 
+    expect(fetch).toHaveBeenCalledWith('session-text-channel');
+    expect(voiceSend).not.toHaveBeenCalled();
     expect(send).toHaveBeenCalledWith({
       content: `⏭️ Skipped **Gated \\*song\\***: ${why}.`,
       allowedMentions: {parse: []},
     });
+    expect(session.snapshot()!.entries.map(entry => [entry.title, entry.status])).toEqual([
+      ['Gated *song*', playbackError.reason],
+      ['Next playable', 'playing'],
+    ]);
+  });
+
+  it('falls back to the channel the track was queued from when the session has no text channel', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const {getStream, player} = makeReadyPlayer();
+    const send = vi.fn().mockResolvedValue(undefined);
+    const fetch = vi.fn().mockResolvedValue({isTextBased: () => true, send});
+    Object.assign(player, {currentChannel: {id: 'voice-channel', members: new Map(), guild: {channels: {fetch}}}});
+    player.add(makeQueuedSong('Gone'));
+    player.add(makeQueuedSong('Next playable'));
+    getStream
+      .mockRejectedValueOnce(new YtDlpMediaUnavailableError('video unavailable'))
+      .mockResolvedValueOnce(Readable.from([]));
+
+    await player.play();
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+
+    expect(fetch).toHaveBeenCalledWith('text-channel-id');
   });
 
   it('finishes an unavailable final entry in IDLE and schedules only the configured idle timer', async () => {

@@ -59,6 +59,7 @@ const entryLine = (entry: ListeningSessionEntry, index: number): string => {
   const labels: Record<ListeningSessionEntry['status'], string> = {
     playing: 'Playing', completed: 'Played', skipped: 'Skipped', stopped: 'Stopped',
     disconnected: 'Disconnected', interrupted: 'Interrupted',
+    'age-restricted': 'Skipped (age-restricted)', unavailable: 'Skipped (unavailable)', failed: 'Couldn\'t play',
   };
   return `${index + 1}. ${trackLink(entry)} — ${labels[entry.status]}`;
 };
