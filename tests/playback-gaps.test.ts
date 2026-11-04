@@ -635,9 +635,10 @@ describe('PLAY-14 unplayable queue continuation preservation', () => {
       content: `⏭️ Skipped **Gated \\*song\\***: ${why}.`,
       allowedMentions: {parse: []},
     });
+    // This harness never emits Playing, so only the skipped entry is recorded here;
+    // session-lifecycle covers the full order through real player transitions.
     expect(session.snapshot()!.entries.map(entry => [entry.title, entry.status])).toEqual([
       ['Gated *song*', playbackError.reason],
-      ['Next playable', 'playing'],
     ]);
   });
 

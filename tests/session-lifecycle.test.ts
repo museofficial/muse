@@ -266,14 +266,30 @@ describe('listening history through real Player transitions', () => {
     expect(session.snapshot()).toBeUndefined();
   });
 
-  it('does not record an unavailable track before the next playable song starts', async () => {
+  it('records a skipped unavailable track before the next playable song starts', async () => {
     const {player, session, getStream} = makeHarness(makeSong('Unavailable'), makeSong('Playable'));
     getStream.mockRejectedValueOnce(new YtDlpMediaUnavailableError('unavailable'));
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     await player.play();
 
-    expect(session.snapshot()?.entries.map(entry => entry.title)).toEqual(['Playable']);
+    expect(session.snapshot()?.entries.map(entry => [entry.title, entry.status])).toEqual([
+      ['Unavailable', 'unavailable'],
+      ['Playable', 'playing'],
+    ]);
+  });
+
+  it('records a skipped age-restricted track with its reason', async () => {
+    const {player, session, getStream} = makeHarness(makeSong('Gated'), makeSong('Playable'));
+    getStream.mockRejectedValueOnce(new YtDlpMediaUnavailableError('content is age-restricted', 'age-restricted'));
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await player.play();
+
+    expect(session.snapshot()?.entries.map(entry => [entry.title, entry.status])).toEqual([
+      ['Gated', 'age-restricted'],
+      ['Playable', 'playing'],
+    ]);
   });
 
   it('does not record a stream that arrives after Stop cancels startup', async () => {
