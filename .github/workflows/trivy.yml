@@ -1,0 +1,102 @@
+name: Container scan
+
+# Scan the Docker image for known vulnerabilities with Trivy.
+# - Pull requests that touch the image build it and scan the result.
+# - A weekly run scans the published :latest image, catching CVEs disclosed after release.
+# Report-only: lists fixable HIGH and CRITICAL findings in the job summary and as a
+# warning annotation, but never fails the run. To hide a finding you've decided to
+# accept, add its ID to .trivyignore with a comment explaining why.
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - package.json
+      - yarn.lock
+      - .trivyignore
+      - .github/workflows/trivy.yml
+  schedule:
+    - cron: '23 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PUBLISHED_IMAGE: ghcr.io/museofficial/muse:latest
+  LOCAL_IMAGE: muse:scan
+  TRIVY_VERSION: 0.76.1
+
+jobs:
+  scan:
+    name: Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Buildx
+        if: github.event_name == 'pull_request'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.LOCAL_IMAGE }}
+
+      # The action's bundled installer downloads from get.trivy.dev, which doesn't resolve.
+      # Install the release from GitHub instead, verified against its published checksums.
+      - name: Install Trivy
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Plain public downloads: the aquasecurity org's IP allow list rejects authenticated API calls from runners.
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          checksums="trivy_${TRIVY_VERSION}_checksums.txt"
+          mkdir -p "$RUNNER_TEMP/trivy"
+          cd "$RUNNER_TEMP/trivy"
+          curl -fsSL --retry 3 -o "$tarball" "$base/$tarball"
+          curl -fsSL --retry 3 -o "$checksums" "$base/$checksums"
+          grep " ${tarball}\$" "$checksums" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf "$tarball" -C "$HOME/.local/bin" trivy
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/trivy" --version
+
+      - name: Scan image
+        # Pinned to a commit because this action downloads and runs the scanner; Dependabot keeps it current.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ github.event_name == 'pull_request' && env.LOCAL_IMAGE || env.PUBLISHED_IMAGE }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          scanners: vuln
+          format: table
+          output: trivy-report.txt
+          exit-code: '0'
+          skip-setup-trivy: true
+
+      - name: Add report to job summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -s trivy-report.txt ]; then
+            {
+              echo '### Trivy findings (fixable HIGH and CRITICAL)'
+              echo '```'
+              cat trivy-report.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            cat trivy-report.txt
+          fi
+
+          # One visible warning with the total, without failing the run.
+          total=$(grep -oE '^Total: [0-9]+' trivy-report.txt 2>/dev/null | awk '{sum += $2} END {print sum + 0}')
+          if [ "$total" -gt 0 ]; then
+            echo "::warning title=Trivy::${total} fixable HIGH/CRITICAL findings. See the job summary for details."
+          fi

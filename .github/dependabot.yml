@@ -1,5 +1,17 @@
 version: 2
 updates:
+- package-ecosystem: docker
+  directory: "/"
+  schedule:
+    interval: weekly
+  ignore:
+  # Node majors need a deliberate upgrade (engines, CI matrix); take only minor and patch base image updates.
+  - dependency-name: node
+    update-types: ["version-update:semver-major"]
+- package-ecosystem: github-actions
+  directory: "/"
+  schedule:
+    interval: weekly
 - package-ecosystem: npm
   directory: "/"
   schedule:
