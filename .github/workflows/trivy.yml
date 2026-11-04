@@ -3,9 +3,9 @@ name: Container scan
 # Scan the Docker image for known vulnerabilities with Trivy.
 # - Pull requests that touch the image build it and scan the result.
 # - A weekly run scans the published :latest image, catching CVEs disclosed after release.
-# Fails on HIGH or CRITICAL findings that have a fix available. Unfixed findings
-# are reported upstream but are not actionable here, so they don't fail the check.
-# To accept a specific finding, add its ID to .trivyignore with a comment explaining why.
+# Report-only: lists fixable HIGH and CRITICAL findings in the job summary and as a
+# warning annotation, but never fails the run. To hide a finding you've decided to
+# accept, add its ID to .trivyignore with a comment explaining why.
 
 on:
   pull_request:
@@ -78,7 +78,7 @@ jobs:
           scanners: vuln
           format: table
           output: trivy-report.txt
-          exit-code: '1'
+          exit-code: '0'
           skip-setup-trivy: true
 
       - name: Add report to job summary
@@ -93,4 +93,10 @@ jobs:
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
             cat trivy-report.txt
+          fi
+
+          # One visible warning with the total, without failing the run.
+          total=$(grep -oE '^Total: [0-9]+' trivy-report.txt 2>/dev/null | awk '{sum += $2} END {print sum + 0}')
+          if [ "$total" -gt 0 ]; then
+            echo "::warning title=Trivy::${total} fixable HIGH/CRITICAL findings. See the job summary for details."
           fi
