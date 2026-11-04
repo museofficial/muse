@@ -26,6 +26,7 @@ permissions:
 env:
   PUBLISHED_IMAGE: ghcr.io/museofficial/muse:latest
   LOCAL_IMAGE: muse:scan
+  TRIVY_VERSION: 0.76.1
 
 jobs:
   scan:
@@ -47,6 +48,25 @@ jobs:
           load: true
           tags: ${{ env.LOCAL_IMAGE }}
 
+      # The action's bundled installer downloads from get.trivy.dev, which doesn't resolve.
+      # Install the release from GitHub instead, verified against its published checksums.
+      - name: Install Trivy
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${TRIVY_VERSION}"
+          tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          checksums="trivy_${TRIVY_VERSION}_checksums.txt"
+          gh release download "$tag" --repo aquasecurity/trivy --pattern "$tarball" --pattern "$checksums" --dir "$RUNNER_TEMP/trivy"
+          cd "$RUNNER_TEMP/trivy"
+          grep " ${tarball}\$" "$checksums" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf "$tarball" -C "$HOME/.local/bin" trivy
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/trivy" --version
+
       - name: Scan image
         # Pinned to a commit because this action downloads and runs the scanner; Dependabot keeps it current.
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -58,6 +78,7 @@ jobs:
           format: table
           output: trivy-report.txt
           exit-code: '1'
+          skip-setup-trivy: true
 
       - name: Add report to job summary
         if: always()
