@@ -64,7 +64,12 @@ export class YtDlpMediaUnavailableError extends Error {
 }
 
 const getMediaUnavailableReason = (detail: string): YtDlpMediaUnavailableReason | null => {
-  if (/sign in to confirm your age/i.test(detail)) {
+  // YouTube has used several wordings for age gates; match all known variants.
+  if ([
+    /sign in to confirm your age/i,
+    /content is age-restricted/i,
+    /inappropriate for some users/i,
+  ].some(pattern => pattern.test(detail))) {
     return 'age-restricted';
   }
 

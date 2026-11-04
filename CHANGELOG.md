@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Recognize YouTube's newer "this content is age-restricted" error, so those tracks get the audio fallback or are skipped instead of stopping playback.
+- Post a message in the voice channel's chat when a track is skipped as unplayable, or when playback stops because the next track couldn't start.
+
 ## [2.12.0] - 2026-10-30
 
 - Keep one shared player card per listening session, with the classic artwork, requester, source, progress bar, and upcoming songs. Move the card and its controls to the latest queue receipt in the session's text channel; older receipts keep their confirmation text.

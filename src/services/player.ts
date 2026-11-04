@@ -1,4 +1,4 @@
-import {VoiceChannel} from 'discord.js';
+import {VoiceChannel, escapeMarkdown} from 'discord.js';
 import {Readable} from 'stream';
 import {setTimeout as sleep} from 'timers/promises';
 import hasha from 'hasha';
@@ -974,6 +974,10 @@ export default class {
       || isGone) {
       const detail = error instanceof Error ? error.message : 'media returned HTTP 410';
       console.warn(`Skipping unplayable track for guild ${this.guildId} (${getMediaIdentifierForLog(playback.song)}): ${detail}`);
+      const why = error instanceof YtDlpMediaUnavailableError && error.reason === 'age-restricted'
+        ? 'it\'s age-restricted on YouTube'
+        : 'it isn\'t available';
+      this.notifyChannel(`⏭️ Skipped **${escapeMarkdown(playback.song.title)}**: ${why}.`);
       await this.advancePastUnplayableTrack();
       return;
     }
@@ -1296,6 +1300,9 @@ export default class {
 
         void this.onAudioPlayerIdle(oldState, newState).catch(error => {
           console.error(`Audio player idle handler failed for guild ${this.guildId}:`, error);
+          const song = this.getCurrent();
+          const title = song ? ` **${escapeMarkdown(song.title)}**` : ' the next track';
+          this.notifyChannel(`⚠️ Playback stopped: couldn't play${title}. Use \`/skip\` to continue.`);
         });
       });
     }
@@ -1316,6 +1323,18 @@ export default class {
 
   private async waitForVoiceConnectionReady(voiceConnection: VoiceConnection): Promise<void> {
     await entersState(voiceConnection, VoiceConnectionStatus.Ready, 60_000);
+  }
+
+  // Best-effort notice in the voice channel's chat; never let a send failure affect playback.
+  private notifyChannel(content: string): void {
+    const channel = this.currentChannel;
+    if (!channel) {
+      return;
+    }
+
+    void Promise.resolve().then(async () => channel.send({content, allowedMentions: {parse: []}})).catch((error: unknown) => {
+      console.warn(`Failed to send playback notice for guild ${this.guildId}:`, error);
+    });
   }
 
   private async advancePastUnplayableTrack(): Promise<void> {

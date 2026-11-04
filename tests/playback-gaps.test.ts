@@ -536,6 +536,8 @@ describe('PLAY-14 yt-dlp unavailable classification preservation', () => {
     ['Video has been removed', 'unavailable'],
     ['This is members-only content', 'unavailable'],
     ['Sign in to confirm your age', 'age-restricted'],
+    ['[youtube] z4iiyRv_NrQ: Sorry, this content is age-restricted. To view this video, please provide more info so we can be sure you\'re an adult. Learn more', 'age-restricted'],
+    ['This video may be inappropriate for some users.', 'age-restricted'],
   ])('classifies %s as %s', async (detail, reason) => {
     dependencyMocks.execa.mockRejectedValue({stderr: `ERROR: ${detail}`});
 
@@ -599,6 +601,29 @@ describe('PLAY-14 unplayable queue continuation preservation', () => {
     expect(player.status).toBe(STATUS.PLAYING);
     expect(getStream).toHaveBeenCalledTimes(2);
     expect(warning).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [new YtDlpMediaUnavailableError('content is age-restricted', 'age-restricted'), 'it\'s age-restricted on YouTube'],
+    [new YtDlpMediaUnavailableError('video unavailable', 'unavailable'), 'it isn\'t available'],
+  ])('tells the channel why a track was skipped (%s)', async (playbackError, why) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const {getStream, player} = makeReadyPlayer();
+    const send = vi.fn().mockResolvedValue(undefined);
+    Object.assign(player, {currentChannel: {id: 'voice-channel', members: new Map(), send}});
+    player.add(makeQueuedSong('Gated *song*'));
+    player.add(makeQueuedSong('Next playable'));
+    getStream
+      .mockRejectedValueOnce(playbackError)
+      .mockResolvedValueOnce(Readable.from([]));
+
+    await player.play();
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+
+    expect(send).toHaveBeenCalledWith({
+      content: `⏭️ Skipped **Gated \\*song\\***: ${why}.`,
+      allowedMentions: {parse: []},
+    });
   });
 
   it('finishes an unavailable final entry in IDLE and schedules only the configured idle timer', async () => {
