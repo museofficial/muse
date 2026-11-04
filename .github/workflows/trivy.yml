@@ -52,15 +52,16 @@ jobs:
       # Install the release from GitHub instead, verified against its published checksums.
       - name: Install Trivy
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="v${TRIVY_VERSION}"
+          # Plain public downloads: the aquasecurity org's IP allow list rejects authenticated API calls from runners.
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
           tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
           checksums="trivy_${TRIVY_VERSION}_checksums.txt"
-          gh release download "$tag" --repo aquasecurity/trivy --pattern "$tarball" --pattern "$checksums" --dir "$RUNNER_TEMP/trivy"
+          mkdir -p "$RUNNER_TEMP/trivy"
           cd "$RUNNER_TEMP/trivy"
+          curl -fsSL --retry 3 -o "$tarball" "$base/$tarball"
+          curl -fsSL --retry 3 -o "$checksums" "$base/$checksums"
           grep " ${tarball}\$" "$checksums" | sha256sum --check --strict
           mkdir -p "$HOME/.local/bin"
           tar -xzf "$tarball" -C "$HOME/.local/bin" trivy
