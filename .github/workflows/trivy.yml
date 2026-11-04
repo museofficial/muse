@@ -1,0 +1,74 @@
+name: Container scan
+
+# Scan the Docker image for known vulnerabilities with Trivy.
+# - Pull requests that touch the image build it and scan the result.
+# - A weekly run scans the published :latest image, catching CVEs disclosed after release.
+# Fails on HIGH or CRITICAL findings that have a fix available. Unfixed findings
+# are reported upstream but are not actionable here, so they don't fail the check.
+# To accept a specific finding, add its ID to .trivyignore with a comment explaining why.
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - package.json
+      - yarn.lock
+      - .trivyignore
+      - .github/workflows/trivy.yml
+  schedule:
+    - cron: '23 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PUBLISHED_IMAGE: ghcr.io/museofficial/muse:latest
+  LOCAL_IMAGE: muse:scan
+
+jobs:
+  scan:
+    name: Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Buildx
+        if: github.event_name == 'pull_request'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.LOCAL_IMAGE }}
+
+      - name: Scan image
+        # Pinned to a commit because this action downloads and runs the scanner; Dependabot keeps it current.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ github.event_name == 'pull_request' && env.LOCAL_IMAGE || env.PUBLISHED_IMAGE }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          scanners: vuln
+          format: table
+          output: trivy-report.txt
+          exit-code: '1'
+
+      - name: Add report to job summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -s trivy-report.txt ]; then
+            {
+              echo '### Trivy findings (fixable HIGH and CRITICAL)'
+              echo '```'
+              cat trivy-report.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            cat trivy-report.txt
+          fi
