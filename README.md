@@ -92,6 +92,12 @@ services:
 
 If you keep the same `DISCORD_TOKEN`, reuse the same `/data` volume, and point your Compose service at a newer image tag, Muse will come back up with the same bot identity and persisted database/cache.
 
+### Easypanel
+
+Muse has a one-click deployment template on [Easypanel](https://easypanel.io), a self-hosted Docker deployment platform:
+
+[![Deploy on Easypanel](https://easypanel.io/img/deploy-on-easypanel-40.svg)](https://easypanel.io/templates/muse)
+
 ### Node.js
 
 **Prerequisites**:
