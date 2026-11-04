@@ -70,6 +70,7 @@ import Play from '../src/commands/play.js';
 import AddQueryToQueue from '../src/services/add-query-to-queue.js';
 import Player, {FfmpegMediaUnavailableError, MediaSource, QueuedSong, SongMetadata, STATUS} from '../src/services/player.js';
 import {getYouTubeMediaSource, YtDlpMediaUnavailableError} from '../src/utils/yt-dlp.js';
+import ListeningSession from '../src/services/listening-session.js';
 
 const GUILD_ID = 'guild-id';
 const ORIGINAL_YT_DLP_COOKIES_PATH = process.env.YT_DLP_COOKIES_PATH;
@@ -536,6 +537,8 @@ describe('PLAY-14 yt-dlp unavailable classification preservation', () => {
     ['Video has been removed', 'unavailable'],
     ['This is members-only content', 'unavailable'],
     ['Sign in to confirm your age', 'age-restricted'],
+    ['[youtube] z4iiyRv_NrQ: Sorry, this content is age-restricted. To view this video, please provide more info so we can be sure you\'re an adult. Learn more', 'age-restricted'],
+    ['This video may be inappropriate for some users.', 'age-restricted'],
   ])('classifies %s as %s', async (detail, reason) => {
     dependencyMocks.execa.mockRejectedValue({stderr: `ERROR: ${detail}`});
 
@@ -599,6 +602,62 @@ describe('PLAY-14 unplayable queue continuation preservation', () => {
     expect(player.status).toBe(STATUS.PLAYING);
     expect(getStream).toHaveBeenCalledTimes(2);
     expect(warning).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [new YtDlpMediaUnavailableError('content is age-restricted', 'age-restricted'), 'it\'s age-restricted on YouTube'],
+    [new YtDlpMediaUnavailableError('video unavailable', 'unavailable'), 'it isn\'t available'],
+  ])('tells the session text channel why a track was skipped and records it in the recap (%s)', async (playbackError, why) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const {getStream, player, voiceConnection} = makeReadyPlayer();
+    Object.assign(voiceConnection, {joinConfig: {channelId: 'voice-channel'}});
+    const session = new ListeningSession(GUILD_ID, {save: vi.fn().mockResolvedValue(undefined)});
+    session.prepare('voice-channel', 'session-text-channel');
+    const send = vi.fn().mockResolvedValue(undefined);
+    const voiceSend = vi.fn();
+    const fetch = vi.fn().mockResolvedValue({isTextBased: () => true, send});
+    Object.assign(player, {
+      listeningSession: session,
+      currentChannel: {id: 'voice-channel', members: new Map(), send: voiceSend, guild: {channels: {fetch}}},
+    });
+    player.add(makeQueuedSong('Gated *song*'));
+    player.add(makeQueuedSong('Next playable'));
+    getStream
+      .mockRejectedValueOnce(playbackError)
+      .mockResolvedValueOnce(Readable.from([]));
+
+    await player.play();
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+
+    expect(fetch).toHaveBeenCalledWith('session-text-channel');
+    expect(voiceSend).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledWith({
+      content: `⏭️ Skipped **Gated \\*song\\***: ${why}.`,
+      allowedMentions: {parse: []},
+    });
+    // This harness never emits Playing, so only the skipped entry is recorded here;
+    // session-lifecycle covers the full order through real player transitions.
+    expect(session.snapshot()!.entries.map(entry => [entry.title, entry.status])).toEqual([
+      ['Gated *song*', playbackError.reason],
+    ]);
+  });
+
+  it('falls back to the channel the track was queued from when the session has no text channel', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const {getStream, player} = makeReadyPlayer();
+    const send = vi.fn().mockResolvedValue(undefined);
+    const fetch = vi.fn().mockResolvedValue({isTextBased: () => true, send});
+    Object.assign(player, {currentChannel: {id: 'voice-channel', members: new Map(), guild: {channels: {fetch}}}});
+    player.add(makeQueuedSong('Gone'));
+    player.add(makeQueuedSong('Next playable'));
+    getStream
+      .mockRejectedValueOnce(new YtDlpMediaUnavailableError('video unavailable'))
+      .mockResolvedValueOnce(Readable.from([]));
+
+    await player.play();
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+
+    expect(fetch).toHaveBeenCalledWith('text-channel-id');
   });
 
   it('finishes an unavailable final entry in IDLE and schedules only the configured idle timer', async () => {
