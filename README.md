@@ -115,6 +115,10 @@ Run the behavior suite locally with:
 npm test
 ```
 
+## One-Click Deploy
+
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/Muse/)
+
 ## ⚙️ Additional configuration (advanced)
 
 ### Playback display and controls
